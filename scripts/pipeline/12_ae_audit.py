@@ -376,11 +376,15 @@ def main() -> int:
                                         "electrical); this project's detector "
                                         "sees only the thermal channels",
         },
-        "subsample_note": "This audit runs on a stratified SUBSET of the CARE "
-                          "datasets, not all 95: the authors' autoencoder takes "
-                          "roughly 5-8 minutes per dataset, so the full "
-                          "benchmark is an 8-13 hour job. The subset is stated "
-                          "here rather than presented as the full benchmark.",
+        # The note must tell the truth about what was actually run.
+        "n_datasets_run": len(picks),
+        "subsample_note": (
+            "This audit covers ALL 95 CARE datasets." if len(picks) >= 95 else
+            "This audit runs on a stratified SUBSET of the CARE datasets, not "
+            "all 95: the authors' autoencoder takes roughly 10-30 seconds per "
+            "dataset per configuration, so the full benchmark is a multi-hour "
+            "job. The subset is stated here rather than presented as the full "
+            "benchmark."),
         "seed": args.seed,
         "per_config": summary,
         "per_dataset": results,
