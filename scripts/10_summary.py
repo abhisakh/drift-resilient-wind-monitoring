@@ -83,6 +83,7 @@ def main() -> int:
             "care": care["sub_scores"],
             "care_score": care["care_score"],
             "beats_AE": care["beats_published_AE"],
+            "n_events": care["n_datasets_scored"],
         })
     if mv:
         for key, label, kind in (("max_combiner", "multivariate bins (max z)", "multivariate"),
@@ -96,6 +97,7 @@ def main() -> int:
                 "care": v["sub_scores"],
                 "care_score": v["care_score"],
                 "beats_AE": v.get("beats_published_AE"),
+                "n_events": v["n_events"],
             })
     if lg:
         arms.append({
@@ -105,6 +107,7 @@ def main() -> int:
             "care": lg["sub_scores"],
             "care_score": lg["care_score"],
             "beats_AE": lg.get("beats_published_AE"),
+            "n_events": lg["n_datasets"],
         })
 
     best = None
@@ -127,7 +130,7 @@ def main() -> int:
     print("SUMMARY: every arm, both datasets")
     print("=" * 108)
     print(f"{'arm':<32}{'ENGIE FAR %':>14}{'alarms/10m':>12}"
-          f"{'coverage':>10}{'accuracy':>10}{'reliab.':>9}{'early':>8}{'CARE':>8}")
+          f"{'coverage':>10}{'accuracy':>10}{'reliab.':>9}{'early':>8}{'CARE':>8}{'events':>9}")
     print("-" * 108)
     for a in arms:
         far = a.get("engie_far")
@@ -140,7 +143,8 @@ def main() -> int:
             alm = "-"
         c = a["care"]
         print(f"{a['arm']:<32}{far_s:>14}{alm:>12}{c['coverage']:>10.4f}{c['accuracy']:>10.4f}"
-              f"{c['reliability']:>9.4f}{c['earliness']:>8.4f}{a['care_score']:>8.4f}")
+              f"{c['reliability']:>9.4f}{c['earliness']:>8.4f}{a['care_score']:>8.4f}"
+              f"{a.get('n_events', '?'):>9}")
     print("-" * 108)
     print(f"published baselines: AE 0.66 | random 0.50 | iForest < 0.5")
     if best:

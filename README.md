@@ -191,14 +191,42 @@ tests/           unit tests for the conditioning and gating logic
 
 ## Running it
 
+Python **3.11** is required — the benchmark authors' CARE scorer
+(`energy-fault-detector`) declares `Python < 3.12`. See `docs/environment.md`.
+
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/01_build_dataset.py     # download + verify + cache
-.venv/bin/python scripts/02_condition.py          # build climatology-conditioned baseline
-.venv/bin/python scripts/03_detect.py            # residual + deterministic gates
-.venv/bin/python scripts/04_score.py              # CARE score vs published baselines
-.venv/bin/python scripts/05_report.py            # write results/report.md
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+.venv/bin/python scripts/01_build_dataset.py         # download + checksum + cache (19 GB)
+.venv/bin/python scripts/02_condition.py            # climatology, ERA5 agreement
+.venv/bin/python scripts/03_detect.py              # ENGIE scheme comparison + gates
+.venv/bin/python scripts/04_score.py               # CARE score, power-only baseline
+.venv/bin/python scripts/05_audit_scorability.py   # what the benchmark can and cannot score
+.venv/bin/python scripts/08_multivariate.py        # Option 1: multivariate bins
+.venv/bin/python scripts/08b_sweep_threshold.py    # leak-free threshold sweep
+.venv/bin/python scripts/08c_engie_multivariate.py # ENGIE: frozen vs rolling reference
+.venv/bin/python scripts/07_lightgbm_nbm.py        # learned-model arm
+.venv/bin/python scripts/09_report.py              # regenerate this README from results/
+.venv/bin/python scripts/10_summary.py             # one summary table across all arms
 ```
+
+Every script writes a JSON file into `results/`, and `09_report.py` builds this
+document's Results section from those files — so no number here can drift from
+the artefacts. `scripts/06_spike_thermal.py` and `scripts/08a_probe_signal.py`
+are one-off diagnostics used while designing the detector; they write nothing
+and can be deleted.
+
+## Tests
+
+```bash
+.venv/bin/python -m pytest tests/ -q
+```
+
+43 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+CARE score is identical to the benchmark authors' implementation — the
+criticality counter, the weighted score, every per-event metric and the final
+weighted score.
 
 ## Licence
 

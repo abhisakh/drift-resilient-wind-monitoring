@@ -1,6 +1,8 @@
 {
   "arm": "LightGBM thermal NBM",
   "n_datasets": 95,
+  "n_anomaly": 45,
+  "n_normal": 50,
   "care_score": 0.4826,
   "sub_scores": {
     "coverage": 0.2167,

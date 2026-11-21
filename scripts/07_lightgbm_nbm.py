@@ -254,6 +254,8 @@ def main() -> int:
     out = {
         "arm": "LightGBM thermal NBM",
         "n_datasets": int(len(df)),
+        "n_anomaly": int((df["label"] == "anomaly").sum()),
+        "n_normal": int((df["label"] == "normal").sum()),
         "care_score": round(float(care), 4),
         "sub_scores": subs,
         "published_baselines": {"AE (published)": 0.66, "random": 0.50},

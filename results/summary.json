@@ -16,7 +16,8 @@
         "earliness": 0.1347
       },
       "care_score": 0.4856,
-      "beats_AE": false
+      "beats_AE": false,
+      "n_events": 95
     },
     {
       "arm": "multivariate bins (max z)",
@@ -34,7 +35,8 @@
         "earliness": 0.0795
       },
       "care_score": 0.5028,
-      "beats_AE": false
+      "beats_AE": false,
+      "n_events": 95
     },
     {
       "arm": "multivariate bins (L2)",
@@ -52,7 +54,8 @@
         "earliness": 0.0685
       },
       "care_score": 0.4942,
-      "beats_AE": false
+      "beats_AE": false,
+      "n_events": 95
     },
     {
       "arm": "LightGBM thermal NBM",
@@ -65,7 +68,8 @@
         "earliness": 0.1743
       },
       "care_score": 0.4826,
-      "beats_AE": false
+      "beats_AE": false,
+      "n_events": 95
     }
   ],
   "best_multivariate_setting": {
