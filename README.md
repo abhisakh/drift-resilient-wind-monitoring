@@ -175,7 +175,11 @@ The threshold is the arm's one free parameter, so it was swept rather than chose
 | power-only residual (baseline) | 0.1263 | 0.9606 | 0.2459 | 0.1347 | 0.4856 |
 | multivariate bins (max z) | 0.1513 | 0.9512 | 0.3810 | 0.0795 | 0.5028 |
 | multivariate bins (L2) | 0.1342 | 0.9538 | 0.3608 | 0.0685 | 0.4942 |
-| LightGBM thermal NBM | 0.2167 | 0.8477 | 0.3268 | 0.1743 | 0.4826 |
+| LightGBM thermal NBM | 0.2157 | 0.8517 | 0.3356 | 0.1785 | 0.4866 |
+
+All four arms are scored on the same 95 events (45 anomaly, 50 normal). The learned arm has the **best coverage** of the three, and pays for it in accuracy: it raises alarms on more of the true anomalies and also on more normal behaviour. On this benchmark the deterministic arm wins overall -- and on the ENGIE side it does so at a false-alarm rate below 1 %.
+
+Both the deterministic and the learned arm use the same threshold rule: the quantile of the TRAINING score distribution, so the threshold never sees an event it is later scored on. The learned arm's seeds are pinned explicitly (`random_state`, `seed`) and verified bit-identical across runs by `tests/test_lightgbm_determinism.py` -- without that, its score would not have been re-derivable, which is the whole point of the exercise.
 
 <!-- RESULTS:END -->
 

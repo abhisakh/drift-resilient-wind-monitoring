@@ -60,6 +60,14 @@ LGBM_PARAMS = {
     "reg_lambda": 2.0,
     "verbose": -1,
     "n_jobs": 4,
+    # Explicit seeds. `subsample` and `colsample_bytree` draw randomness, and
+    # without a fixed seed the arm's CARE score would not be reproducible --
+    # fatal for a portfolio project whose whole claim is that its numbers can
+    # be re-derived. Both the sklearn-level `random_state` and LightGBM's own
+    # `seed` are pinned. Verified by scripts/07a_check_determinism.py and
+    # tests/test_lightgbm_determinism.py.
+    "random_state": 0,
+    "seed": 0,
 }
 
 #: How many thermal channels to model per dataset. The full set is 24-76

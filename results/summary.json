@@ -62,12 +62,12 @@
       "kind": "lightgbm",
       "engie_far": null,
       "care": {
-        "coverage": 0.2167,
-        "accuracy": 0.8477,
-        "reliability": 0.3268,
-        "earliness": 0.1743
+        "coverage": 0.2157,
+        "accuracy": 0.8517,
+        "reliability": 0.3356,
+        "earliness": 0.1785
       },
-      "care_score": 0.4826,
+      "care_score": 0.4866,
       "beats_AE": false,
       "n_events": 95
     }

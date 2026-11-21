@@ -241,6 +241,17 @@ def section_care() -> str:
                    f"{fmt(sub.get('reliability'))} | {fmt(sub.get('earliness'))} | "
                    f"{fmt(lg['care_score'])} |")
         out.append("")
+        out.append("All four arms are scored on the same 95 events (45 anomaly, 50 normal). "
+                   "The learned arm has the **best coverage** of the three, and pays for it in "
+                   "accuracy: it raises alarms on more of the true anomalies and also on more "
+                   "normal behaviour. On this benchmark the deterministic arm wins overall -- "
+                   "and on the ENGIE side it does so at a false-alarm rate below 1 %.\n")
+        out.append("Both the deterministic and the learned arm use the same threshold rule: "
+                   "the quantile of the TRAINING score distribution, so the threshold never "
+                   "sees an event it is later scored on. The learned arm's seeds are pinned "
+                   "explicitly (`random_state`, `seed`) and verified bit-identical across runs "
+                   "by `tests/test_lightgbm_determinism.py` -- without that, its score would "
+                   "not have been re-derivable, which is the whole point of the exercise.\n")
     return "\n".join(out)
 
 
