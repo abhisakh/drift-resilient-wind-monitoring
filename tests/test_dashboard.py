@@ -433,3 +433,57 @@ def test_running_the_engie_source_reports_what_it_joined():
     banner = banners[-1]
     assert "SCADA" in banner, banner
     assert "ERA5" in banner, banner
+
+
+# ------------------------------------------------------- the visual polish
+def _import_app():
+    """Import app.py as a module, without running its UI."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("windmill_app_2", ROOT / "app.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_sidebar_carries_the_brand_mark():
+    """The turbine icon has to be beside the title, not replace it.
+
+    It is inline SVG rather than an image file, so it stays crisp at any
+    scale and needs no asset.
+    """
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    text = "\n".join(m.value for m in at.sidebar.markdown)
+    assert "Windmill" in text, "the sidebar has no title"
+    assert "brand-icon" in text, "the sidebar title has no turbine icon"
+    assert "<svg" in text, "the brand icon is not an inline SVG"
+
+
+def test_the_watermark_is_a_fixed_low_opacity_layer():
+    """A watermark must not eat clicks or wash out the content.
+
+    The three properties that make it a watermark rather than an overlay:
+    it is FIXED to the corner, it is at 6 % opacity, and it ignores pointer
+    events.
+    """
+    app_text = (ROOT / "app.py").read_text()
+    assert "body::after" in app_text, "there is no watermark layer"
+    assert "position: fixed" in app_text
+    assert "opacity: 0.06" in app_text
+    assert "pointer-events: none" in app_text
+
+
+def test_the_watermark_is_a_valid_inline_svg():
+    """The watermark is carried as a data URI, so it needs no file at all."""
+    import base64
+
+    mod = _import_app()
+    uri = mod._watermark_uri()
+    assert uri.startswith("data:image/svg+xml;base64,")
+    svg = base64.b64decode(uri.split(",", 1)[1]).decode("utf-8")
+    assert svg.startswith("<svg") and svg.rstrip().endswith("</svg>")
+    # A turbine: three blades, a hub and a tower.
+    assert svg.count("<path") >= 4, svg
+    assert "<circle" in svg

@@ -111,9 +111,48 @@ def _fmt(x, nd=4):
         return str(x)
 
 
+#: A minimalist wind turbine silhouette, drawn rather than imported so the
+#: dashboard carries no image asset and the whole thing is a few hundred
+#: bytes. Three blades on a hub, over a tapered tower.
+_TURBINE_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">'
+    '<g fill="#ffffff">'
+    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"/>'
+    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"'
+    ' transform="rotate(120 200 132)"/>'
+    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"'
+    ' transform="rotate(240 200 132)"/>'
+    '<circle cx="200" cy="132" r="8"/>'
+    '<path d="M192 140L208 140L216 368L184 368Z"/>'
+    "</g></svg>"
+)
+
+#: The crisp brand mark beside the sidebar title. Drawn in `currentColor` so
+#: it follows the theme in both light and dark mode.
+_TURBINE_ICON_SVG = (
+    '<svg class="brand-icon" viewBox="0 0 24 24" width="26" height="26"'
+    ' fill="currentColor" aria-hidden="true" focusable="false">'
+    '<circle cx="12" cy="8.6" r="1.5"/>'
+    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"/>'
+    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"'
+    ' transform="rotate(120 12 8.6)"/>'
+    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"'
+    ' transform="rotate(240 12 8.6)"/>'
+    '<path d="M11.25 9.9H12.75L13.6 21.6H10.4Z"/>'
+    "</svg>"
+)
+
+
+def _watermark_uri() -> str:
+    """The watermark as a data URI, so the CSS needs no external file."""
+    import base64
+
+    return ("data:image/svg+xml;base64,"
+            + base64.b64encode(_TURBINE_SVG.encode("utf-8")).decode("ascii"))
+
+
 def _style():
-    st.markdown(
-        """
+    css = """
         <style>
         .badge {padding: .45rem .9rem; border-radius: .5rem; font-weight: 700;
                 letter-spacing: .04em; font-size: .82rem; display: inline-block;}
@@ -126,10 +165,42 @@ def _style():
                  letter-spacing:.06em;}
         .note {border-left:3px solid var(--border); padding:.35rem .8rem; color:var(--muted-foreground);
                font-size:.9rem;}
+
+        /* The brand mark beside the sidebar title. */
+        .brand {display:flex; align-items:center; gap:.55rem;
+                font-size:1.17rem; font-weight:700; line-height:1.25;
+                margin:.9rem 0 .35rem 0; color:var(--foreground);}
+        .brand-icon {flex:0 0 auto; width:26px; height:26px; color:var(--foreground);}
+
+        /* A wind turbine as a watermark in the bottom-right of the main
+           canvas. It is drawn as a pseudo-element on the body rather than as
+           a div so it cannot affect the layout or be clipped by a
+           container, and it is behind the content: pointer-events are off,
+           the opacity is 6 %, and the content sits above it. */
+        body::after {
+            content: "";
+            position: fixed;
+            right: 1.4rem;
+            bottom: 0.6rem;
+            width: 320px;
+            height: 320px;
+            background-image: url("__WATERMARK__");
+            background-repeat: no-repeat;
+            background-position: right bottom;
+            background-size: contain;
+            opacity: 0.06;
+            pointer-events: none;
+            z-index: 0;
+        }
+        /* Keep the app's own content above the watermark. */
+        section.main, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            position: relative;
+            z-index: 1;
+        }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """
+    st.markdown(css.replace("__WATERMARK__", _watermark_uri()),
+                unsafe_allow_html=True)
 
 
 def kpi(value: str, label: str, delta: str | None = None):
@@ -1011,7 +1082,11 @@ def main():
 
     # --- sidebar -----------------------------------------------------------
     with st.sidebar:
-        st.markdown("### 🌬️ Windmill")
+        st.markdown(
+            f"<div class='brand'>{_TURBINE_ICON_SVG}"
+            "<span>Windmill · Condition Monitoring</span></div>",
+            unsafe_allow_html=True,
+        )
         st.markdown("*Drift-resilient condition monitoring for wind turbines*")
         if live:
             st.markdown("<span class='badge live'>LIVE SCADA ENGINE (Local 19 GB)</span>",
