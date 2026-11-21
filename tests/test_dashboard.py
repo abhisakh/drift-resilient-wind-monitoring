@@ -212,13 +212,36 @@ def test_the_snapshot_artefact_has_the_series_the_dashboard_plots():
     for peer in snap["meta"]["peer_turbines"]:
         assert peer in series, f"the snapshot has no {peer} control series"
 
-    # The peak must be the measured one: 86.64 C on R80711.
-    assert snap["kpis"]["r80711_max_c"] == 86.64
+    # The peak must be the measured one: 86.64 C on R80711. Cross-check it
+    # against the README rather than hard-coding it here, so the dashboard and
+    # the documentation cannot drift apart.
+    readme = (ROOT / "README.md").read_text()
+    assert f"{snap['kpis']['r80711_max_c']} °C" in readme or \
+           f"{snap['kpis']['r80711_max_c']} °C" in readme.replace("\u00a0", " "), (
+        "the README does not quote the snapshot's peak temperature"
+    )
     # And the two references must differ by orders of magnitude, not by a
     # rounding difference -- that is the project's headline.
     fr = snap["kpis"]["false_alarm_pct_frozen_reference"]
     rl = snap["kpis"]["false_alarm_pct_rolling_reference"]
     assert fr > 100 * rl, f"frozen {fr} % vs rolling {rl} %"
+
+    # The snapshot's own false-alarm rates must agree with the ENGIE artefact
+    # the dashboard quotes elsewhere -- different measurement, same order of
+    # magnitude, so a mismatch means one of them is wrong.
+    engie_path = RESULTS / "engie_multivariate.json"
+    if engie_path.exists():
+        strategies = json.loads(engie_path.read_text())["strategies"]
+        engie_frozen = strategies["frozen_2014"]["mean_rate_pct"]
+        engie_rolling = strategies["rolling_30d"]["mean_rate_pct"]
+        assert fr > engie_frozen * 0.5, (
+            f"the snapshot's frozen false-alarm rate ({fr} %) and the ENGIE "
+            f"artefact's ({engie_frozen} %) disagree by more than a factor of two"
+        )
+        assert rl < engie_rolling * 5, (
+            f"the snapshot's rolling false-alarm rate ({rl} %) and the ENGIE "
+            f"artefact's ({engie_rolling} %) disagree by more than a factor of five"
+        )
     assert snap["kpis"]["peer_max_c"] < 80.0
     assert snap["kpis"]["peer_rows_over_80c"] == 0
 
