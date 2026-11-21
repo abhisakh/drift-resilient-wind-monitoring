@@ -28,7 +28,7 @@ spec.loader.exec_module(lgbm)
 
 from windmill import care  # noqa: E402
 
-CARE_ROOT = ROOT / "data" / "raw" / "care_extracted" / "CARE_To_Compare"
+CARE_ROOT = care.care_root(ROOT / "data")
 
 
 def _sample_dataset() -> tuple[pd.DataFrame, pd.Series, pd.Series, str, str]:

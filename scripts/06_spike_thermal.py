@@ -27,7 +27,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-CARE_ROOT = ROOT / "data" / "raw" / "care_extracted" / "CARE_To_Compare"
+from windmill import care  # noqa: E402
+
+CARE_ROOT = care.care_root(ROOT / "data")
 FARMS = ("Wind Farm A", "Wind Farm B", "Wind Farm C")
 SEP = ";"
 NORMAL_STATUS_IDS = (0, 2)

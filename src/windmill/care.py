@@ -19,6 +19,23 @@ import pandas as pd
 SEP = ";"
 NORMAL_STATUS_IDS = (0, 2)
 
+#: Name of the CARE directory inside the extracted archive.
+CARE_INNER_DIR = "CARE_To_Compare"
+
+
+def care_root(data_dir: Path) -> Path:
+    """The root of the extracted CARE dataset.
+
+    Single source of truth for where CARE lives on disk. `scripts/01_build_dataset.py`
+    extracts to this directory (via `acquire.extract_dir`), and every script that
+    reads CARE asks here, so the download path and the read path cannot drift
+    apart.
+    """
+    from windmill import acquire
+
+    src = next(s for s in acquire.SOURCES if s.name == "care_to_compare")
+    return data_dir / "raw" / acquire.extract_dir(src) / CARE_INNER_DIR
+
 #: Fraction of rated power per load bin.
 LOAD_BIN = 0.05
 

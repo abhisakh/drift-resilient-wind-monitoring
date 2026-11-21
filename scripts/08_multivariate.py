@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import care, multivariate, scoring  # noqa: E402
 
-CARE_ROOT = ROOT / "data" / "raw" / "care_extracted" / "CARE_To_Compare"
+CARE_ROOT = care.care_root(ROOT / "data")
 FARMS = ("Wind Farm A", "Wind Farm B", "Wind Farm C")
 
 PUBLISHED_BASELINES = {"AE (published)": 0.66, "random": 0.50, "iForest": "< 0.5"}

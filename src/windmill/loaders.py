@@ -20,6 +20,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from windmill import acquire
+
 from . import TURBINES
 
 # The 16 columns the ENGIE release actually ships.
@@ -46,6 +48,22 @@ ENGIE_COLUMNS = [
 
 F99 = "F99"
 F95 = "F95"
+
+#: The ENGIE release's temperature channels -- the 16 columns it actually ships.
+#: Kept here so the detector, the demo and the reporting all agree on which
+#: sensors are thermal.
+ENGIE_THERMAL = [
+    "Git_avg",   # gearbox inlet temperature
+    "Gost_avg",  # gearbox oil sump temperature
+    "Gb2t_avg",  # gearbox bearing 2 temperature
+    "Gb1t_avg",  # gearbox bearing 1 temperature
+    "Db2t_avg",  # generator bearing 2 temperature
+    "Db1t_avg",  # generator bearing 1 temperature
+    "Dst_avg",   # generator stator temperature
+    "Yt_avg",    # nacelle temperature
+    "Rbt_avg",   # rotor bearing temperature
+    "Rt_avg",    # hub temperature
+]
 
 
 def _find_engie_root(data_dir: Path) -> Path:
@@ -128,7 +146,8 @@ def load_care(data_dir: Path) -> pd.DataFrame:
     Each CSV holds one turbine-year of 10-min SCADA. The label columns are read
     from the dataset's own ground-truth files when present.
     """
-    extracted = data_dir / "raw" / "care_extracted"
+    extracted = data_dir / "raw" / acquire.extract_dir(
+        next(s for s in acquire.SOURCES if s.name == "care_to_compare"))
     if not extracted.exists():
         raise FileNotFoundError(f"{extracted} missing -- run scripts/01_build_dataset.py")
     frames = []

@@ -202,10 +202,11 @@ Python **3.11** is required — the benchmark authors' CARE scorer
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-.venv/bin/python scripts/01_build_dataset.py         # download + checksum + cache (19 GB)
-.venv/bin/python scripts/02_condition.py            # climatology, ERA5 agreement
-.venv/bin/python scripts/03_detect.py              # ENGIE scheme comparison + gates
-.venv/bin/python scripts/04_score.py               # CARE score, power-only baseline
+.venv/bin/python scripts/11_demo.py              # <-- START HERE: watch it work
+.venv/bin/python scripts/01_build_dataset.py     # download + verify + cache (19 GB)
+.venv/bin/python scripts/02_condition.py        # climatology, ERA5 agreement
+.venv/bin/python scripts/03_detect.py          # ENGIE scheme comparison + gates
+.venv/bin/python scripts/04_score.py           # CARE score, power-only baseline
 .venv/bin/python scripts/05_audit_scorability.py   # what the benchmark can and cannot score
 .venv/bin/python scripts/08_multivariate.py        # Option 1: multivariate bins
 .venv/bin/python scripts/08b_sweep_threshold.py    # leak-free threshold sweep
@@ -221,16 +222,34 @@ the artefacts. `scripts/06_spike_thermal.py` and `scripts/08a_probe_signal.py`
 are one-off diagnostics used while designing the detector; they write nothing
 and can be deleted.
 
+## The demo
+
+`scripts/11_demo.py` runs the real detector on real SCADA and prints what it
+sees. Two demonstrations:
+
+```bash
+.venv/bin/python scripts/11_demo.py                       # ENGIE R80711, Sept 2017
+.venv/bin/python scripts/11_demo.py --dataset care        # a labelled CARE event
+.venv/bin/python scripts/11_demo.py --list                # list the CARE events
+```
+
+The ENGIE one is the strongest single piece of evidence in the project: R80711
+runs hot on one gearbox bearing channel while its three siblings, on the same
+channel and the same weather, stay inside their range — and the peer residual
+grows month over month instead of returning to normal. Nothing about it is
+simulated; it is the same code path the CARE scoring uses.
+
 ## Tests
 
 ```bash
 .venv/bin/python -m pytest tests/ -q
 ```
 
-43 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+57 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
-weighted score.
+weighted score. `tests/test_data_paths.py` pins the download path to the read
+path, and `tests/test_provenance.py` checks every dataset's recorded checksum.
 
 ## Licence
 

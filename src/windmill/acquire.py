@@ -28,6 +28,9 @@ class Source:
     licence: str
     note: str = ""
     unpack: str | None = None  # "zip" | "tar" | None
+    #: Expected SHA-256 of the downloaded file, when known. A reviewer can
+    #: verify their own download against this without trusting ours.
+    sha256: str | None = None
 
 
 ENGIE = Source(
@@ -41,6 +44,7 @@ ENGIE = Source(
         "data_description.csv."
     ),
     unpack="zip",
+    sha256="8f6ae60a6351dc504209e9cf6d345b067be0dfa9036ab625e5c190e60a5f17c4",
 )
 
 ERA5 = Source(
@@ -55,6 +59,7 @@ ERA5 = Source(
     filename="era5_openmeteo.json",
     licence="Copernicus/ECMWF ERA5 (public)",
     note="ERA5 hourly reanalysis at the site; no API key required.",
+    sha256="dbe8facbdc74cee115a4921335b0b2433500c10a16843c75936ce0c9aeee3371",
 )
 
 CARE = Source(
@@ -64,9 +69,24 @@ CARE = Source(
     licence="CC BY-SA 4.0",
     note="Zenodo v6, DOI 10.5281/zenodo.15846963. 5.5 GB.",
     unpack="zip",
+    sha256="ca61379e98956d891041ad45c885109bd8a14199fde0688d0184a11c2d4194f1",
 )
 
 SOURCES = (ENGIE, ERA5, CARE)
+
+#: Where each source's archive is extracted, relative to `data/raw/`.
+#:
+#: This is the single source of truth. The download script and every reader
+#: must agree on it: a mismatch means a fresh clone unpacks the data somewhere
+#: the scripts do not look, and everything fails at run time.
+EXTRACT_DIRS = {
+    "care_to_compare": "care_extracted",
+}
+
+
+def extract_dir(src: Source) -> str:
+    """The directory, relative to `data/raw/`, that `src` is extracted into."""
+    return EXTRACT_DIRS.get(src.name, f"{src.name}_extracted")
 
 
 def sha256(path: Path, chunk: int = 1 << 20) -> str:
@@ -90,6 +110,16 @@ def download(src: Source, dest_dir: Path, force: bool = False) -> Path:
         shutil.copyfileobj(resp, fh, length=1 << 20)
     tmp.replace(target)
     return target
+
+
+def verify(src: Source, path: Path) -> bool | None:
+    """Check a downloaded file against the source's expected SHA-256.
+
+    Returns True/False, or None when the source has no recorded checksum.
+    """
+    if src.sha256 is None:
+        return None
+    return sha256(path) == src.sha256
 
 
 def unpack(src: Source, archive: Path, out_dir: Path) -> Path:
@@ -116,7 +146,13 @@ def unpack(src: Source, archive: Path, out_dir: Path) -> Path:
 
 
 def manifest(data_dir: Path) -> dict:
-    """Build the provenance manifest for whatever is present in data_dir."""
+    """Build the provenance manifest for whatever is present in data_dir.
+
+    Every source carries its URL, licence and expected SHA-256 whether or not
+    the file is present locally, so the manifest doubles as the provenance
+    record a reviewer checks their own download against. `sha256_verified` says
+    whether the local copy actually matched that expectation.
+    """
     entries = {}
     for src in SOURCES:
         path = data_dir / "raw" / src.filename
@@ -124,11 +160,17 @@ def manifest(data_dir: Path) -> dict:
             "url": src.url,
             "licence": src.licence,
             "note": src.note,
+            "extract_dir": extract_dir(src) if src.unpack else None,
+            "expected_sha256": src.sha256,
             "present": path.exists(),
         }
         if path.exists():
             entry["bytes"] = path.stat().st_size
-            entry["sha256"] = sha256(path)
+            actual = sha256(path)
+            entry["sha256"] = actual
+            entry["sha256_verified"] = (
+                None if src.sha256 is None else actual == src.sha256
+            )
         entries[src.name] = entry
     return entries
 

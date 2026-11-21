@@ -34,9 +34,20 @@ def main() -> int:
         print(f"[{src.name}] {src.url}")
         path = acquire.download(src, raw, force=args.force)
         print(f"  -> {path.name}  {path.stat().st_size/1e6:.1f} MB")
+        ok = acquire.verify(src, path)
+        if ok is True:
+            print("  -> sha256 verified against the expected value")
+        elif ok is False:
+            print(f"  -> WARNING: sha256 does NOT match the expected value "
+                  f"({(src.sha256 or '')[:16]}...) -- the download may be corrupt")
         if src.unpack:
-            acquire.unpack(src, path, raw / f"{src.name}_extracted")
-            print(f"  -> extracted to {raw}/{src.name}_extracted")
+            # The extraction directory is defined once, in acquire.extract_dir,
+            # and every reader uses that same definition. Deriving it from the
+            # source name here instead would silently disagree with the
+            # scripts that read the data.
+            out_dir = raw / acquire.extract_dir(src)
+            acquire.unpack(src, path, out_dir)
+            print(f"  -> extracted to {out_dir}")
 
     manifest_path = acquire.write_manifest(ROOT / "data")
     print(f"\nmanifest: {manifest_path}")

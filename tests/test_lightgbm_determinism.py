@@ -25,7 +25,7 @@ from windmill import care  # noqa: E402
 
 lgb = pytest.importorskip("lightgbm", reason="lightgbm not installed")
 
-CARE_ROOT = ROOT / "data" / "raw" / "care_extracted" / "CARE_To_Compare"
+CARE_ROOT = care.care_root(ROOT / "data")
 pytestmark = pytest.mark.skipif(
     not CARE_ROOT.exists(), reason="CARE dataset not downloaded"
 )
