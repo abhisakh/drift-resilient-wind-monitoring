@@ -1,6 +1,6 @@
 # Windmill: Drift-Resilient Wind Turbine Condition Monitoring
 
-**Separating benign weather shifts from real hardware degradation in wind turbine SCADA data—cutting false alarms by 46× with an auditable, zero-leakage pipeline.**
+**Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46× with an auditable, zero-leakage pipeline.**
 
 > **TL;DR for Reviewers:** This project demonstrates that reference calibration matters more than model complexity, cutting false alarms from **26.37%** to **0.57%** across multi-year ENGIE SCADA data and **95** CARE benchmark events.
 
