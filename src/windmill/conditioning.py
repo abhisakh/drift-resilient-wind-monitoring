@@ -216,6 +216,14 @@ def residual_zscore(
 # made the dependency invisible. Two scripts need them, so they live here.
 # ---------------------------------------------------------------------------
 
+#: Standard air density at sea level, kg/m3 (IEC 61400-12-1).
+RHO_REF = 1.225
+#: Specific gas constant for dry air, J/(kg K).
+R_DRY = 287.058
+#: Kelvin offset.
+KELVIN = 273.15
+
+
 def add_density(era5: pd.DataFrame) -> pd.DataFrame:
     """Air density from ERA5 surface pressure and 2 m temperature.
 
@@ -271,9 +279,9 @@ def build_reference(
     bands: dict[tuple, tuple[float, float]] = {}
     if per_turbine:
         for t, g in ref.groupby("turbine"):
-            curves[t] = cond.fit_power_curve(g, power_col="P_std")
+            curves[t] = fit_power_curve(g, power_col="P_std")
     else:
-        pooled = cond.fit_power_curve(ref, power_col="P_std")
+        pooled = fit_power_curve(ref, power_col="P_std")
         for t in df["turbine"].unique():
             curves[t] = pooled
 
@@ -281,12 +289,12 @@ def build_reference(
     # The band key always includes the turbine so the lookup in apply_reference
     # is unambiguous.
     ref = ref.copy()
-    ref["bin"] = cond.wind_bin(ref["Ws_avg"])
+    ref["bin"] = wind_bin(ref["Ws_avg"])
     keys = ["turbine", "bin", "month"] if season_conditioned else ["turbine", "bin"]
     for key, gb in ref.groupby(keys):
         curve = curves[key[0]]
         gb = gb.copy()
-        gb["p_ref"] = cond.apply_power_curve(gb, curve)
+        gb["p_ref"] = apply_power_curve(gb, curve)
         gb["resid"] = gb["P_std"] - gb["p_ref"]
         gb = gb.dropna(subset=["resid"])
         if gb.empty:
@@ -310,7 +318,7 @@ def apply_reference(
 ) -> pd.DataFrame:
     """Add the residual, its z-score against the band, and the alarm flag."""
     out = df.copy()
-    out["bin"] = cond.wind_bin(out["Ws_avg"])
+    out["bin"] = wind_bin(out["Ws_avg"])
     curves, bands = reference["curves"], reference["bands"]
     season = reference.get("season_conditioned", False)
     out["p_ref"] = np.nan
@@ -321,7 +329,7 @@ def apply_reference(
         if curve is None:
             continue
         idx = g.index
-        out.loc[idx, "p_ref"] = cond.apply_power_curve(g, curve)
+        out.loc[idx, "p_ref"] = apply_power_curve(g, curve)
         if season:
             med = [bands.get((t, int(b), int(m)), (np.nan, np.nan))[0]
                    for b, m in zip(out.loc[idx, "bin"], out.loc[idx, "month"])]

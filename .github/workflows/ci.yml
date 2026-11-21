@@ -47,6 +47,24 @@ jobs:
       - name: Run the test suite
         run: python -m pytest tests/ -q
 
+      - name: Reproduce the documentation from results/
+        # The report generator is the single source of truth for README.md.
+        # Re-running it must reproduce the committed file EXACTLY -- otherwise
+        # the documentation and the artefacts have drifted apart, and the
+        # numbers in the README cannot be trusted.
+        #
+        # This step is also what would catch a broken pipeline script: the
+        # learned-model arm once died with a NameError while its committed
+        # result still looked perfectly fine, because nothing ever ran it.
+        run: |
+          python scripts/pipeline/10_summary.py
+          python scripts/pipeline/09_report.py
+          if ! git diff --quiet -- README.md results/summary.json; then
+            echo "::error::Re-running the report generator did not reproduce the committed README.md / results/summary.json. Run 'make pipeline' and commit the result."
+            git --no-pager diff --stat
+            exit 1
+          fi
+
       - name: Check the working tree is clean
         # The report generator rewrites README.md from results/. If a test
         # wrote into results/, or a result file drifted, the tree would be

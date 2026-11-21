@@ -42,8 +42,6 @@ from windmill.conditioning import (add_density, apply_reference,  # noqa: E402
 from windmill import detector  # noqa: E402
 
 RHO_REF = 1.225   # kg/m3, standard air density (IEC 61400-12-1)
-R_DRY = 287.058   # J/(kg K)
-KELVIN = 273.15
 
 
 def false_alarm_rate_per_year(df: pd.DataFrame, flag_col: str = "flag") -> pd.DataFrame:

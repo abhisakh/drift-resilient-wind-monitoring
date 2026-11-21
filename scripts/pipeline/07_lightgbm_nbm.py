@@ -154,7 +154,6 @@ def main() -> int:
         sample = sorted((farm_dir / "datasets").glob("*.csv"))
         if not sample:
             continue
-        ALL_COLUMNS[farm] = pd.read_csv(sample[0], sep=SEP, nrows=0).columns.tolist()
         pcol, thermal, wind, ambient = feature_rows(farm_dir)
         print(f"[{farm}] power={pcol} thermal={len(thermal)} wind={len(wind)} "
               f"ambient={ambient}")
