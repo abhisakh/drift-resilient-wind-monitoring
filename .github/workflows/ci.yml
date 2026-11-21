@@ -24,6 +24,14 @@ jobs:
         # there (requirements.txt gates it on python_version < "3.12"), so the
         # tests that cross-check against it skip themselves and the rest still
         # run. A failure on 3.12 is a real signal about our own code.
+        #
+        # The documentation check below runs on BOTH versions, and it can only
+        # work if pytest collects the same number of tests everywhere. That
+        # is why no test module may skip itself at import time: a
+        # module-level `pytest.importorskip` skips during COLLECTION, so the
+        # count fell from 142 to 135 on 3.12 and the README could not be
+        # reproduced. Skips happen at run time instead, so the count is
+        # identical on every job. See docs/environment.md.
         python-version: ["3.11", "3.12"]
 
     steps:
@@ -62,6 +70,13 @@ jobs:
           if ! git diff --quiet -- README.md results/summary.json; then
             echo "::error::Re-running the report generator did not reproduce the committed README.md / results/summary.json. Run 'make pipeline' and commit the result."
             git --no-pager diff --stat
+            git --no-pager diff -- README.md results/summary.json
+            # Name the most common cause. If the only difference is the test
+            # count, then pytest is collecting a different number of tests
+            # here than it did when the README was committed -- which happens
+            # when a test module skips itself at import time, because that
+            # hides its tests from collection.
+            echo "::error::If the only difference is the test count, pytest is collecting a different number of tests on this Python version. A test module must not call pytest.importorskip() at module level: that skips during collection. Use a fixture, or skip inside the test. tests/test_repo_rules.py::test_no_test_module_skips_at_import_time enforces this."
             exit 1
           fi
 

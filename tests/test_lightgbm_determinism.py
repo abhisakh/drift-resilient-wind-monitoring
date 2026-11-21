@@ -23,7 +23,20 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import care  # noqa: E402
 
-lgb = pytest.importorskip("lightgbm", reason="lightgbm not installed")
+@pytest.fixture(scope="module")
+def lgb():
+    """The LightGBM module, or a skip.
+
+    A fixture, not a module-level `pytest.importorskip`. The module-level
+    form skips during COLLECTION, so on a machine without LightGBM pytest
+    never collected these three tests -- and the README's generated test
+    count, which is the number pytest collects, changed with the Python
+    version and the set of optional packages installed.
+
+    Skipping at run time keeps the collected count identical everywhere, so
+    the documentation reproducibility check holds on every CI job.
+    """
+    return pytest.importorskip("lightgbm", reason="lightgbm not installed")
 
 CARE_ROOT = care.care_root(ROOT / "data")
 pytestmark = pytest.mark.skipif(
@@ -44,7 +57,7 @@ def test_lightgbm_params_pin_their_seeds():
     assert params.get("seed") is not None
 
 
-def test_two_fits_on_the_same_data_are_identical():
+def test_two_fits_on_the_same_data_are_identical(lgb):
     """The same data and params must give the same predictions, bit for bit."""
     params = _load_params()
     farm_dir = CARE_ROOT / "Wind Farm C"

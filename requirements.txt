@@ -14,6 +14,13 @@ pytest>=8
 # It requires Python < 3.12 (see docs/environment.md).
 energy-fault-detector==0.8.1; python_version < "3.12"
 
+# The learned comparison arm. LightGBM was previously an UNDECLARED
+# dependency: `pip install -r requirements.txt` followed by `make pipeline`
+# died with a bare ModuleNotFoundError at 07_lightgbm_nbm.py, and the CI jobs
+# silently skipped the three tests that prove the arm's seeds are pinned.
+# It installs cleanly against the numpy<2 pin above.
+lightgbm>=4,<5
+
 # Dashboard (app.py).
 streamlit>=1.40,<2
 plotly>=5.20,<8

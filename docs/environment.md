@@ -23,6 +23,32 @@ python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+## The test count must not depend on the environment
+
+The README states how many tests pytest collects, and `09_report.py` asks
+pytest for that number so the count cannot go stale. That makes the count a
+thing the CI documentation check depends on: the committed README has to be
+reproducible **byte for byte** on every job in the matrix.
+
+So the collected count has to be the same on Python 3.11 and 3.12, and the
+same whether or not the optional packages are installed. The rule that
+achieves this is:
+
+> A test module may not skip itself at import time.
+
+`pytest.importorskip` at module level skips during **collection**, so pytest
+never collects that module's tests at all -- and the count then depends on
+the Python version and the installed packages. `energy-fault-detector`
+requires Python < 3.12, so the reference cross-check module skipped itself
+on 3.12 and the count fell from 142 to 135. The 3.12 CI job then failed to
+reproduce the committed README, by a single line, on a machine where
+nothing about this project's own code was wrong.
+
+The fix is to skip at **run** time -- inside the test, or in a fixture -- so
+the tests are always collected and only their execution is skipped.
+`tests/test_repo_rules.py::test_no_test_module_skips_at_import_time` enforces
+this, so the mistake cannot be reintroduced silently.
+
 ## Data
 
 `scripts/pipeline/01_build_dataset.py` downloads everything into `data/raw/`

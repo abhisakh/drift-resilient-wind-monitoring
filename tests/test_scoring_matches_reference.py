@@ -23,10 +23,28 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import scoring  # noqa: E402
 
-ref = pytest.importorskip(
-    "energy_fault_detector.evaluation.care_score",
-    reason="energy-fault-detector requires Python < 3.12",
-)
+def _require_reference(module: str):
+    """Skip this test when the reference package is not installed.
+
+    The skip MUST happen at run time, not at import time. A module-level
+    `pytest.importorskip` skips the whole module during COLLECTION, so on a
+    Python version where the package is missing (it requires < 3.12) pytest
+    never collects these four tests at all.
+
+    That matters because the README states the number of tests pytest
+    collects, and the report generator asks pytest for it. A collection-time
+    skip made that number depend on the Python version -- 142 on 3.11, 135 on
+    3.12 -- so the CI job that regenerates the documentation and compares it
+    against the committed README failed with a one-line diff, on a machine
+    where nothing about our own code was wrong.
+
+    Collecting the tests everywhere and skipping them at run time keeps the
+    count identical on every Python version, and keeps the README's number
+    true for a reader who installed fewer optional packages.
+    """
+    pytest.importorskip(
+        module, reason="energy-fault-detector requires Python < 3.12"
+    )
 
 
 def _random_predictions(seed: int, n: int = 400) -> tuple[pd.Series, pd.Series]:
@@ -38,6 +56,7 @@ def _random_predictions(seed: int, n: int = 400) -> tuple[pd.Series, pd.Series]:
 
 def test_criticality_matches_reference():
     """Our criticality counter must equal the authors' implementation."""
+    _require_reference("energy_fault_detector.utils.analysis")
     from energy_fault_detector.utils.analysis import calculate_criticality as ref_crit
 
     for seed in (0, 1, 2, 3):
@@ -49,6 +68,7 @@ def test_criticality_matches_reference():
 
 def test_weighted_score_matches_reference():
     """Our earliness weight function must equal the authors' implementation."""
+    _require_reference("energy_fault_detector.evaluation.care_score")
     from energy_fault_detector.evaluation.care_score import CAREScore as RefCAREScore
 
     ref_score = RefCAREScore()
@@ -62,6 +82,7 @@ def test_weighted_score_matches_reference():
 
 def test_event_metrics_match_reference():
     """Every per-event metric must agree with the authors' implementation."""
+    _require_reference("energy_fault_detector.evaluation.care_score")
     from energy_fault_detector.evaluation.care_score import CAREScore as RefCAREScore
 
     for seed in (0, 1, 2):
@@ -86,6 +107,7 @@ def test_event_metrics_match_reference():
 
 def test_final_score_matches_reference():
     """The final weighted CARE score must agree too."""
+    _require_reference("energy_fault_detector.evaluation.care_score")
     from energy_fault_detector.evaluation.care_score import CAREScore as RefCAREScore
 
     ours = scoring.CAREScore()

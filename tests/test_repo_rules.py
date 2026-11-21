@@ -313,3 +313,51 @@ def test_working_tree_has_no_cache_artifacts():
     ).stdout
     bad = [line for line in out.splitlines() if "__pycache__" in line or ".pyc" in line]
     assert not bad, f"cache artefacts show up in git status: {bad}"
+
+
+def test_no_test_module_skips_at_import_time():
+    """A module-level `pytest.importorskip` hides tests from COLLECTION.
+
+    The README states how many tests pytest collects, and the report
+    generator asks pytest for that number. If a test module skips itself at
+    import time, pytest never collects its tests -- so the count, and the
+    README, depend on which Python version and which optional packages are
+    installed.
+
+    That is exactly how the CI documentation check broke: the reference
+    cross-check module skipped itself when `energy-fault-detector` was
+    absent (it requires Python < 3.12), so the count was 142 on 3.11 and 135
+    on 3.12, and the 3.12 job failed to reproduce the committed README by a
+    single line.
+
+    Skips belong inside a test function or a fixture. This rule keeps it
+    that way.
+    """
+    import ast
+
+    banned = {"importorskip", "skip"}
+    offenders = []
+    for f in sorted((ROOT / "tests").glob("test_*.py")):
+        tree = ast.parse(f.read_text())
+        # Only the module's own statements count. A skip inside a function or
+        # a class body happens at RUN time, which is what we want; a skip in
+        # the module body happens at COLLECTION time, which is what we are
+        # banning. So the walk must not descend into definitions.
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                 ast.ClassDef, ast.Lambda)):
+                continue
+            for child in ast.walk(node):
+                if not isinstance(child, ast.Call):
+                    continue
+                func = child.func
+                name = getattr(func, "attr", None)
+                if name in banned and isinstance(func, ast.Attribute):
+                    if getattr(func.value, "id", None) == "pytest":
+                        offenders.append(f"{f.name}:{child.lineno} pytest.{name}()")
+
+    assert not offenders, (
+        "these skips happen at import time, so pytest does not collect the "
+        "tests in that module and the README's test count changes with the "
+        "environment:\n  " + "\n  ".join(offenders)
+    )
