@@ -1,0 +1,80 @@
+{
+  "purpose": "Establish whether the published AE baseline (0.66) is comparable with this project's leak-free protocol.",
+  "published_baselines": {
+    "AE (published)": 0.66,
+    "random": 0.5,
+    "iForest": "< 0.5"
+  },
+  "this_project": {
+    "arm": "deterministic multivariate bins (max z)",
+    "care_score": 0.5028,
+    "protocol": "threshold = quantile of the CROSS-FITTED TRAINING score distribution; the scored events never influence it"
+  },
+  "authors_protocol_read_from_code": {
+    "autoencoder": "layers [200, 100, 50], code 20, 10 epochs",
+    "anomaly_score": "rmse",
+    "threshold_selector": "quantile 0.95, fit_on_val=true",
+    "threshold_fitted_on": "a 20% validation split of the TRAINING data",
+    "threshold_uses_scored_events": false,
+    "features_received_by_ae": "every numeric column, including status_type_id",
+    "seeded": false
+  },
+  "subsample_note": "This audit runs on a stratified SUBSET of the CARE datasets, not all 95: the authors' autoencoder takes roughly 5-8 minutes per dataset, so the full benchmark is an 8-13 hour job. The subset is stated here rather than presented as the full benchmark.",
+  "seed": 0,
+  "per_config": {
+    "published": {
+      "n_datasets": 3,
+      "n_anomaly": 3,
+      "n_normal": 0,
+      "care_score": NaN,
+      "coverage": 0.4073,
+      "accuracy": null,
+      "reliability": 0.7143,
+      "earliness": 0.3995
+    }
+  },
+  "per_dataset": [
+    {
+      "label": "anomaly",
+      "coverage": 0.0,
+      "accuracy": NaN,
+      "earliness": 0.09651521724840596,
+      "max_criticality": 0,
+      "anomaly_detected": false,
+      "config": "published",
+      "event_id": 68,
+      "farm": "Wind Farm A",
+      "description": "Transformer failure",
+      "n_flags": 202,
+      "seconds": 9.9
+    },
+    {
+      "label": "anomaly",
+      "coverage": 0.27828348504551365,
+      "accuracy": 0.13833890460272563,
+      "earliness": 0.16152341245532753,
+      "max_criticality": 43,
+      "anomaly_detected": false,
+      "config": "published",
+      "event_id": 34,
+      "farm": "Wind Farm B",
+      "description": "high temperature in transformer cell",
+      "n_flags": 1297,
+      "seconds": 11.7
+    },
+    {
+      "label": "anomaly",
+      "coverage": 0.943471735867934,
+      "accuracy": 0.8363577446532728,
+      "earliness": 0.9405586633389961,
+      "max_criticality": 1000,
+      "anomaly_detected": true,
+      "config": "published",
+      "event_id": 55,
+      "farm": "Wind Farm C",
+      "description": "Harting plug Nacelle/HUB damaged + NCR20_HUB: Wiring blade control sys",
+      "n_flags": 2013,
+      "seconds": 26.6
+    }
+  ]
+}

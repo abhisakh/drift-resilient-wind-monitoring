@@ -14,7 +14,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
 README = ROOT / "README.md"
 
@@ -151,14 +151,14 @@ def section_engie_multivariate() -> str:
     if frozen and rolling:
         ratio = frozen["mean_rate_pct"] / rolling["mean_rate_pct"]
         out.append(f"A **frozen 2014 reference** -- what a naive deployment does -- gives "
-                   f"{fmt(frozen['min_rate_pct'], 2)}-{fmt(frozen['max_rate_pct'], 2)} % false "
+                   f"{fmt(frozen['min_rate_pct'], 2)}–{fmt(frozen['max_rate_pct'], 2)} % false "
                    f"alarms (mean {fmt(frozen['mean_rate_pct'], 2)} %, spread "
                    f"{fmt(frozen['spread_pp'], 2)} pp). Each turbine's thermal channels move by "
                    f"5-9 K between years, so the frozen reference leaves a systematic offset "
                    f"that reads as overheating on every channel at once.\n")
         out.append(f"A **rolling local reference** -- each row compared against its own recent "
                    f"history at the same load bin, re-estimated continuously -- gives "
-                   f"{fmt(rolling['min_rate_pct'], 2)}-{fmt(rolling['max_rate_pct'], 2)} % "
+                   f"{fmt(rolling['min_rate_pct'], 2)}–{fmt(rolling['max_rate_pct'], 2)} % "
                    f"(mean {fmt(rolling['mean_rate_pct'], 2)} %, spread "
                    f"{fmt(rolling['spread_pp'], 2)} pp). That is a **{fmt(ratio, 0)}x** reduction "
                    f"in false alarms from changing nothing but the reference.\n")
@@ -272,6 +272,7 @@ def section_care() -> str:
                    "explicitly (`random_state`, `seed`) and verified bit-identical across runs "
                    "by `tests/test_lightgbm_determinism.py` -- without that, its score would "
                    "not have been re-derivable, which is the whole point of the exercise.\n")
+    out.append(section_ae_comparability())
     em = load("engie_multivariate.json")
     if em:
         s = em.get("strategies", {})
@@ -322,6 +323,83 @@ def _count_tests() -> int:
         n += sum(1 for line in p.read_text().splitlines()
                  if line.startswith("def test_"))
     return n
+
+
+def section_ae_comparability() -> str:
+    """Is the published AE baseline 0.66 comparable with ours?
+
+    The audit in scripts/pipeline/12_ae_audit.py establishes the published
+    protocol from the authors' code AND their paper. The headline: 0.66 is a
+    tuned-on-the-benchmark number, so it is not like-for-like with a leak-free
+    score.
+    """
+    a = load("ae_audit.json")
+    if not a:
+        return ""
+    out = ["### Is the published AE baseline (0.66) comparable with ours?\n"]
+    code = a.get("authors_protocol_read_from_code", {})
+    paper = a.get("authors_protocol_read_from_paper", {})
+    if code:
+        out.append(
+            "Read out of the benchmark authors' own implementation "
+            "(`energy-fault-detector` 0.8.1):\n")
+        out.append(f"- autoencoder {code.get('autoencoder')}, anomaly score "
+                   f"{code.get('anomaly_score')}, threshold selector "
+                   f"{code.get('threshold_selector')}")
+        out.append(f"- the threshold is fitted on {code.get('threshold_fitted_on')} "
+                   f"-- so the threshold RULE itself does not use the scored "
+                   f"events")
+        out.append(f"- but the split and the Keras training are **not** seeded, "
+                   f"so the published number is one stochastic run\n")
+    if paper:
+        out.append(
+            "Read out of the paper (sec. 4.2.2), which is where the comparability "
+            "question is actually decided:\n")
+        out.append(f"- the AE's architecture and hyperparameters were tuned with "
+                   f"Optuna, and the threshold calibration is **per wind farm**")
+        out.append(f"- farms A and B use an adaptive threshold with a per-farm "
+                   f"sensitivity gamma, also optimised with Optuna")
+        out.append(f"- farm C's fixed threshold was chosen by "
+                   f"**maximising the F(1/2) score** against ground truth "
+                   f"derived from the status-IDs")
+        out.append(f"- the paper documents no held-out protocol for that search\n")
+        out.append(
+            "> The published 0.66 is therefore the output of a search whose "
+            "objective was the CARE score itself. It is a "
+            "**tuned-on-the-benchmark** number, not a held-out one, and it is "
+            "not directly comparable with a leak-free score such as ours.\n")
+        out.append(
+            "Two things also differ in scope rather than in method: the AE sees "
+            "the **full sensor vector** (power, wind, pitch, hydraulic, "
+            "electrical), while this project's detector sees only the thermal "
+            "channels -- so a hydraulic or pitch fault is invisible to it; and "
+            "the AE's feature set depends on which of the package's two entry "
+            "points was used, one of which keeps `status_type_id` (the fault "
+            "annotation) as a feature.\n")
+    pc = a.get("per_config") or {}
+    if pc:
+        out.append("Measured, by running the authors' own autoencoder on a "
+                   "subset of the datasets and scoring it with their own CARE "
+                   "scorer:\n")
+        out.append("| configuration | datasets | coverage | accuracy | "
+                   "reliability | earliness | CARE |")
+        out.append("|---|---|---|---|---|---|---|")
+        for name, v in pc.items():
+            out.append(f"| {name} | {v.get('n_datasets')} | "
+                       f"{fmt(v.get('coverage'))} | {fmt(v.get('accuracy'))} | "
+                       f"{fmt(v.get('reliability'))} | {fmt(v.get('earliness'))} | "
+                       f"{fmt(v.get('care_score'))} |")
+        out.append("")
+    if a.get("subsample_note"):
+        out.append(a["subsample_note"] + "\n")
+    out.append("**What we claim:** that our 0.5028 is a leak-free number under a "
+               "protocol we can re-derive and defend, and that the published "
+               "0.66 is not that. We do **not** claim to beat it -- the honest "
+               "statement is that the two numbers are not the same kind of "
+               "number, and that closing the gap honestly would require "
+               "re-running the published baseline's own tuning loop under a "
+               "held-out protocol, which is a separate piece of work.\n")
+    return "\n".join(out)
 
 
 def section_method() -> str:

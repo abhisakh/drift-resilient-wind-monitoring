@@ -39,10 +39,11 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import care  # noqa: E402
+from windmill import nbm  # noqa: E402
 from windmill import scoring  # noqa: E402
 
 CARE_ROOT = care.care_root(ROOT / "data")
@@ -50,37 +51,6 @@ FARMS = ("Wind Farm A", "Wind Farm B", "Wind Farm C")
 SEP = ";"
 NORMAL_STATUS_IDS = (0, 2)
 LOAD_BIN = 0.05
-
-LGBM_PARAMS = {
-    "n_estimators": 60,
-    "learning_rate": 0.12,
-    "num_leaves": 15,
-    "min_child_samples": 80,
-    "subsample": 0.6,
-    "colsample_bytree": 0.7,
-    "reg_lambda": 2.0,
-    "verbose": -1,
-    "n_jobs": 4,
-    # Explicit seeds. `subsample` and `colsample_bytree` draw randomness, and
-    # without a fixed seed the arm's CARE score would not be reproducible --
-    # fatal for a portfolio project whose whole claim is that its numbers can
-    # be re-derived. Both the sklearn-level `random_state` and LightGBM's own
-    # `seed` are pinned. Verified by scripts/07a_check_determinism.py and
-    # tests/test_lightgbm_determinism.py.
-    "random_state": 0,
-    "seed": 0,
-}
-
-#: How many thermal channels to model per dataset. The full set is 24-76
-#: depending on the farm; a subset keeps the sweep tractable and the result
-#: honest about what was actually modelled.
-MAX_CHANNELS = 12
-
-#: Cap the rows used for fitting, so 95 datasets stay tractable.
-MAX_TRAIN_ROWS = 12000
-
-ALL_COLUMNS: dict[str, list[str]] = {}
-
 
 def feature_rows(farm_dir: Path) -> tuple[str | None, list[str], list[str], str | None]:
     """(power channel, thermal channels, wind-speed channels, ambient channel)."""
@@ -90,17 +60,10 @@ def feature_rows(farm_dir: Path) -> tuple[str | None, list[str], list[str], str 
     return _care.feature_rows(farm_dir, columns)
 
 
-def l2norm_positive(z: pd.DataFrame) -> pd.Series:
-    pos = z.clip(lower=0)
-    return np.sqrt((pos ** 2).sum(axis=1, skipna=True)).fillna(0.0)
-
-
 def run_dataset(path: Path, farm_dir: Path, info: pd.DataFrame, pcol: str,
                 thermal: list[str], wind: list[str],
                 quantile: float = 0.90) -> dict | None:
     """Fit the NBM on train, predict on test, return per-event scores."""
-    import lightgbm as lgb
-
     eid = int(path.stem)
     row = info[info["event_id"].astype(int) == eid]
     if row.empty:
@@ -119,48 +82,35 @@ def run_dataset(path: Path, farm_dir: Path, info: pd.DataFrame, pcol: str,
     if len(channels) < 2:
         return None
     # Cap the channel count so a farm with 118 thermal sensors stays tractable.
-    channels = channels[:MAX_CHANNELS]
+    channels = channels[:nbm.MAX_CHANNELS]
 
     feats = [pcol] + [w for w in wind if w in df.columns]
     tr = train.dropna(subset=feats)
     te = test.dropna(subset=feats)
-    if len(tr) > MAX_TRAIN_ROWS:
-        tr = tr.sample(n=MAX_TRAIN_ROWS, random_state=0).sort_index()
+    if len(tr) > nbm.MAX_TRAIN_ROWS:
+        tr = tr.sample(n=nbm.MAX_TRAIN_ROWS, random_state=0).sort_index()
     if len(tr) < 500 or te.empty:
         return None
 
     z_cols = {}
     train_l2_parts = []
     for c in channels:
-        t = train.dropna(subset=[c])
-        if len(t) < 500:
+        out = nbm.fit_channel_model(train, te, c, feats)
+        if out is None:
             continue
-        if len(t) > MAX_TRAIN_ROWS:
-            t = t.sample(n=MAX_TRAIN_ROWS, random_state=0).sort_index()
-        X_tr = t[feats]
-        X_te = te[feats]
-        y_tr = t[c].to_numpy()
-        model = lgb.LGBMRegressor(**LGBM_PARAMS)
-        model.fit(X_tr, y_tr)
-        r_tr = y_tr - model.predict(X_tr)
-        r_te = te[c].to_numpy() - model.predict(X_te)
-        med = float(np.median(r_tr))
-        mad = float(np.median(np.abs(r_tr - med)))
-        spread = 1.4826 * mad if mad > 0 else (float(np.std(r_tr)) or np.nan)
-        if not np.isfinite(spread) or spread <= 0:
-            continue
-        z_cols[c] = pd.Series((r_te - med) / spread, index=te.index)
-        train_l2_parts.append(pd.Series((r_tr - med) / spread, index=t.index))
+        tr_z, te_z = out
+        z_cols[c] = te_z
+        train_l2_parts.append(tr_z)
 
     if not z_cols:
         return None
     Z = pd.DataFrame(z_cols)
-    combined = l2norm_positive(Z)
+    combined = nbm.l2norm_positive(Z)
 
     # Threshold from the TRAINING score distribution at a fixed quantile -- the
     # same rule the deterministic arm uses, and it never sees an event it is
     # later scored on, so no event label influences it.
-    train_l2 = l2norm_positive(pd.concat(train_l2_parts, axis=1))
+    train_l2 = nbm.l2norm_positive(pd.concat(train_l2_parts, axis=1))
     thr = float(train_l2.quantile(quantile))
 
     flags = combined > thr

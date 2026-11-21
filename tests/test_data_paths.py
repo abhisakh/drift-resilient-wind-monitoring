@@ -39,7 +39,7 @@ def test_care_root_points_inside_the_extraction_directory():
 
 def test_download_script_uses_the_shared_definition():
     """01_build_dataset.py must not derive the directory name on its own."""
-    src = (ROOT / "scripts" / "01_build_dataset.py").read_text()
+    src = (ROOT / "scripts" / "pipeline" / "01_build_dataset.py").read_text()
     assert "acquire.extract_dir(src)" in src
     # the old, divergent derivation must be gone
     assert 'f"{src.name}_extracted"' not in src
@@ -48,7 +48,7 @@ def test_download_script_uses_the_shared_definition():
 def test_no_script_hardcodes_the_care_path():
     """No script may spell the CARE path out by hand."""
     offenders = []
-    for p in list((ROOT / "scripts").glob("*.py")) + list((ROOT / "src").glob("**/*.py")):
+    for p in list((ROOT / "scripts").rglob("*.py")) + list((ROOT / "src").glob("**/*.py")):
         text = p.read_text()
         if "care_extracted" in text or '"CARE_To_Compare"' in text:
             # allowed only inside the shared definitions

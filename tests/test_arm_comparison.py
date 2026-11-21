@@ -24,7 +24,10 @@ RESULTS = ROOT / "results"
 
 
 def _load_script(name: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    # The scripts live in scripts/pipeline (artifacts) or scripts/diagnostics
+    # (one-off probes); find the file wherever it ended up.
+    path = next((ROOT / "scripts").rglob(f"{name}.py"))
+    spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -32,15 +35,15 @@ def _load_script(name: str):
 
 def test_engie_script_scores_both_arms_with_the_same_statistic():
     """max-z for both -- the learned arm must not be scored with an L2 norm."""
-    src = (ROOT / "scripts" / "08c_engie_multivariate.py").read_text()
+    src = (ROOT / "scripts" / "pipeline" / "08c_engie_multivariate.py").read_text()
     # No L2 combination anywhere in the ENGIE comparison.
     assert "** 2)" not in src and "sqrt((Z.clip" not in src
-    assert src.count("Z.max(axis=1)") >= 2, "both arms must use max-z"
+    assert "nbm.max_z" in src, "the ENGIE arm must score with max-z"
 
 
 def test_engie_script_uses_the_same_threshold_for_both_arms():
     """The rolling comparison must use the same fixed z for both detectors."""
-    src = (ROOT / "scripts" / "08c_engie_multivariate.py").read_text()
+    src = (ROOT / "scripts" / "pipeline" / "08c_engie_multivariate.py").read_text()
     assert "Z_THRESHOLD" in src
     # The learned rolling arm must threshold on the same Z_THRESHOLD the
     # deterministic rolling arm uses, not on its own quantile.
@@ -53,7 +56,8 @@ def test_learned_arm_is_cross_fitted():
     The learned arm must derive its threshold from out-of-fold training
     scores, the way the deterministic arm does, or the comparison handicaps it.
     """
-    src = (ROOT / "scripts" / "08c_engie_multivariate.py").read_text()
+    # The cross-fitting lives in the shared module now.
+    src = (ROOT / "src" / "windmill" / "nbm.py").read_text()
     assert "oof_parts" in src
     assert "out-of-fold" in src.lower()
 

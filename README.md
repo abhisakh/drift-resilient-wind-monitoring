@@ -146,9 +146,9 @@ The same multivariate thermal method on the ENGIE site, with every turbine healt
 | learned (LightGBM) | rolling_30d | 2016 | 4.1114 |
 | learned (LightGBM) | rolling_30d | 2017 | 3.5296 |
 
-A **frozen 2014 reference** -- what a naive deployment does -- gives 14.89-37.73 % false alarms (mean 26.37 %, spread 22.84 pp). Each turbine's thermal channels move by 5-9 K between years, so the frozen reference leaves a systematic offset that reads as overheating on every channel at once.
+A **frozen 2014 reference** -- what a naive deployment does -- gives 14.89–37.73 % false alarms (mean 26.37 %, spread 22.84 pp). Each turbine's thermal channels move by 5-9 K between years, so the frozen reference leaves a systematic offset that reads as overheating on every channel at once.
 
-A **rolling local reference** -- each row compared against its own recent history at the same load bin, re-estimated continuously -- gives 0.34-0.95 % (mean 0.57 %, spread 0.61 pp). That is a **47x** reduction in false alarms from changing nothing but the reference.
+A **rolling local reference** -- each row compared against its own recent history at the same load bin, re-estimated continuously -- gives 0.34–0.95 % (mean 0.57 %, spread 0.61 pp). That is a **47x** reduction in false alarms from changing nothing but the reference.
 
 The **learned** arm was given the same two reference strategies, so the comparison is like for like: its model is refitted weekly on the trailing 30 days, exactly as the deterministic arm's reference is re-estimated continuously. With a frozen reference the learned arm is 15.79 % (mean false-alarm rate) against the deterministic arm's 26.37 % -- so the model is *not* the deciding factor; the reference is. With a rolling reference the learned arm gives 3.94 % against the deterministic arm's 0.57 %.
 
@@ -234,6 +234,24 @@ All four arms are scored on the same 95 events (45 anomaly, 50 normal). The lear
 
 Both the deterministic and the learned arm use the same threshold rule: the quantile of the TRAINING score distribution, so the threshold never sees an event it is later scored on. The learned arm's seeds are pinned explicitly (`random_state`, `seed`) and verified bit-identical across runs by `tests/test_lightgbm_determinism.py` -- without that, its score would not have been re-derivable, which is the whole point of the exercise.
 
+### Is the published AE baseline (0.66) comparable with ours?
+
+Read out of the benchmark authors' own implementation (`energy-fault-detector` 0.8.1):
+
+- autoencoder layers [200, 100, 50], code 20, 10 epochs, anomaly score rmse, threshold selector quantile 0.95, fit_on_val=true
+- the threshold is fitted on a 20% validation split of the TRAINING data -- so the threshold RULE itself does not use the scored events
+- but the split and the Keras training are **not** seeded, so the published number is one stochastic run
+
+Measured, by running the authors' own autoencoder on a subset of the datasets and scoring it with their own CARE scorer:
+
+| configuration | datasets | coverage | accuracy | reliability | earliness | CARE |
+|---|---|---|---|---|---|---|
+| published | 3 | 0.4073 | not measured | 0.7143 | 0.3995 | nan |
+
+This audit runs on a stratified SUBSET of the CARE datasets, not all 95: the authors' autoencoder takes roughly 5-8 minutes per dataset, so the full benchmark is an 8-13 hour job. The subset is stated here rather than presented as the full benchmark.
+
+**What we claim:** that our 0.5028 is a leak-free number under a protocol we can re-derive and defend, and that the published 0.66 is not that. We do **not** claim to beat it -- the honest statement is that the two numbers are not the same kind of number, and that closing the gap honestly would require re-running the published baseline's own tuning loop under a held-out protocol, which is a separate piece of work.
+
 The same two arms on ENGIE, where every alarm is a false alarm:
 
 | arm | min % | max % | mean % | spread (pp) |
@@ -246,12 +264,18 @@ The same two arms on ENGIE, where every alarm is a false alarm:
 ## Layout
 
 ```
-data/            pinned datasets + provenance (README.md records URL, licence, checksum)
-src/windmill/    loaders, conditioning, detectors, gates, scoring
-scripts/         one command per analysis step
-results/         machine-readable outputs (JSON) — every number in the README comes from here
-tests/           unit tests for the conditioning and gating logic
+data/                    pinned datasets + provenance (README.md records URL, licence, checksum)
+src/windmill/            all the reusable logic: loaders, conditioning, detectors, scoring
+scripts/pipeline/        the reproducible pipeline — one script per artefact, in order
+scripts/diagnostics/     one-off probes used while designing the detector; they write nothing
+results/                 machine-readable outputs (JSON) — every number in the README comes from here
+tests/                   unit tests, including the repo's own maintenance rules
+Makefile                 the execution order, so it never has to be remembered
 ```
+
+The split between `pipeline/` and `diagnostics/` is the point: a reader can tell
+at a glance which scripts produce `results/*.json` and which were just tools
+for exploring the data. `tests/test_repo_rules.py` enforces it.
 
 ## Running it
 
@@ -262,35 +286,45 @@ Python **3.11** is required — the benchmark authors' CARE scorer
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-.venv/bin/python scripts/11_demo.py              # <-- START HERE: watch it work
-.venv/bin/python scripts/01_build_dataset.py     # download + verify + cache (19 GB)
-.venv/bin/python scripts/02_condition.py        # climatology, ERA5 agreement
-.venv/bin/python scripts/03_detect.py          # ENGIE scheme comparison + gates
-.venv/bin/python scripts/04_score.py           # CARE score, power-only baseline
-.venv/bin/python scripts/05_audit_scorability.py   # what the benchmark can and cannot score
-.venv/bin/python scripts/08_multivariate.py        # Option 1: multivariate bins
-.venv/bin/python scripts/08b_sweep_threshold.py    # leak-free threshold sweep
-.venv/bin/python scripts/08c_engie_multivariate.py # ENGIE: frozen vs rolling reference
-.venv/bin/python scripts/07_lightgbm_nbm.py        # learned-model arm
-.venv/bin/python scripts/09_report.py              # regenerate this README from results/
-.venv/bin/python scripts/10_summary.py             # one summary table across all arms
+make demo        # <-- START HERE: watch the detector work on real SCADA
+make setup       # create the venv and install dependencies
+make data        # download + verify the pinned datasets (19 GB, once)
+make pipeline    # run every artefact-producing step, in order
+make report      # regenerate README.md from results/
+make test        # run the test suite
+make help        # list every target
 ```
 
-Every script writes a JSON file into `results/`, and `09_report.py` builds this
-document's Results section from those files — so no number here can drift from
-the artefacts. `scripts/06_spike_thermal.py` and `scripts/08a_probe_signal.py`
-are one-off diagnostics used while designing the detector; they write nothing
-and can be deleted.
+`make pipeline` runs the whole chain in the right order and ends by
+regenerating this document, so no number in it can drift from the artefacts.
+The individual steps, if you want to run one on its own:
+
+```bash
+.venv/bin/python scripts/pipeline/02_condition.py        # climatology, ERA5 agreement
+.venv/bin/python scripts/pipeline/03_detect.py           # ENGIE scheme comparison + gates
+.venv/bin/python scripts/pipeline/04_score.py            # CARE score, power-only baseline
+.venv/bin/python scripts/pipeline/05_audit_scorability.py# what the benchmark can and cannot score
+.venv/bin/python scripts/pipeline/08_multivariate.py     # Option 1: multivariate bins
+.venv/bin/python scripts/pipeline/08b_sweep_threshold.py # leak-free threshold sweep
+.venv/bin/python scripts/pipeline/08c_engie_multivariate.py # ENGIE: frozen vs rolling
+.venv/bin/python scripts/pipeline/07_lightgbm_nbm.py     # learned-model arm
+.venv/bin/python scripts/pipeline/12_ae_audit.py         # AE-comparability audit
+.venv/bin/python scripts/pipeline/09_report.py           # regenerate this README
+.venv/bin/python scripts/pipeline/10_summary.py          # one table across all arms
+```
+
+`scripts/diagnostics/` holds the one-off probes used while designing the
+detector. They write nothing and are not part of the pipeline.
 
 ## The demo
 
-`scripts/11_demo.py` runs the real detector on real SCADA and prints what it
+`make demo` (i.e. `scripts/pipeline/11_demo.py`) runs the real detector on real SCADA and prints what it
 sees. Two demonstrations:
 
 ```bash
-.venv/bin/python scripts/11_demo.py                       # ENGIE R80711, Sept 2017
-.venv/bin/python scripts/11_demo.py --dataset care        # a labelled CARE event
-.venv/bin/python scripts/11_demo.py --list                # list the CARE events
+.venv/bin/python scripts/pipeline/11_demo.py                       # ENGIE R80711, Sept 2017
+.venv/bin/python scripts/pipeline/11_demo.py --dataset care # a labelled CARE event
+.venv/bin/python scripts/pipeline/11_demo.py --list         # list the CARE events
 ```
 
 The ENGIE one is the strongest single piece of evidence in the project: R80711
@@ -305,7 +339,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-63 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+75 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

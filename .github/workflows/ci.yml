@@ -1,0 +1,61 @@
+name: CI
+
+# The suite runs in a few seconds and needs none of the 19 GB of raw data:
+# every test either uses synthetic data or skips itself when the dataset is
+# absent. So CI is cheap, and it can run on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the supported version: the benchmark authors' CARE scorer
+        # (energy-fault-detector 0.8.1) declares Python < 3.12.
+        #
+        # 3.12 is also tested, to catch anything that depends on a
+        # version-specific behaviour. The reference package is not installed
+        # there (requirements.txt gates it on python_version < "3.12"), so the
+        # tests that cross-check against it skip themselves and the rest still
+        # run. A failure on 3.12 is a real signal about our own code.
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q src scripts tests
+
+      - name: Run the test suite
+        run: python -m pytest tests/ -q
+
+      - name: Check the working tree is clean
+        # The report generator rewrites README.md from results/. If a test
+        # wrote into results/, or a result file drifted, the tree would be
+        # dirty -- which means the committed numbers and the documentation
+        # disagree. That must fail the build.
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::The working tree changed. Re-run 'make pipeline' and commit the regenerated results/ and README.md."
+            git --no-pager status --porcelain
+            git --no-pager diff --stat
+            exit 1
+          fi

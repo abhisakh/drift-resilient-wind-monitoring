@@ -14,7 +14,6 @@ deviation, per year.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -22,22 +21,20 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-spec = importlib.util.spec_from_file_location("d3", ROOT / "scripts" / "03_detect.py")
-d3 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(d3)
-
 from windmill import RATED_POWER_KW, loaders  # noqa: E402
+from windmill.conditioning import (apply_reference, build_reference,  # noqa: E402
+                                join_era5, normalise_to_standard_density)
 from windmill import conditioning as cond  # noqa: E402
 
 
 def main() -> int:
     scada = loaders.load_engie(ROOT / "data")
     era5 = loaders.load_era5(ROOT / "data")
-    df = d3.join_era5(scada, era5)
-    df = d3.normalise_to_standard_density(df)
+    df = join_era5(scada, era5)
+    df = normalise_to_standard_density(df)
     df = df[df["year"].between(2013, 2017)].copy()
 
     print("=== ERA5 climatology per year (the drivers) ===")
@@ -54,8 +51,8 @@ def main() -> int:
     print(df.groupby("year")["dens"].agg(["mean", "min", "max"]).round(5).to_string())
 
     print("\n=== scheme-D residual vs the drivers, per year ===")
-    ref = d3.build_reference(df, 2014, per_turbine=True, season_conditioned=False)
-    out = d3.apply_reference(df, ref, k=3.0, conditioned_band=True)
+    ref = build_reference(df, 2014, per_turbine=True, season_conditioned=False)
+    out = apply_reference(df, ref, k=3.0, conditioned_band=True)
     out = out.dropna(subset=["resid"])
     out["era_ws_dev"] = out.groupby("year")["era5_ws"].transform(
         lambda s: s - s.mean())
@@ -84,8 +81,8 @@ def main() -> int:
     year_matched = {}
     for y, g in out.groupby("year"):
         ref_y = df[df["year"] == y]
-        r2 = d3.build_reference(ref_y, y, per_turbine=True, season_conditioned=False)
-        o2 = d3.apply_reference(g, r2, k=3.0, conditioned_band=True)
+        r2 = build_reference(ref_y, y, per_turbine=True, season_conditioned=False)
+        o2 = apply_reference(g, r2, k=3.0, conditioned_band=True)
         o2 = o2.dropna(subset=["resid"])
         val = float(o2["resid"].mean())
         year_matched[int(y)] = round(val, 4)

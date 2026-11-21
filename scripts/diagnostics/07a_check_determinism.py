@@ -5,7 +5,7 @@ have an arm whose score moves when you re-run it. LightGBM's `subsample` and
 `colsample_bytree` draw randomness, so the seeds are pinned explicitly and this
 test proves the fits are identical.
 
-    python scripts/07a_check_determinism.py
+    python scripts/diagnostics/07a_check_determinism.py
 """
 
 from __future__ import annotations
@@ -16,17 +16,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-import importlib.util  # noqa: E402
-
-spec = importlib.util.spec_from_file_location("lgbm", ROOT / "scripts" / "07_lightgbm_nbm.py")
-lgbm = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(lgbm)
-
+# The shared hyper-parameters live in src/windmill/nbm.py, not inside the
+# pipeline script that happens to use them. Importing a script by path is
+# exactly the pattern the repo's own rule forbids.
 from windmill import care  # noqa: E402
+from windmill.nbm import LGBM_PARAMS  # noqa: E402
 
 CARE_ROOT = care.care_root(ROOT / "data")
 
@@ -54,7 +51,7 @@ def main() -> int:
     t, X, y, _pcol, _c = _sample_dataset()
     preds = []
     for _ in range(2):
-        m = lgb.LGBMRegressor(**lgbm.LGBM_PARAMS)
+        m = lgb.LGBMRegressor(**LGBM_PARAMS)
         m.fit(X, y.to_numpy())
         preds.append(m.predict(X))
 
@@ -63,8 +60,8 @@ def main() -> int:
     print("two fits, same data, same params:")
     print(f"   predictions identical : {identical}")
     print(f"   max |difference|      : {max_diff:.10f}")
-    print(f"   random_state in params: {lgbm.LGBM_PARAMS.get('random_state')}")
-    print(f"   seed in params        : {lgbm.LGBM_PARAMS.get('seed')}")
+    print(f"   random_state in params: {LGBM_PARAMS.get('random_state')}")
+    print(f"   seed in params        : {LGBM_PARAMS.get('seed')}")
     print()
     if not identical:
         print("   -> NOT reproducible. The committed CARE score cannot be re-derived.")

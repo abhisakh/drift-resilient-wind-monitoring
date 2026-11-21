@@ -46,11 +46,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import RATED_POWER_KW, loaders  # noqa: E402
 from windmill import multivariate  # noqa: E402
+from windmill import nbm  # noqa: E402
 
 #: The ENGIE release's temperature channels. Defined once, in windmill.loaders,
 #: so the detector, the demo and the reporting agree.
@@ -78,102 +79,13 @@ def rate_by_year(test: pd.DataFrame, flags: np.ndarray) -> list[dict]:
 def lightgbm_scores(train: pd.DataFrame, test: pd.DataFrame,
                     channels: list[str], feats: list[str],
                     quantile: float = TRAIN_QUANTILE):
-    """Fit one LightGBM normal-behaviour model per thermal channel.
+    """Fit the NBM on `train`, score `test`. See src/windmill/nbm.py.
 
-    Each channel is predicted from the operating point (power, wind speed,
-    ambient temperature); the residual, scaled by its own robust spread, is the
-    anomaly signal. This is the same formulation the CARE arm uses, so the two
-    datasets are compared like for like.
-
-    The score returned is the MAXIMUM per-channel z, not the L2 norm, so that it
-    means exactly what the deterministic arm's max-z means: "the most deviant
-    component must exceed N robust deviations". The two detectors are then
-    compared with the same statistic and the same threshold rule, and only the
-    model differs.
-
-    Returns (test_score, train_score) as Series of the same length.
+    The score is max-z and the training score is cross-fitted, exactly as the
+    deterministic arm does, so the two detectors are compared with the same
+    statistic and the same threshold rule.
     """
-    import lightgbm as lgb
-
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "lgbm_script", ROOT / "scripts" / "07_lightgbm_nbm.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    params = mod.LGBM_PARAMS
-
-    z_cols: dict[str, pd.Series] = {}
-    train_parts: list[pd.Series] = []
-    # --- cross-fitted training scores -------------------------------------
-    # The deterministic arm derives its threshold from OUT-OF-FOLD training
-    # scores, because a model fitted on a row has a smaller residual on it
-    # than on unseen rows, and a threshold taken from in-sample residuals is
-    # too strict. The learned arm would be handed the same disadvantage if its
-    # threshold and spread were taken in-sample, so the same cross-fitting is
-    # applied here: fit on one half, score the other, and vice versa.
-    half = len(train) // 2
-    folds = [train.iloc[:half], train.iloc[half:]] if len(train) >= 400 else []
-    oof_parts: list[pd.Series] = []
-    for i in (0, 1):
-        fit_part, held = folds[1 - i], folds[i]
-        if fit_part.empty or held.empty:
-            continue
-        fold_z: list[pd.Series] = []
-        for c in channels:
-            h = fit_part.dropna(subset=[c])
-            b = held.dropna(subset=[c])
-            if len(h) < 500 or b.empty:
-                continue
-            if len(h) > MAX_TRAIN_ROWS:
-                h = h.sample(n=MAX_TRAIN_ROWS, random_state=0).sort_index()
-            model = lgb.LGBMRegressor(**params)
-            model.fit(h[feats], h[c].to_numpy())
-            r_tr = h[c].to_numpy() - model.predict(h[feats])
-            med = float(np.median(r_tr))
-            mad = float(np.median(np.abs(r_tr - med)))
-            spread = 1.4826 * mad if mad > 0 else (float(np.std(r_tr)) or np.nan)
-            if not np.isfinite(spread) or spread <= 0:
-                continue
-            r_te = b[c].to_numpy() - model.predict(b[feats])
-            fold_z.append(pd.Series((r_te - med) / spread, index=b.index))
-        if fold_z:
-            oof_parts.append(pd.concat(fold_z, axis=1).max(axis=1).fillna(0.0))
-
-    for c in channels:
-        t = train.dropna(subset=[c])
-        if len(t) < 500:
-            continue
-        if len(t) > MAX_TRAIN_ROWS:
-            t = t.sample(n=MAX_TRAIN_ROWS, random_state=0).sort_index()
-        model = lgb.LGBMRegressor(**params)
-        model.fit(t[feats], t[c].to_numpy())
-        r_tr = t[c].to_numpy() - model.predict(t[feats])
-        med = float(np.median(r_tr))
-        mad = float(np.median(np.abs(r_tr - med)))
-        spread = 1.4826 * mad if mad > 0 else (float(np.std(r_tr)) or np.nan)
-        if not np.isfinite(spread) or spread <= 0:
-            continue
-        te_c = test.dropna(subset=[c])
-        if te_c.empty:
-            continue
-        r_te = te_c[c].to_numpy() - model.predict(te_c[feats])
-        z_cols[c] = pd.Series((r_te - med) / spread, index=te_c.index)
-        train_parts.append(pd.Series((r_tr - med) / spread, index=t.index))
-
-    if not z_cols:
-        return None, None
-
-    Z = pd.DataFrame(z_cols)
-    # max-z, matching the deterministic arm's statistic exactly.
-    test_score = Z.max(axis=1).fillna(0.0)
-    if oof_parts:
-        # The threshold comes from the OUT-OF-FOLD training scores, exactly as
-        # the deterministic arm does.
-        train_score = pd.concat(oof_parts).sort_index()
-    else:
-        train_score = pd.concat(train_parts, axis=1).max(axis=1).fillna(0.0)
-    return test_score, train_score
+    return nbm.cross_fitted_scores(train, test, channels, feats)
 
 
 def rolling_lightgbm_scores(g: pd.DataFrame, channels: list[str], feats: list[str],
@@ -196,16 +108,6 @@ def rolling_lightgbm_scores(g: pd.DataFrame, channels: list[str], feats: list[st
     Returns a Series of scores over `g`'s rows (NaN where no model was
     available yet).
     """
-    import lightgbm as lgb
-
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "lgbm_script", ROOT / "scripts" / "07_lightgbm_nbm.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    params = mod.LGBM_PARAMS
-
     g = g.sort_values("ts").reset_index(drop=True)
     out = pd.Series(np.nan, index=g.index, dtype="float64")
     ts = g["ts"]
@@ -226,30 +128,16 @@ def rolling_lightgbm_scores(g: pd.DataFrame, channels: list[str], feats: list[st
 
         z_parts = []
         for c in channels:
-            h = hist.dropna(subset=[c])
-            if len(h) < 500:
+            out_c = nbm.fit_channel_model(hist, block, c, feats)
+            if out_c is None:
                 continue
-            b = block.dropna(subset=[c])
-            if b.empty:
-                continue
-            if len(h) > MAX_TRAIN_ROWS:
-                h = h.sample(n=MAX_TRAIN_ROWS, random_state=0).sort_index()
-            model = lgb.LGBMRegressor(**params)
-            model.fit(h[feats], h[c].to_numpy())
-            r_tr = h[c].to_numpy() - model.predict(h[feats])
-            med = float(np.median(r_tr))
-            mad = float(np.median(np.abs(r_tr - med)))
-            spread = 1.4826 * mad if mad > 0 else (float(np.std(r_tr)) or np.nan)
-            if not np.isfinite(spread) or spread <= 0:
-                continue
-            r_te = b[c].to_numpy() - model.predict(b[feats])
-            z_parts.append(pd.Series((r_te - med) / spread, index=b.index))
+            _, block_z = out_c
+            z_parts.append(block_z)
 
         if not z_parts:
             continue
-        Z = pd.concat(z_parts, axis=1)
         # max-z, matching the deterministic arm's statistic exactly.
-        block_score = Z.max(axis=1).fillna(0.0)
+        block_score = nbm.max_z(pd.concat(z_parts, axis=1))
         out.loc[block_score.index] = block_score.to_numpy()
 
     return out

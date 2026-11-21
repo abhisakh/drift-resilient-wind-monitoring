@@ -32,11 +32,9 @@ pytestmark = pytest.mark.skipif(
 
 
 def _load_params():
-    spec = importlib.util.spec_from_file_location(
-        "lgbm_script", ROOT / "scripts" / "07_lightgbm_nbm.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.LGBM_PARAMS
+    """The LightGBM parameters live in src/windmill/nbm.py, shared by both arms."""
+    from windmill import nbm
+    return nbm.LGBM_PARAMS
 
 
 def test_lightgbm_params_pin_their_seeds():
@@ -79,5 +77,5 @@ def test_row_subsampling_is_seeded():
     `train.sample(...)` without a seed would draw a different subset each run,
     which would break reproducibility even with fixed model seeds.
     """
-    src = (ROOT / "scripts" / "07_lightgbm_nbm.py").read_text()
+    src = (ROOT / "scripts" / "pipeline" / "07_lightgbm_nbm.py").read_text()
     assert "random_state=0" in src

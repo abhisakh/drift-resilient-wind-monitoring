@@ -31,152 +31,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from windmill import RATED_POWER_KW, loaders  # noqa: E402
 from windmill import conditioning as cond  # noqa: E402
+from windmill.conditioning import (add_density, apply_reference,  # noqa: E402
+                                build_reference, join_era5,
+                                normalise_to_standard_density)
 from windmill import detector  # noqa: E402
 
 RHO_REF = 1.225   # kg/m3, standard air density (IEC 61400-12-1)
 R_DRY = 287.058   # J/(kg K)
 KELVIN = 273.15
-
-
-def add_density(era5: pd.DataFrame) -> pd.DataFrame:
-    """Air density from ERA5 surface pressure and 2 m temperature.
-
-    open-meteo reports surface pressure in hPa (see hourly_units in the cached
-    JSON), so it must be converted to Pa before the ideal-gas law -- getting this
-    wrong scales density by 100x and silently corrupts every normalised power.
-    """
-    e = era5.copy()
-    pressure_pa = e["era5_pressure"] * 100.0  # hPa -> Pa
-    e["air_density"] = pressure_pa / (R_DRY * (e["era5_temp_2m"] + KELVIN))
-    return e
-
-
-def join_era5(scada: pd.DataFrame, era5: pd.DataFrame) -> pd.DataFrame:
-    """Attach hourly ERA5 to 10-min SCADA.
-
-    The hourly value is held across the hour (density varies slowly; this is
-    standard practice and avoids manufacturing 10-min precision).
-    """
-    e = add_density(era5)[["ts", "air_density", "era5_temp_2m", "era5_ws_100m"]]
-    e = e.set_index("ts").resample("10min").ffill()
-    e = e.rename(columns={"era5_ws_100m": "era5_ws"}).reset_index()
-    out = scada.merge(e, on="ts", how="left")
-    out["era5_ws"] = out["era5_ws"].ffill()
-    return out
-
-
-def normalise_to_standard_density(df: pd.DataFrame) -> pd.DataFrame:
-    """Rescale measured power to standard air density."""
-    out = df.copy()
-    rho = out["air_density"]
-    out["P_std"] = np.where(rho > 0, out["P_avg"] * (RHO_REF / rho), np.nan)
-    out["density_factor"] = RHO_REF / rho
-    return out
-
-
-def build_reference(
-    df: pd.DataFrame, reference_year: int, per_turbine: bool = True,
-    season_conditioned: bool = False,
-) -> dict:
-    """Reference curves and the per-operating-point residual band.
-
-    The band is estimated on the reference year only, so evaluating it on the
-    other years is an honest out-of-sample test of stability.
-
-    If `season_conditioned`, the band is split by calendar month as well as wind
-    bin. Motivation (measured): the site's seasonal capacity-factor spread is
-    18.2 pp against 3.3 pp of inter-annual spread, so the season carries most of
-    the variability a single band has to absorb.
-    """
-    ref = df[df["year"] == reference_year]
-    curves: dict[str, pd.Series] = {}
-    bands: dict[tuple, tuple[float, float]] = {}
-    if per_turbine:
-        for t, g in ref.groupby("turbine"):
-            curves[t] = cond.fit_power_curve(g, power_col="P_std")
-    else:
-        pooled = cond.fit_power_curve(ref, power_col="P_std")
-        for t in df["turbine"].unique():
-            curves[t] = pooled
-
-    # Residual band per (turbine, wind bin[, month]) on the reference year.
-    # The band key always includes the turbine so the lookup in apply_reference
-    # is unambiguous.
-    ref = ref.copy()
-    ref["bin"] = cond.wind_bin(ref["Ws_avg"])
-    keys = ["turbine", "bin", "month"] if season_conditioned else ["turbine", "bin"]
-    for key, gb in ref.groupby(keys):
-        curve = curves[key[0]]
-        gb = gb.copy()
-        gb["p_ref"] = cond.apply_power_curve(gb, curve)
-        gb["resid"] = gb["P_std"] - gb["p_ref"]
-        gb = gb.dropna(subset=["resid"])
-        if gb.empty:
-            continue
-        med = gb["resid"].median()
-        mad = (gb["resid"] - med).abs().median()
-        sd = gb["resid"].std()
-        if pd.notna(mad) and mad > 0:
-            spread = 1.4826 * float(mad)
-        elif pd.notna(sd) and sd > 0:
-            spread = float(sd)
-        else:
-            spread = np.nan
-        bands[tuple(key)] = (float(med), float(spread))
-    return {"curves": curves, "bands": bands, "per_turbine": per_turbine,
-            "season_conditioned": season_conditioned}
-
-
-def apply_reference(
-    df: pd.DataFrame, reference: dict, k: float = 3.0, conditioned_band: bool = True
-) -> pd.DataFrame:
-    """Add the residual, its z-score against the band, and the alarm flag."""
-    out = df.copy()
-    out["bin"] = cond.wind_bin(out["Ws_avg"])
-    curves, bands = reference["curves"], reference["bands"]
-    season = reference.get("season_conditioned", False)
-    out["p_ref"] = np.nan
-    out["band_med"] = np.nan
-    out["band_spread"] = np.nan
-    for t, g in out.groupby("turbine"):
-        curve = curves.get(t)
-        if curve is None:
-            continue
-        idx = g.index
-        out.loc[idx, "p_ref"] = cond.apply_power_curve(g, curve)
-        if season:
-            med = [bands.get((t, int(b), int(m)), (np.nan, np.nan))[0]
-                   for b, m in zip(out.loc[idx, "bin"], out.loc[idx, "month"])]
-            spr = [bands.get((t, int(b), int(m)), (np.nan, np.nan))[1]
-                   for b, m in zip(out.loc[idx, "bin"], out.loc[idx, "month"])]
-        else:
-            med = [bands.get((t, int(b)), (np.nan, np.nan))[0] for b in out.loc[idx, "bin"]]
-            spr = [bands.get((t, int(b)), (np.nan, np.nan))[1] for b in out.loc[idx, "bin"]]
-        out.loc[idx, "band_med"] = med
-        out.loc[idx, "band_spread"] = spr
-    out["resid"] = out["P_std"] - out["p_ref"]
-    out["z"] = (out["resid"] - out["band_med"]) / out["band_spread"]
-    if not conditioned_band:
-        # A single global band instead of per-operating-point bands.
-        g = out.dropna(subset=["resid"])
-        med = g["resid"].median()
-        mad = (g["resid"] - med).abs().median()
-        sd = g["resid"].std()
-        if pd.notna(mad) and mad > 0:
-            spread = 1.4826 * float(mad)
-        elif pd.notna(sd) and sd > 0:
-            spread = float(sd)
-        else:
-            spread = np.nan
-        out["z"] = (out["resid"] - med) / spread
-    out["flag"] = out["z"].abs() > k
-    out.loc[out["z"].isna(), "flag"] = False
-    return out
 
 
 def false_alarm_rate_per_year(df: pd.DataFrame, flag_col: str = "flag") -> pd.DataFrame:
