@@ -1,4 +1,4 @@
-# Windmill: Drift-Resilient Wind Turbine Condition Monitoring
+# Drift-Resilient Wind Turbine Condition Monitoring: Weather-Conditioned Residuals, Deterministic Gates & Auditability
 
 **Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46.5× with an auditable, zero-leakage pipeline.**
 
