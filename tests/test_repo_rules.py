@@ -101,6 +101,29 @@ def test_report_generator_owns_the_results_section():
 
 
 # --- Rule 2: logic in src/, orchestration in scripts/ ------------------------
+def test_every_referenced_script_path_exists():
+    """A path mentioned in a docstring or an error message must be real.
+
+    The scripts moved from `scripts/` into `scripts/pipeline/` and
+    `scripts/diagnostics/`, and the references in the docstrings and in the
+    user-facing error messages ("run scripts/01_build_dataset.py") were left
+    behind. A reader who followed one was told to run a file that is not
+    there.
+    """
+    import re
+
+    pattern = re.compile(r"scripts/([0-9]{2}[a-z]?_[A-Za-z0-9_]*\.py)")
+    stale = []
+    for pat in ("*.py", "*.md", "*.yml"):
+        for p in ROOT.rglob(pat):
+            if ".venv" in p.parts or ".git" in p.parts:
+                continue
+            for name in pattern.findall(p.read_text(errors="ignore")):
+                if not ((PIPELINE / name).exists() or (DIAGNOSTICS / name).exists()):
+                    stale.append(f"{p.relative_to(ROOT)} -> scripts/.../{name}")
+    assert not stale, f"references to scripts that do not exist: {stale}"
+
+
 def test_scripts_are_split_into_pipeline_and_diagnostics():
     """The split tells a reader which scripts produce results and which do not."""
     assert PIPELINE.is_dir(), "scripts/pipeline/ is missing"

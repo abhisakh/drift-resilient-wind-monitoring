@@ -18,7 +18,7 @@ datasets count as much as the anomaly ones), with two special cases: no anomaly
 detected at all gives 0, and average accuracy below 0.5 gives that accuracy.
 
 This module is a self-contained re-implementation so the project does not depend on
-the authors' package at runtime. `scripts/04_score.py` verifies it against the
+the authors' package at runtime. `scripts/pipeline/04_score.py` verifies it against the
 authors' reference implementation (`energy-fault-detector` 0.8.1) event by event;
 `tests/test_scoring.py` pins the behaviour.
 

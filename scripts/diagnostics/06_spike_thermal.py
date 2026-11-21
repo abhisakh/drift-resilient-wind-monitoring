@@ -12,7 +12,7 @@ This validates the Option 1 design before building the full pipeline:
 If the combined score does not rise during anomaly windows, the whole arm is
 pointless and must be redesigned.
 
-    python scripts/06_spike_thermal.py
+    python scripts/diagnostics/06_spike_thermal.py
 """
 
 from __future__ import annotations

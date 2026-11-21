@@ -1,6 +1,6 @@
 """The download path and the read path must agree.
 
-`scripts/01_build_dataset.py` extracts each archive into a directory, and every
+`scripts/pipeline/01_build_dataset.py` extracts each archive into a directory, and every
 script that reads the data looks in a directory. If those two disagree, a fresh
 clone unpacks the data somewhere the scripts never look and every script fails
 at run time -- with an error that points at the data, not at the path bug.

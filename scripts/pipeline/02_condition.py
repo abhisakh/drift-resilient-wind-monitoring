@@ -1,6 +1,6 @@
 """Test the falsifiable claim.
 
-    python scripts/02_condition.py
+    python scripts/pipeline/02_condition.py
 
 Does a baseline calibrated on one period invent a degradation signal whose size
 tracks the weather shift, and does climatology conditioning remove it?

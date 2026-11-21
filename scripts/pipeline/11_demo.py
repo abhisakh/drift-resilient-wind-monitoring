@@ -1,8 +1,8 @@
 """Interactive demo: watch the detector work on one turbine, with an audit trail.
 
-    python scripts/11_demo.py                     # the R80711 thermal event
-    python scripts/11_demo.py --dataset <name>    # a CARE event instead
-    python scripts/11_demo.py --list              # list what is available
+    python scripts/pipeline/11_demo.py                     # the R80711 thermal event
+    python scripts/pipeline/11_demo.py --dataset <name>    # a CARE event instead
+    python scripts/pipeline/11_demo.py --list              # list what is available
 
 This is the part a reviewer should see first. It runs the real detector on real
 SCADA and prints, row by row:
@@ -92,7 +92,7 @@ def _engie_dir() -> Path:
         if candidate.exists():
             return candidate
     raise FileNotFoundError(
-        "ENGIE not found -- run scripts/01_build_dataset.py")
+        "ENGIE not found -- run scripts/pipeline/01_build_dataset.py")
 
 
 def _engie_csv(base: Path, turbine: str) -> Path:
@@ -194,7 +194,7 @@ def _demo_engie_detector(df: pd.DataFrame, event: pd.DataFrame,
     print(c("Note: this frozen reference is deliberately the hard case -- it is a", DIM))
     print(c("2013-2015 reference scoring 2017 data, so a drifting turbine reads as", DIM))
     print(c("anomalous. That is exactly why the deployed system uses a rolling", DIM))
-    print(c("reference (see scripts/08c_engie_multivariate.py).", DIM))
+    print(c("reference (see scripts/pipeline/08c_engie_multivariate.py).", DIM))
 
 
 def demo_engie(args: argparse.Namespace) -> int:
@@ -313,7 +313,7 @@ def demo_engie(args: argparse.Namespace) -> int:
 def demo_care(args: argparse.Namespace) -> int:
     root = care.care_root(ROOT / "data")
     if not root.exists():
-        print(c(f"CARE not found at {root} -- run scripts/01_build_dataset.py", RED))
+        print(c(f"CARE not found at {root} -- run scripts/pipeline/01_build_dataset.py", RED))
         return 1
 
     farm_dir = root / args.farm
@@ -440,7 +440,7 @@ def main() -> int:
                     help="index of the CARE anomaly event")
     ap.add_argument("--quantile", type=float, default=0.90,
                     help="training quantile for the threshold; 0.90 is what "
-                         "the scored arm uses (scripts/08_multivariate.py)")
+                         "the scored arm uses (scripts/pipeline/08_multivariate.py)")
     ap.add_argument("--z-threshold", type=float, default=4.0,
                     help="fixed z threshold for the ENGIE detector demo")
     args = ap.parse_args()

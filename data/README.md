@@ -1,7 +1,7 @@
 # Data provenance
 
 Every dataset is public and pinned. Nothing here is redistributed in the repository —
-`scripts/01_build_dataset.py` downloads each file and verifies it against the
+`scripts/pipeline/01_build_dataset.py` downloads each file and verifies it against the
 SHA-256 recorded in `src/windmill/acquire.py`, so a reviewer reproduces the exact
 bytes and can check that they did.
 

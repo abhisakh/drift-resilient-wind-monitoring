@@ -1,6 +1,6 @@
 """One summary table across every arm.
 
-    python scripts/10_summary.py
+    python scripts/pipeline/10_summary.py
 
 Brings the two datasets and every arm into a single table, so the trade-off is
 visible at a glance:

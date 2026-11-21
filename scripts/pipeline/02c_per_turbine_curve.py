@@ -9,7 +9,7 @@ curve:
 We fit each turbine's OWN curve per year and look at how the level moves over time.
 A constant offset = (a). A monotone trend = (b).
 
-    python scripts/02c_per_turbine_curve.py
+    python scripts/pipeline/02c_per_turbine_curve.py
 """
 
 from __future__ import annotations

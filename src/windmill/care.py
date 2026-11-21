@@ -26,7 +26,7 @@ CARE_INNER_DIR = "CARE_To_Compare"
 def care_root(data_dir: Path) -> Path:
     """The root of the extracted CARE dataset.
 
-    Single source of truth for where CARE lives on disk. `scripts/01_build_dataset.py`
+    Single source of truth for where CARE lives on disk. `scripts/pipeline/01_build_dataset.py`
     extracts to this directory (via `acquire.extract_dir`), and every script that
     reads CARE asks here, so the download path and the read path cannot drift
     apart.

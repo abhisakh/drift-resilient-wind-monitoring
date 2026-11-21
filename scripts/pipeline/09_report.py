@@ -1,6 +1,6 @@
 """Regenerate README.md's Results section from results/*.json.
 
-    python scripts/09_report.py
+    python scripts/pipeline/09_report.py
 
 Every number in the README comes from a file in results/, so the README cannot
 drift from the artefacts. If a results file is missing, the section says so

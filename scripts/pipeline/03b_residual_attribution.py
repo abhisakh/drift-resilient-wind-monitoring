@@ -9,7 +9,7 @@ systematic residual in every later year.
 Test: regress the scheme-D residual on ERA5 wind deviation and on ERA5 temperature
 deviation, per year.
 
-    python scripts/03b_residual_attribution.py
+    python scripts/pipeline/03b_residual_attribution.py
 """
 
 from __future__ import annotations

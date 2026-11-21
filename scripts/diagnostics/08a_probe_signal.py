@@ -2,7 +2,7 @@
 
 Run on a handful of events per farm so the answer comes back in seconds.
 
-    python scripts/08a_probe_signal.py
+    python scripts/diagnostics/08a_probe_signal.py
 """
 
 from __future__ import annotations

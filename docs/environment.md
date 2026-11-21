@@ -14,8 +14,9 @@ per-event metric, and the final weighted score). The package is used in the
 scoring scripts so the published numbers are directly comparable with the
 mini-benchmark in the paper (AE 0.66, random 0.5, iForest < 0.5, trivial 0).
 
-If the package is unavailable, `scripts/04_score.py` and `scripts/08_multivariate.py`
-refuse to run rather than silently producing incomparable numbers.
+If the package is unavailable, `scripts/pipeline/04_score.py` and
+`scripts/pipeline/08_multivariate.py` refuse to run rather than silently
+producing incomparable numbers.
 
 ```bash
 python3.11 -m venv .venv
@@ -24,8 +25,8 @@ python3.11 -m venv .venv
 
 ## Data
 
-`scripts/01_build_dataset.py` downloads everything into `data/raw/` (19 GB
-uncompressed for CARE alone). **No dataset is committed** — `.gitignore` excludes
+`scripts/pipeline/01_build_dataset.py` downloads everything into `data/raw/`
+(about 19 GB once CARE is extracted). **No dataset is committed** — `.gitignore` excludes
 `data/raw/`, and `data/README.md` records the URL, licence and SHA-256 of each
 file so a reviewer can verify they fetched identical bytes.
 
@@ -35,21 +36,16 @@ file so a reviewer can verify they fetched identical bytes.
 | ERA5 via open-meteo | 1.7 MB | JSON, no API key needed |
 | CARE to Compare (Zenodo v6) | 5.5 GB zip | ~19 GB extracted; the slow step |
 
-The CARE download is the reason `01_build_dataset.py` takes a while. `--skip-care`
+The CARE download is the reason `make data` takes a while. `--skip-care`
 skips it if you only want the ENGIE arm.
 
 ## Reproducing the numbers
 
 ```bash
-.venv/bin/python scripts/01_build_dataset.py
-.venv/bin/python scripts/02_condition.py            # climatology + ERA5 agreement
-.venv/bin/python scripts/03_detect.py              # ENGIE scheme comparison + gates
-.venv/bin/python scripts/04_score.py               # CARE score, power-only baseline
-.venv/bin/python scripts/05_audit_scorability.py   # what the benchmark can score
-.venv/bin/python scripts/08_multivariate.py        # Option 1: multivariate bins
-.venv/bin/python scripts/08b_sweep_threshold.py    # threshold sweep
-.venv/bin/python scripts/08c_engie_multivariate.py # ENGIE, multivariate arm
-.venv/bin/python scripts/09_report.py              # regenerate README from results/
+make data        # download + verify the pinned datasets
+make pipeline    # every artifact-producing step, in order
+make test        # the test suite
+.venv/bin/python scripts/pipeline/09_report.py     # regenerate README from results/
 ```
 
 Every script writes a JSON file into `results/`, and `09_report.py` builds the

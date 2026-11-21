@@ -1,6 +1,6 @@
 """Download and cache the pinned public datasets, then record their provenance.
 
-    python scripts/01_build_dataset.py [--skip-care]
+    python scripts/pipeline/01_build_dataset.py [--skip-care]
 
 Downloads to data/raw/, extracts, and writes data/MANIFEST.json with the SHA-256 of
 every file so a reviewer can verify they fetched identical bytes.

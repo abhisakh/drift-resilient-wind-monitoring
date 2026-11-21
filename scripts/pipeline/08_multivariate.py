@@ -1,6 +1,6 @@
 """Option 1: score the deterministic multivariate detector on CARE to Compare.
 
-    python scripts/08_multivariate.py
+    python scripts/pipeline/08_multivariate.py
 
 Runs the Deterministic Multivariate Bins detector (src/windmill/multivariate.py)
 over all 95 CARE event datasets and scores it with the CARE score, using the
@@ -35,7 +35,7 @@ PUBLISHED_BASELINES = {"AE (published)": 0.66, "random": 0.50, "iForest": "< 0.5
 #: The threshold rule: the quantile of the cross-fitted TRAINING score
 #: distribution. Leak-free -- the threshold never sees an event it is later
 #: scored on -- and the same rule the CARE paper's own baseline uses. The value
-#: is the best leak-free setting found by scripts/08b_sweep_threshold.py.
+#: is the best leak-free setting found by scripts/pipeline/08b_sweep_threshold.py.
 TRAIN_QUANTILE = 0.90
 
 

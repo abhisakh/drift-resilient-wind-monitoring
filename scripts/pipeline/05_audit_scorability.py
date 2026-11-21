@@ -8,7 +8,7 @@ metric entirely -- the model cannot earn credit for them.
 
 This script measures that, event by event, and writes results/farm_a_audit.json.
 
-    python scripts/05_audit_scorability.py
+    python scripts/pipeline/05_audit_scorability.py
 """
 
 from __future__ import annotations

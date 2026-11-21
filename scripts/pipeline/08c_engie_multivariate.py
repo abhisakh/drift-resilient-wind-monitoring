@@ -1,6 +1,6 @@
 """ENGIE arm: false-alarm rate on healthy turbines, for each reference strategy.
 
-    python scripts/08c_engie_multivariate.py
+    python scripts/pipeline/08c_engie_multivariate.py
 
 The same multivariate thermal method applied to the ENGIE La Haute Borne site, so
 the two datasets are measured with one method rather than two.
@@ -18,7 +18,7 @@ here:
                          history at the same load bin. The reference is
                          re-estimated continuously, so it cannot go stale.
   3. `power_only`     -- the power-curve residual, for reference (from
-                         scripts/03_detect.py).
+                         scripts/pipeline/03_detect.py).
 
 Every turbine is healthy over the study period (no monotone curve degradation --
 see results/per_turbine_curve.json), so ANY alarm is a false alarm and the
@@ -31,7 +31,7 @@ the same footing on both datasets rather than on CARE alone:
     spread, combined by max-z (src/windmill/multivariate.py).
   * `lightgbm`      -- a learned normal-behaviour model: one LightGBM regressor
     per thermal channel, predicting that channel from the operating point, with
-    the residual turned into a z-score the same way (scripts/07_lightgbm_nbm.py
+    the residual turned into a z-score the same way (scripts/pipeline/07_lightgbm_nbm.py
     uses the identical formulation on CARE).
 
 Outputs results/engie_multivariate.json

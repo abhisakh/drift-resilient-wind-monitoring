@@ -125,7 +125,7 @@ def load_era5(data_dir: Path) -> pd.DataFrame:
     """Load the cached ERA5 hourly series for the site."""
     path = data_dir / "raw" / "era5_openmeteo.json"
     if not path.exists():
-        raise FileNotFoundError(f"{path} missing -- run scripts/01_build_dataset.py")
+        raise FileNotFoundError(f"{path} missing -- run scripts/pipeline/01_build_dataset.py")
     payload = json.loads(path.read_text())
     h = payload["hourly"]
     df = pd.DataFrame(
@@ -149,7 +149,7 @@ def load_care(data_dir: Path) -> pd.DataFrame:
     extracted = data_dir / "raw" / acquire.extract_dir(
         next(s for s in acquire.SOURCES if s.name == "care_to_compare"))
     if not extracted.exists():
-        raise FileNotFoundError(f"{extracted} missing -- run scripts/01_build_dataset.py")
+        raise FileNotFoundError(f"{extracted} missing -- run scripts/pipeline/01_build_dataset.py")
     frames = []
     for csv_path in sorted(extracted.rglob("*.csv")):
         try:

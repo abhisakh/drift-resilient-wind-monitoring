@@ -1,6 +1,6 @@
 """LightGBM Thermal NBM: a learned normal-behaviour model on the thermal channels.
 
-    python scripts/07_lightgbm_nbm.py
+    python scripts/pipeline/07_lightgbm_nbm.py
 
 The deterministic arm (Option 1) models each temperature channel as a load-
 conditioned median with a robust band. This arm learns the same normal behaviour

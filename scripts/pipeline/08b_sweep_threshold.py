@@ -1,6 +1,6 @@
 """Sweep the TRAINING-QUANTILE threshold for the multivariate arm.
 
-    python scripts/08b_sweep_threshold.py
+    python scripts/pipeline/08b_sweep_threshold.py
 
 The threshold is the arm's one free parameter, so it has to be chosen on
 evidence rather than by taste. This sweeps it over a grid and reports the CARE

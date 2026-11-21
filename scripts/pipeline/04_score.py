@@ -1,6 +1,6 @@
 """CARE benchmark arm: score our detector with the authors' own implementation.
 
-    python scripts/04_score.py
+    python scripts/pipeline/04_score.py
 
 The CARE to Compare dataset (Zenodo 10.5281/zenodo.15846963, CC BY-SA 4.0) gives 95
 event datasets: 44 with a labelled anomaly event and 51 with normal behaviour.

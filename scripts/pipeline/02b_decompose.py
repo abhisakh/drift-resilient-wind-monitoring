@@ -10,7 +10,7 @@ Decomposes the static-baseline error into:
 If (b) is large, the "false degradation" signal is not false at all and the
 conditioning story needs to be told differently.
 
-    python scripts/02b_decompose.py
+    python scripts/pipeline/02b_decompose.py
 """
 
 from __future__ import annotations
