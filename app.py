@@ -209,23 +209,32 @@ def tab_executive(engie, care_score, multiv, lgbm):
             textposition="outside",
             hovertemplate="%{y}: %{x:.2f} % mean false alarms<extra>%{fullData.name}</extra>",
         ))
+    # Headroom on the x-axis so the outside text labels are not clipped, and
+    # a horizontal legend so the chart keeps its width.
+    xmax = max((r["max %"] for r in rows), default=1.0)
     fig.update_layout(
-        title="Mean false-alarm rate on healthy turbines — the reference decides",
+        title="Mean false-alarm rate on healthy turbines",
         xaxis_title="false alarms (% of 10-minute samples)",
+        xaxis_range=[0, xmax * 1.18],
         yaxis_title=None, barmode="group", height=340,
-        legend_title="detector",
-        margin=dict(l=10, r=10, t=50, b=10),
+        legend=dict(title="detector", orientation="h", yanchor="top",
+                    y=-0.18, xanchor="left", x=0),
+        margin=dict(l=10, r=10, t=56, b=70),
     )
     left, right = st.columns([3, 2])
     with left:
         st.plotly_chart(fig, width="stretch")
     with right:
         st.markdown("#### Per year")
+        # The artefact stores the year as an integer INSIDE each entry; the
+        # JSON object key is a string, and Plotly coerces a numeric-looking
+        # string column to float -- which is how the axis ended up showing
+        # "2,013.5" instead of "2013".
         per_year_df = pd.DataFrame([
-            {"year": y, "detector": r["detector"], "reference": r["reference"],
-             "rate %": v["rate_pct"]}
+            {"year": v["year"], "detector": r["detector"],
+             "reference": r["reference"], "rate %": v["rate_pct"]}
             for r in rows
-            for y, v in r["per_year"].items()
+            for v in r["per_year"].values()
         ])
         st.dataframe(
             per_year_df.pivot_table(index="year", columns=["detector", "reference"],
@@ -237,6 +246,34 @@ def tab_executive(engie, care_score, multiv, lgbm):
             "reference is a direct statistic of the operating point rather than "
             "a fitted model that must itself be refreshed.</div>",
             unsafe_allow_html=True)
+
+    # --- the same thing as a line: year by year ---------------------------
+    # The bar chart shows the means; this shows WHY the means differ. A frozen
+    # reference swings from year to year, because each year the turbine has
+    # drifted a little further from the reference. A rolling reference is flat,
+    # because it never gets the chance to go stale.
+    fig2 = go.Figure()
+    for (detector, reference), g in per_year_df.groupby(["detector", "reference"]):
+        g = g.sort_values("year")
+        fig2.add_trace(go.Scatter(
+            x=g["year"], y=g["rate %"], mode="lines+markers",
+            name=f"{detector} — {reference}",
+            connectgaps=True,
+            hovertemplate="%{x}: %{y:.2f} % false alarms<extra>%{fullData.name}</extra>",
+        ))
+    fig2.update_layout(
+        title="False-alarm rate by year — the frozen reference swings, the rolling one does not",
+        xaxis_title="year", yaxis_title="false alarms (% of 10-minute samples)",
+        height=400, margin=dict(l=10, r=10, t=56, b=80),
+        legend=dict(title="detector — reference", orientation="h",
+                    yanchor="top", y=-0.18, xanchor="left", x=0),
+        xaxis=dict(tickformat="d", dtick=1),
+    )
+    st.markdown(
+        "<div class='note'>2014 has no scored samples in this artefact and is "
+        "absent from the table above; the lines span it.</div>",
+        unsafe_allow_html=True)
+    st.plotly_chart(fig2, width="stretch")
 
     # --- the honest headline ----------------------------------------------
     st.markdown("#### What this project does and does not claim")
