@@ -1,0 +1,79 @@
+{
+  "arm": "Deterministic Multivariate Bins on ENGIE (healthy turbines)",
+  "reference_year": 2014,
+  "z_threshold_rolling": 4.0,
+  "window_days": 30,
+  "n_channels_available": 10,
+  "strategies": {
+    "frozen_2014": {
+      "per_year": {
+        "2013": {
+          "year": 2013,
+          "n_samples": 41643,
+          "n_flags": 15710,
+          "rate_pct": 37.7254
+        },
+        "2015": {
+          "year": 2015,
+          "n_samples": 43477,
+          "n_flags": 7623,
+          "rate_pct": 17.5334
+        },
+        "2016": {
+          "year": 2016,
+          "n_samples": 42248,
+          "n_flags": 6290,
+          "rate_pct": 14.8883
+        },
+        "2017": {
+          "year": 2017,
+          "n_samples": 41336,
+          "n_flags": 14600,
+          "rate_pct": 35.3203
+        }
+      },
+      "min_rate_pct": 14.8883,
+      "max_rate_pct": 37.7254,
+      "spread_pp": 22.8371,
+      "mean_rate_pct": 26.3668
+    },
+    "rolling_30d": {
+      "per_year": {
+        "2013": {
+          "year": 2013,
+          "n_samples": 41643,
+          "n_flags": 395,
+          "rate_pct": 0.9485
+        },
+        "2014": {
+          "year": 2014,
+          "n_samples": 42603,
+          "n_flags": 146,
+          "rate_pct": 0.3427
+        },
+        "2015": {
+          "year": 2015,
+          "n_samples": 43477,
+          "n_flags": 218,
+          "rate_pct": 0.5014
+        },
+        "2016": {
+          "year": 2016,
+          "n_samples": 42248,
+          "n_flags": 238,
+          "rate_pct": 0.5633
+        },
+        "2017": {
+          "year": 2017,
+          "n_samples": 41336,
+          "n_flags": 197,
+          "rate_pct": 0.4766
+        }
+      },
+      "min_rate_pct": 0.3427,
+      "max_rate_pct": 0.9485,
+      "spread_pp": 0.6058,
+      "mean_rate_pct": 0.5665
+    }
+  }
+}

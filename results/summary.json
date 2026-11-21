@@ -1,0 +1,89 @@
+{
+  "arms": [
+    {
+      "arm": "power-only residual (baseline)",
+      "kind": "power-only",
+      "engie_far": {
+        "spread_pp": 0.99286,
+        "mean_alarms_per_10min": 0.00942,
+        "min_rate_pct": 0.38052,
+        "max_rate_pct": 1.37338
+      },
+      "care": {
+        "coverage": 0.1263,
+        "accuracy": 0.9606,
+        "reliability": 0.2459,
+        "earliness": 0.1347
+      },
+      "care_score": 0.4856,
+      "beats_AE": false
+    },
+    {
+      "arm": "multivariate bins (max z)",
+      "kind": "multivariate",
+      "engie_far": {
+        "spread_pp": 0.6058,
+        "mean_rate_pct": 0.5665,
+        "min_rate_pct": 0.3427,
+        "max_rate_pct": 0.9485
+      },
+      "care": {
+        "coverage": 0.1513,
+        "accuracy": 0.9512,
+        "reliability": 0.381,
+        "earliness": 0.0795
+      },
+      "care_score": 0.5028,
+      "beats_AE": false
+    },
+    {
+      "arm": "multivariate bins (L2)",
+      "kind": "multivariate",
+      "engie_far": {
+        "spread_pp": 0.6058,
+        "mean_rate_pct": 0.5665,
+        "min_rate_pct": 0.3427,
+        "max_rate_pct": 0.9485
+      },
+      "care": {
+        "coverage": 0.1342,
+        "accuracy": 0.9538,
+        "reliability": 0.3608,
+        "earliness": 0.0685
+      },
+      "care_score": 0.4942,
+      "beats_AE": false
+    },
+    {
+      "arm": "LightGBM thermal NBM",
+      "kind": "lightgbm",
+      "engie_far": null,
+      "care": {
+        "coverage": 0.2167,
+        "accuracy": 0.8511,
+        "reliability": 0.3356,
+        "earliness": 0.1743
+      },
+      "care_score": 0.4857,
+      "beats_AE": false
+    }
+  ],
+  "best_multivariate_setting": {
+    "combiner": "zmax",
+    "train_quantile": 0.9,
+    "rule": "training quantile (leak-free)",
+    "care_score": 0.5028,
+    "coverage": 0.1513,
+    "accuracy": 0.9512,
+    "reliability": 0.381,
+    "earliness": 0.0795,
+    "n_events_detected": 15,
+    "n_events": 95
+  },
+  "published_baselines": {
+    "AE (published)": 0.66,
+    "random": 0.5,
+    "iForest": "< 0.5"
+  },
+  "beats_published_AE": false
+}

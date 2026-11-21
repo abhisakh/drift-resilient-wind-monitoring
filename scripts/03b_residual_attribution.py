@@ -81,19 +81,23 @@ def main() -> int:
 
     print("\n=== KEY TEST: does a per-turbine RE-FIT on each year remove the bias? ===")
     print("   (if yes, the 2014 reference is stale, not the turbine degrading)")
+    year_matched = {}
     for y, g in out.groupby("year"):
         ref_y = df[df["year"] == y]
         r2 = d3.build_reference(ref_y, y, per_turbine=True, season_conditioned=False)
         o2 = d3.apply_reference(g, r2, k=3.0, conditioned_band=True)
         o2 = o2.dropna(subset=["resid"])
-        print(f"   {y}: mean resid with year-matched reference = {o2['resid'].mean():+.3f} kW"
+        val = float(o2["resid"].mean())
+        year_matched[int(y)] = round(val, 4)
+        print(f"   {y}: mean resid with year-matched reference = {val:+.3f} kW"
               f"   (was {g['resid'].mean():+.3f} kW)")
 
     res = ROOT / "results"
     (res / "residual_attribution.json").write_text(json.dumps(
         {"era5_per_year": {int(y): {k: round(float(v), 4) for k, v in r.items()}
                            for y, r in ey.loc[2013:2017].iterrows()},
-         "per_year": rows}, indent=2) + "\n")
+         "per_year": rows,
+         "year_matched_reference_kw": year_matched}, indent=2) + "\n")
     print(f"\nwrote {res/'residual_attribution.json'}")
     return 0
 

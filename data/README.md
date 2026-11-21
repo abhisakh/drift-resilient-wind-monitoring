@@ -81,3 +81,34 @@ separately under different terms, which must be checked before redistribution.
 
 CARE is used for the **labelled detection benchmark** (early detection + alert
 reliability), not for the weather-shift study — it cannot support the latter.
+
+**Schema facts, verified against the files (not assumed):**
+
+- The CSVs are **semicolon**-separated, not comma. `event_info.csv` and
+  `feature_description.csv` too. The asset column is called `asset` in Wind Farm A
+  and `asset_id` in Wind Farms B and C.
+- `feature_description.csv` lists the **base** sensor name (`power_29`); the CSV
+  columns carry the statistic suffix (`power_29_avg`). The base name has to be
+  mapped onto the real column.
+- Power and reactive power are **scaled by the rated power**, so they run 0-1.
+  Wind speed is in m/s.
+- Temperature channels are identified by their **unit**, and the farms spell it
+  differently: Wind Farm C writes `Celsius`, while Wind Farms A and B write a
+  degree-Celsius sign that the CSV stores as a non-UTF-8 byte (mojibake). Matching
+  on "unit ends with C" catches all three and matches no other unit in the dataset.
+  Counts: 25 thermal channels in A, 25 in B, 77 in C (before removing the ambient
+  sensor, which is a driver rather than a component).
+- `status_type_id`: 0 = normal operation, 2 = idling (both count as normal
+  operation for the metric); 1 = derated, 3 = service, 4 = down due to fault,
+  5 = other (all excluded from the metric).
+- The dataset's own README says "44 out the 95 datasets contain a labeled anomaly
+  event"; `event_info.csv` actually labels **45** anomaly and 50 normal. The
+  discrepancy is in the published data, and we follow `event_info.csv` (the
+  machine-readable ground truth) rather than the prose.
+- **11 of the 12 Wind Farm A anomaly events contain no rows in normal operation**
+  inside the event window — 95 % of it is status 4 (fault). The CARE score
+  excludes those rows from Coverage and Reliability, so no detector can earn
+  credit for them. Measured in `results/farm_a_audit.json`.
+- The CARE paper's own scoring implementation (`energy-fault-detector` 0.8.1)
+  requires Python < 3.12. This project is pinned to Python 3.11 for that reason;
+  see `docs/environment.md`.
