@@ -32,6 +32,7 @@ Two demonstrations are available:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -195,6 +196,211 @@ def _demo_engie_detector(df: pd.DataFrame, event: pd.DataFrame,
     print(c("2013-2015 reference scoring 2017 data, so a drifting turbine reads as", DIM))
     print(c("anomalous. That is exactly why the deployed system uses a rolling", DIM))
     print(c("reference (see scripts/pipeline/08c_engie_multivariate.py).", DIM))
+
+
+
+#: The window exported to the dashboard snapshot: two months around the
+#: September 2017 anomaly, so the drift is visible on both sides of it.
+SNAPSHOT_START = "2017-08-15"
+SNAPSHOT_END = "2017-10-15"
+
+
+def _far_pct(z) -> float | None:
+    """The share of samples above z > 4 under one reference."""
+    if z is None:
+        return None
+    v = z.to_numpy(dtype="float64")
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return None
+    return round(float((v > 4.0).mean() * 100), 2)
+
+
+def export_snapshot(path: Path | None = None) -> int:
+    """Write results/demo_r80711.json -- a compact snapshot for the dashboard.
+
+    The dashboard has to work on Streamlit Community Cloud, where the 19 GB of
+    raw SCADA is not available. So the R80711 case study is exported as a
+    small, self-contained artefact: the bearing temperature of R80711 and its
+    three siblings, the peer median, the load- and ambient-conditioned
+    residual and the z-score, all on the same 10-minute grid.
+
+    It is the SAME detector and the SAME reference the project measures with --
+    no re-implementation, no smoothing, no resampling. The values are rounded
+    for size, and nothing else.
+    """
+    base = _engie_dir()
+    era5_path = ROOT / "data" / "raw" / "era5_openmeteo.json"
+    if not era5_path.exists():
+        print(c("ERA5 not downloaded -- cannot build the snapshot", YELLOW))
+        return 1
+
+    start = pd.Timestamp(SNAPSHOT_START, tz="UTC")
+    end = pd.Timestamp(SNAPSHOT_END, tz="UTC")
+
+    frames = {}
+    for t in (ENGIE_TURBINE, *ENGIE_PEERS):
+        d = _engie_read(_engie_csv(base, t))
+        d["P_norm"] = d["P_avg"] / RATED_POWER_KW
+        frames[t] = d
+
+    # Ambient temperature from ERA5 (the ENGIE release has no ambient sensor).
+    era5 = loaders.load_era5(ROOT / "data")
+    e = era5.copy()
+    e["ts"] = e["ts"].dt.floor("10min")
+    e = e.set_index("ts")[["era5_temp_2m"]].resample("10min").ffill().reset_index()
+
+    def _window(d: pd.DataFrame) -> pd.DataFrame:
+        d = d.merge(e, on="ts", how="left")
+        return d[(d["ts"] >= start) & (d["ts"] <= end)]
+
+    main_df = _window(frames[ENGIE_TURBINE])
+    # Every turbine on the same window, so they share one grid.
+    win = {t: _window(frames[t]) for t in (ENGIE_TURBINE, *ENGIE_PEERS)}
+    peers = {t: win[t] for t in ENGIE_PEERS}
+
+    # --- the reference: R80711's own 2013-2015 behaviour, frozen -----------
+    full = frames[ENGIE_TURBINE].merge(e, on="ts", how="left")
+    ref_rows = full[(full["ts"] >= pd.Timestamp("2013-01-01", tz="UTC"))
+                    & (full["ts"] <= pd.Timestamp("2015-12-31", tz="UTC"))]
+    ref = multivariate.fit_channel_reference(
+        ref_rows, ENGIE_CHANNEL, "P_norm", ambient_col="era5_temp_2m")
+    if ref is None:
+        print(c("could not fit the channel reference", RED))
+        return 1
+
+    # --- the grid: one row per timestamp the target turbine reports --------
+    grid = main_df.dropna(subset=[ENGIE_CHANNEL]).reset_index(drop=True)
+    ts = grid["ts"]
+
+    corrected, z = ref.apply(
+        grid["P_norm"].to_numpy(),
+        grid["era5_temp_2m"].to_numpy(),
+        grid[ENGIE_CHANNEL].to_numpy(),
+    )
+
+    # --- the detector's own alarms (max-z over all thermal channels) -------
+    work = full.dropna(subset=["P_norm", ENGIE_CHANNEL])
+    ref_all = work[(work["ts"] >= pd.Timestamp("2013-01-01", tz="UTC"))
+                    & (work["ts"] <= pd.Timestamp("2015-12-31", tz="UTC"))]
+    test_all = work[work["ts"] >= pd.Timestamp("2016-01-01", tz="UTC")]
+    res = multivariate.detect(ref_all, test_all, loaders.ENGIE_THERMAL, "P_norm",
+                              ambient_col="era5_temp_2m", z_threshold=4.0,
+                              max_channels=24)
+    # Align on the TIMESTAMP, not the positional index: the detector's score
+    # is indexed by its own frame, whose rows are a different subset.
+    zmax = None
+    if len(res.channels_used):
+        zmax_by_ts = res.zmax.copy()
+        zmax_by_ts.index = test_all.loc[zmax_by_ts.index, "ts"]
+        # ENGIE carries ~30 duplicate timestamps per turbine, and reindex
+        # refuses duplicate labels. Keep the first of each.
+        zmax_by_ts = zmax_by_ts[~zmax_by_ts.index.duplicated()]
+        zmax = zmax_by_ts.reindex(ts)
+
+    # --- the ROLLING reference, for comparison -----------------------------
+    # The frozen reference above is the FAILURE mode the project is about: a
+    # 2014 reference applied to 2017 data reads the drift as overheating, so it
+    # alarms on a quarter of the samples. The rolling 30-day reference is what
+    # a deployment would use, and it alarms on well under 1 %. Exporting both
+    # lets the dashboard show the project's central result rather than only
+    # the noisy end of it.
+    zmax_roll = None
+    rolling = multivariate.detect_rolling(
+        work, loaders.ENGIE_THERMAL, "P_norm", ambient_col="era5_temp_2m",
+        window_days=30, z_threshold=4.0, max_channels=24)
+    if len(rolling.channels_used):
+        roll_by_ts = rolling.zmax.copy()
+        roll_by_ts.index = work.loc[roll_by_ts.index, "ts"]
+        roll_by_ts = roll_by_ts[~roll_by_ts.index.duplicated()]
+        zmax_roll = roll_by_ts.reindex(ts)
+
+    # --- the peer median, at matched wind speed ----------------------------
+    peer_frames = []
+    for t, d in peers.items():
+        dd = d[["ts", "Ws_avg", ENGIE_CHANNEL]].copy()
+        dd["turbine"] = t
+        peer_frames.append(dd)
+    pf = pd.concat(peer_frames, ignore_index=True)
+    pf = pf.dropna(subset=["Ws_avg", ENGIE_CHANNEL])
+    pf["bin"] = (pf["Ws_avg"] // 1.0).astype("int64")
+    peer_by_bin = pf.groupby("bin")[ENGIE_CHANNEL].median()
+    main_bin = (grid["Ws_avg"] // 1.0).astype("int64")
+    peer_median = main_bin.map(peer_by_bin).to_numpy()
+
+    series: dict[str, list] = {}
+    for t in (ENGIE_TURBINE, *ENGIE_PEERS):
+        d = win[t].drop_duplicates(subset="ts", keep="first").set_index("ts")
+        d = d.reindex(ts)
+        series[t] = [None if pd.isna(v) else round(float(v), 2)
+                     for v in d[ENGIE_CHANNEL].to_numpy()]
+    series["peer_median"] = [None if not np.isfinite(v) else round(float(v), 2)
+                             for v in peer_median]
+    series["residual"] = [None if not np.isfinite(v) else round(float(v), 3)
+                          for v in corrected]
+    series["z"] = [None if not np.isfinite(v) else round(float(v), 3)
+                   for v in z]
+    if zmax is not None:
+        series["zmax"] = [None if pd.isna(v) else round(float(v), 3)
+                          for v in zmax.to_numpy()]
+    if zmax_roll is not None:
+        series["zmax_rolling"] = [None if pd.isna(v) else round(float(v), 3)
+                                  for v in zmax_roll.to_numpy()]
+    series["ambient"] = [None if pd.isna(v) else round(float(v), 2)
+                         for v in grid["era5_temp_2m"].to_numpy()]
+    series["wind_speed"] = [None if pd.isna(v) else round(float(v), 2)
+                            for v in grid["Ws_avg"].to_numpy()]
+
+    epoch = (ts.astype("int64") // 10**9).tolist()
+
+    ev = grid[(grid["ts"] >= pd.Timestamp(ENGIE_EVENT_START, tz="UTC"))
+              & (grid["ts"] <= pd.Timestamp(ENGIE_EVENT_END, tz="UTC"))]
+    peer_max = max(
+        float(np.nanmax(peers[t][ENGIE_CHANNEL].to_numpy())) for t in ENGIE_PEERS)
+
+    out = {
+        "generated_by": "scripts/pipeline/11_demo.py",
+        "meta": {
+            "site": "ENGIE La Haute Borne, Meuse, France",
+            "turbines": [ENGIE_TURBINE, *ENGIE_PEERS],
+            "target_turbine": ENGIE_TURBINE,
+            "peer_turbines": list(ENGIE_PEERS),
+            "channel": ENGIE_CHANNEL,
+            "channel_description": "gearbox bearing 2 temperature",
+            "window_start": SNAPSHOT_START,
+            "window_end": SNAPSHOT_END,
+            "reference": "frozen 2014-2015, load- and ambient-conditioned, "
+                         "fitted on R80711's own earlier behaviour",
+            "n_rows": int(len(epoch)),
+            "resolution": "10 minutes",
+            "units": {"temperature": "degC", "residual": "K",
+                      "z": "robust deviations", "ambient": "degC"},
+            "caveat": "R80711's September 2017 anomaly is NOT a labelled "
+                      "fault. The ENGIE release carries no fault label for "
+                      "it, and the one documented gearbox event (R80721, 2015) "
+                      "is absent from the released cleaned CSVs.",
+        },
+        "kpis": {
+            "r80711_max_c": round(float(np.nanmax(grid[ENGIE_CHANNEL].to_numpy())), 2),
+            "peer_max_c": round(peer_max, 2),
+            "rows_over_80c": int((grid[ENGIE_CHANNEL] > 80).sum()),
+            "peer_rows_over_80c": int(sum(
+                int((peers[t][ENGIE_CHANNEL] > 80).sum()) for t in ENGIE_PEERS)),
+            "ambient_mean_c": round(float(np.nanmean(grid["era5_temp_2m"].to_numpy())), 2),
+            "event_max_c": round(float(np.nanmax(ev[ENGIE_CHANNEL].to_numpy())), 2),
+            "false_alarm_pct_frozen_reference": _far_pct(zmax),
+            "false_alarm_pct_rolling_reference": _far_pct(zmax_roll),
+        },
+        "t": epoch,
+        "series": series,
+    }
+
+    dest = path or (ROOT / "results" / "demo_r80711.json")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(out, separators=(",", ":")) + "\n")
+    size_mb = dest.stat().st_size / 1e6
+    print(f"wrote {dest} ({size_mb:.2f} MB, {len(epoch):,} rows)")
+    return 0
 
 
 def demo_engie(args: argparse.Namespace) -> int:
@@ -443,8 +649,12 @@ def main() -> int:
                          "the scored arm uses (scripts/pipeline/08_multivariate.py)")
     ap.add_argument("--z-threshold", type=float, default=4.0,
                     help="fixed z threshold for the ENGIE detector demo")
+    ap.add_argument("--export", action="store_true",
+                    help="write results/demo_r80711.json for the dashboard")
     args = ap.parse_args()
 
+    if args.export:
+        return export_snapshot()
     if args.list:
         return list_datasets()
     if args.dataset == "care":

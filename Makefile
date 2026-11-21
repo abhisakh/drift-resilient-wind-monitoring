@@ -23,7 +23,7 @@ SCRIPTS := scripts/pipeline
 
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
-        compare thermal-signal diagnostics lint clean clean-results
+        compare thermal-signal dashboard snapshot diagnostics lint clean clean-results
 
 help: ## list the available targets
 	@echo ""
@@ -84,6 +84,12 @@ thermal-signal: ## how much thermal signal is inside a fault window at all
 
 demo: ## watch the detector work on real SCADA
 	$(PY) $(SCRIPTS)/11_demo.py
+
+snapshot: ## export results/demo_r80711.json -- the dashboard's cloud snapshot
+	$(PY) $(SCRIPTS)/11_demo.py --export
+
+dashboard: ## run the Streamlit dashboard (http://localhost:8501)
+	$(PY) -m streamlit run app.py
 
 test: ## run the test suite
 	$(PY) -m pytest tests/ -q

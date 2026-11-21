@@ -1,0 +1,21 @@
+# Streamlit configuration.
+#
+# Streamlit Community Cloud reads this file automatically; `streamlit run
+# app.py` locally reads it too.
+
+[server]
+headless = true
+# The dashboard reads its figures from results/*.json, so the data files are
+# small and the app starts fast.
+maxUploadSize = 5
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#5fd39a"
+backgroundColor = "#0d1117"
+secondaryBackgroundColor = "#161b22"
+textColor = "#e6edf3"
+font = "sans serif"

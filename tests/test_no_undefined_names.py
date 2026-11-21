@@ -82,7 +82,8 @@ def _read_names(tree: ast.Module) -> set[str]:
 
 
 @pytest.mark.parametrize("script", sorted(PIPELINE.glob("*.py")) +
-                         sorted(DIAGNOSTICS.glob("*.py")),
+                         sorted(DIAGNOSTICS.glob("*.py")) +
+                         [ROOT / "app.py"],
                          ids=lambda p: str(p.relative_to(ROOT)))
 def test_script_defines_every_name_it_uses(script: Path):
     """Every name a script reads must be bound in that script (or a builtin)."""
@@ -97,7 +98,8 @@ def test_script_defines_every_name_it_uses(script: Path):
 
 
 @pytest.mark.parametrize("script", sorted(PIPELINE.glob("*.py")) +
-                         sorted(DIAGNOSTICS.glob("*.py")),
+                         sorted(DIAGNOSTICS.glob("*.py")) +
+                         [ROOT / "app.py"],
                          ids=lambda p: str(p.relative_to(ROOT)))
 def test_script_is_syntactically_valid(script: Path):
     ast.parse(script.read_text(), filename=str(script))

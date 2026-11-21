@@ -1,4 +1,11 @@
-numpy>=1.26,<3
+# Core numerics.
+#
+# numpy is held BELOW 2 on purpose: energy-fault-detector 0.8.1 -- the
+# benchmark authors' CARE scorer this project cross-checks against -- declares
+# numpy<2.0, and tensorflow (its dependency) declares numpy<2.1. A numpy 2
+# install silently breaks the reference implementation the published numbers
+# are compared with.
+numpy>=1.26,<2
 pandas>=2.2,<4
 scikit-learn>=1.4,<2
 requests>=2.31
@@ -6,3 +13,9 @@ pytest>=8
 # The CARE score is cross-checked against the benchmark authors' own implementation.
 # It requires Python < 3.12 (see docs/environment.md).
 energy-fault-detector==0.8.1; python_version < "3.12"
+
+# Dashboard (app.py).
+streamlit>=1.40,<2
+plotly>=5.20,<8
+# pyarrow 17+ requires numpy>=2, which the reference package above forbids.
+pyarrow>=12,<17

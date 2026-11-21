@@ -1,6 +1,6 @@
 # Windmill: Drift-Resilient Wind Turbine Condition Monitoring
 
-**Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46× with an auditable, zero-leakage pipeline.**
+**Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46.5× with an auditable, zero-leakage pipeline.**
 
 > **TL;DR for Reviewers:** This project demonstrates that reference calibration matters more than model complexity, cutting false alarms from **26.37%** to **0.57%** across multi-year ENGIE SCADA data and **95** CARE benchmark events.
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary & Key Findings
 
-1. **The Reference Strategy Matters More Than the Model (46× Fewer False Alarms)**
+1. **The Reference Strategy Matters More Than the Model (46.5× Fewer False Alarms)**
    * Naive static baselines produce **14.89–37.73%** false alarms (mean **26.37%**) as weather regimes shift.
    * A rolling 30-day, load- and temperature-conditioned reference reduces false alarms to **0.34–0.95%** (mean **0.57%**), outperforming LightGBM (**3.94%**).
 2. **Caught a Real, Undocumented Bearing Anomaly (`R80711`, Sept 2017)**
@@ -49,13 +49,13 @@ the better one** (15.79 % false alarms against the
 deterministic arm's 26.37 %), because a smooth model of
 the operating point drifts less sharply than a set of fixed per-bin
 medians. **With a current reference the deterministic arm wins by a wide
-margin** (0.57 % against 3.94 %, about 7x fewer false alarms), and
+margin** (0.57 % against 3.94 %, about 7.0x fewer false alarms), and
 it does so with no model to train and no thresholds to re-validate.
 
 The project's claim is therefore not 'the deterministic method is better'
 but the sharper one: **the reference matters more than the model.**
-Re-estimating the reference reduced false alarms by 47x for the deterministic
-detector and 4x for the learned one.
+Re-estimating the reference reduced false alarms by 46.5x for the deterministic
+detector and 4.0x for the learned one.
 
 We also do **not** claim operational weather forecasting. ERA5 conditions a
 long-term reference; it is not a forecast engine, and the residual is always
@@ -138,7 +138,7 @@ The same multivariate thermal method on the ENGIE site, with every turbine healt
 
 A **frozen 2014 reference** -- what a naive deployment does -- gives 14.89–37.73 % false alarms (mean 26.37 %, spread 22.84 pp). Each turbine's thermal channels move by 5-9 K between years, so the frozen reference leaves a systematic offset that reads as overheating on every channel at once.
 
-A **rolling local reference** -- each row compared against its own recent history at the same load bin, re-estimated continuously -- gives 0.34–0.95 % (mean 0.57 %, spread 0.61 pp). That is a **47x** reduction in false alarms from changing nothing but the reference.
+A **rolling local reference** -- each row compared against its own recent history at the same load bin, re-estimated continuously -- gives 0.34–0.95 % (mean 0.57 %, spread 0.61 pp). That is a **46.5x** reduction in false alarms from changing nothing but the reference.
 
 The **learned** arm was given the same two reference strategies, so the comparison is like for like: its model is refitted weekly on the trailing 30 days, exactly as the deterministic arm's reference is re-estimated continuously. With a frozen reference the learned arm is 15.79 % (mean false-alarm rate) against the deterministic arm's 26.37 % -- so the model is *not* the deciding factor; the reference is. With a rolling reference the learned arm gives 3.94 % against the deterministic arm's 0.57 %.
 
@@ -312,6 +312,7 @@ The same two arms on ENGIE, where every alarm is a false alarm:
 ## Layout
 
 ```
+app.py                   the Streamlit dashboard (hybrid: raw data or snapshot)
 data/                    pinned datasets + provenance (README.md records URL, licence, checksum)
 src/windmill/            all the reusable logic: loaders, conditioning, detectors, scoring
 scripts/pipeline/        the reproducible pipeline — one script per artefact, in order
@@ -334,7 +335,9 @@ Python **3.11** is required — the benchmark authors' CARE scorer
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-make demo        # <-- START HERE: watch the detector work on real SCADA
+make dashboard   # the Streamlit dashboard (http://localhost:8501)
+make demo        # watch the detector work on real SCADA
+make snapshot    # export the dashboard's cloud snapshot
 make setup       # create the venv and install dependencies
 make data        # download + verify the pinned datasets (19 GB, once)
 make pipeline    # run every artefact-producing step, in order
@@ -364,6 +367,26 @@ The individual steps, if you want to run one on its own:
 `scripts/diagnostics/` holds the one-off probes used while designing the
 detector. They write nothing and are not part of the pipeline.
 
+## The dashboard
+
+```bash
+make dashboard     # http://localhost:8501
+```
+
+A four-tab Streamlit dashboard over the same artefacts: the 46.5x false-alarm
+result, the R80711 case study with a live threshold slider, the CARE benchmark
+and the AE audit, and the engineering forensics.
+
+It is **hybrid**. With `data/raw/` present it reads the raw ENGIE SCADA and
+re-runs the detector live — that is the mode for a demo day. Without it (as on
+Streamlit Community Cloud) it falls back to `results/demo_r80711.json`, a
+compact snapshot exported by `make snapshot` from the same detector and the
+same frozen 2014 reference, so the charts still work without the 19 GB. The
+sidebar says which engine is running.
+
+Every figure it shows is read from `results/*.json`; the dashboard carries no
+copy of a headline number, so it cannot disagree with this README.
+
 ## The demo
 
 `make demo` (i.e. `scripts/pipeline/11_demo.py`) runs the real detector on real SCADA and prints what it
@@ -387,7 +410,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-130 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+141 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

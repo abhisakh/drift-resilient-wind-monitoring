@@ -160,7 +160,7 @@ def section_engie_multivariate() -> str:
                    f"history at the same load bin, re-estimated continuously -- gives "
                    f"{fmt(rolling['min_rate_pct'], 2)}–{fmt(rolling['max_rate_pct'], 2)} % "
                    f"(mean {fmt(rolling['mean_rate_pct'], 2)} %, spread "
-                   f"{fmt(rolling['spread_pp'], 2)} pp). That is a **{fmt(ratio, 0)}x** reduction "
+                   f"{fmt(rolling['spread_pp'], 2)} pp). That is a **{fmt(ratio, 1)}x** reduction "
                    f"in false alarms from changing nothing but the reference.\n")
         if frozen_lg and rolling_lg:
             out.append(
@@ -612,15 +612,15 @@ def section_method() -> str:
                 "medians. **With a current reference the deterministic arm wins by a wide\n"
                 f"margin** ({fmt(ro['mean_rate_pct'], 2)} % against {fmt(rol['mean_rate_pct'], 2)} %, "
                 "about "
-                f"{fmt(rol['mean_rate_pct'] / ro['mean_rate_pct'], 0)}x fewer false alarms), and\n"
+                f"{fmt(rol['mean_rate_pct'] / ro['mean_rate_pct'], 1)}x fewer false alarms), and\n"
                 "it does so with no model to train and no thresholds to re-validate.\n"
             )
             out.append(
                 "The project's claim is therefore not 'the deterministic method is better'\n"
                 "but the sharper one: **the reference matters more than the model.**\n"
                 "Re-estimating the reference reduced false alarms by "
-                f"{fmt(fr['mean_rate_pct'] / ro['mean_rate_pct'], 0)}x for the deterministic\n"
-                f"detector and {fmt(frl['mean_rate_pct'] / rol['mean_rate_pct'], 0)}x for the learned one.\n"
+                f"{fmt(fr['mean_rate_pct'] / ro['mean_rate_pct'], 1)}x for the deterministic\n"
+                f"detector and {fmt(frl['mean_rate_pct'] / rol['mean_rate_pct'], 1)}x for the learned one.\n"
             )
     out.append(
         "We also do **not** claim operational weather forecasting. ERA5 conditions a\n"
