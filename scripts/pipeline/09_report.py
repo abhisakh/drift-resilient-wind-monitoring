@@ -317,10 +317,32 @@ def section_scorability() -> str:
 
 
 def _count_tests() -> int:
-    """Count the test functions in tests/ so the README's claim cannot go stale."""
+    """How many tests pytest actually collects, so the README cannot go stale.
+
+    Counting `def test_` lines undercounts: a single parametrised test
+    function runs once per parameter, so the source-line count was 80 while
+    pytest ran 126. The README must state the number a reader would see when
+    they run the suite, so ask pytest.
+    """
+    import subprocess
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "--collect-only", "-q",
+             "--no-header", "-p", "no:cacheprovider"],
+            cwd=ROOT, capture_output=True, text=True, timeout=300)
+    except Exception:
+        r = None
+    if r is not None:
+        m = re.search(r"(\d+)\s+tests?\s+collected", r.stdout)
+        if m:
+            return int(m.group(1))
+        m = re.search(r"(\d+)\s+tests?\s+collected", r.stderr)
+        if m:
+            return int(m.group(1))
+    # Fallback: count the test functions.
     n = 0
-    for p in (ROOT / "tests").glob("test_*.py"):
-        n += sum(1 for line in p.read_text().splitlines()
+    for f in (ROOT / "tests").glob("test_*.py"):
+        n += sum(1 for line in f.read_text().splitlines()
                  if line.startswith("def test_"))
     return n
 
