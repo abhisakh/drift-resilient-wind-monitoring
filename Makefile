@@ -85,7 +85,7 @@ thermal-signal: ## how much thermal signal is inside a fault window at all
 demo: ## watch the detector work on real SCADA
 	$(PY) $(SCRIPTS)/11_demo.py
 
-snapshot: ## export results/demo_r80711.json -- the dashboard's cloud snapshot
+snapshot: ## export results/demo_r80711.json + assets/sample_turbine.csv
 	$(PY) $(SCRIPTS)/11_demo.py --export
 
 dashboard: ## run the Streamlit dashboard (http://localhost:8501)

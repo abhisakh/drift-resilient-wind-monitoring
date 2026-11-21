@@ -42,7 +42,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from windmill import RATED_POWER_KW, care, loaders, multivariate  # noqa: E402
+from windmill import RATED_POWER_KW, care, live, loaders, multivariate  # noqa: E402
 
 # --- presentation -----------------------------------------------------------
 RESET = "\033[0m"
@@ -400,6 +400,12 @@ def export_snapshot(path: Path | None = None) -> int:
     dest.write_text(json.dumps(out, separators=(",", ":")) + "\n")
     size_mb = dest.stat().st_size / 1e6
     print(f"wrote {dest} ({size_mb:.2f} MB, {len(epoch):,} rows)")
+
+    # The downloadable sample: a real slice of the ENGIE release, with the
+    # ERA5 ambient temperature added, so a reviewer on Streamlit Community
+    # Cloud can run the detector on a real turbine without the 19 GB.
+    sample = live.build_sample_csv(live.sample_csv_path(), ROOT / "data")
+    print(f"wrote {sample} ({sample.stat().st_size/1e6:.2f} MB)")
     return 0
 
 

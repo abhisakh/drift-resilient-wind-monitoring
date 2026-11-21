@@ -11,3 +11,9 @@ data/external/
 !results/
 !results/*.json
 !results/*.csv
+
+# The downloadable sample turbine CSV is a committed asset too: a reviewer on
+# Streamlit Community Cloud has no 19 GB of raw data, and this file is how
+# they can run the detector on a real turbine slice.
+!assets/
+!assets/*.csv

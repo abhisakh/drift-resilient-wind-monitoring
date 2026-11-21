@@ -313,6 +313,7 @@ The same two arms on ENGIE, where every alarm is a false alarm:
 
 ```
 app.py                   the Streamlit dashboard (hybrid: raw data or snapshot)
+assets/                  the downloadable sample turbine CSV, for the dashboard's upload path
 data/                    pinned datasets + provenance (README.md records URL, licence, checksum)
 src/windmill/            all the reusable logic: loaders, conditioning, detectors, scoring
 scripts/pipeline/        the reproducible pipeline — one script per artefact, in order
@@ -387,6 +388,27 @@ sidebar says which engine is running.
 Every figure it shows is read from `results/*.json`; the dashboard carries no
 copy of a headline number, so it cannot disagree with this README.
 
+### The live explorer
+
+Tab 2 ends with a **Live Multi-Turbine & Weather-Conditioned Explorer**: the
+same detector, run on the data *you* choose, with the provenance of every run
+on screen — rows processed, runtime in seconds, and which datasets were
+joined.
+
+| source | what it runs on | available when |
+|---|---|---|
+| ENGIE + ERA5 | any of the four La Haute Borne turbines, joined to reanalysis weather, with the other three as the control group | `data/raw/` present |
+| CARE benchmark events | any labelled anomaly or normal-control dataset, with the ground-truth event window | `data/raw/` present |
+| **Upload a turbine CSV** | **any** 10-minute SCADA file, self-calibrated on its own history | **always** |
+
+The upload path is the one that works everywhere, including on Streamlit
+Community Cloud, and the dashboard offers a **downloadable sample** — a real
+four-month slice of the ENGIE release, with the ERA5 ambient temperature
+added, so a reviewer can try the detector without a 19 GB download. The
+engine infers the columns by name and refuses clearly when a file lacks the
+power or temperature channel the reference needs, rather than drawing an empty
+chart.
+
 ## The demo
 
 `make demo` (i.e. `scripts/pipeline/11_demo.py`) runs the real detector on real SCADA and prints what it
@@ -410,7 +432,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-143 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+166 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

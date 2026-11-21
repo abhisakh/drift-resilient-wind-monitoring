@@ -49,6 +49,19 @@ the tests are always collected and only their execution is skipped.
 `tests/test_repo_rules.py::test_no_test_module_skips_at_import_time` enforces
 this, so the mistake cannot be reintroduced silently.
 
+## The downloadable sample
+
+`assets/sample_turbine.csv` is a real four-month slice of the ENGIE release
+(August–November 2017 for R80711), committed so that a reviewer on Streamlit
+Community Cloud can run the detector without the 19 GB download. It carries
+the ERA5 ambient temperature, because the ENGIE release ships no ambient
+sensor.
+
+Regenerate it with `make snapshot`, which writes it alongside
+`results/demo_r80711.json` from the same detector and the same frozen 2014
+reference. `tests/test_live_engine.py` asserts the committed file is
+reproducible byte for byte, wherever the raw data is present.
+
 ## Data
 
 `scripts/pipeline/01_build_dataset.py` downloads everything into `data/raw/`

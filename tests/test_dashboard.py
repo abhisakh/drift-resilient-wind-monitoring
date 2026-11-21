@@ -38,6 +38,26 @@ def test_app_imports_cleanly():
     assert hasattr(mod, "main")
 
 
+def _cloud_copy(tmp_path):
+    """A copy of the repository with NO data/ -- what Cloud actually serves.
+
+    It carries app.py, results/, src/ and assets/: the dashboard imports the
+    engine from src/, and the downloadable sample lives in assets/, so both
+    are needed for the cloud deployment to work at all.
+    """
+    import shutil
+
+    cloud = tmp_path / "cloud"
+    cloud.mkdir()
+    shutil.copy2(ROOT / "app.py", cloud / "app.py")
+    shutil.copytree(ROOT / "results", cloud / "results")
+    shutil.copytree(ROOT / "src", cloud / "src")
+    if (ROOT / "assets").exists():
+        shutil.copytree(ROOT / "assets", cloud / "assets")
+    assert not (cloud / "data").exists(), "the cloud copy must have no data/"
+    return cloud
+
+
 def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     """The CLOUD mode must work with no data/raw/ present.
 
@@ -46,15 +66,9 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     running the app in place never exercises the mode a reviewer on
     Streamlit Community Cloud will actually see.
     """
-    import shutil
-
     from streamlit.testing.v1 import AppTest
 
-    cloud = tmp_path / "cloud"
-    cloud.mkdir()
-    shutil.copy2(ROOT / "app.py", cloud / "app.py")
-    shutil.copytree(ROOT / "results", cloud / "results")
-    assert not (cloud / "data").exists(), "the cloud copy must have no data/"
+    cloud = _cloud_copy(tmp_path)
 
     at = AppTest.from_file(str(cloud / "app.py"), default_timeout=180)
     at.run()
@@ -292,3 +306,130 @@ def test_dashboard_and_readme_agree_on_the_headline_numbers():
     assert f"{det_roll:.2f}" in body, "the README does not quote the rolling rate"
     assert f"{det_frozen:.2f}" in body, "the README does not quote the frozen rate"
     assert f"{ratio:.0f}" in body, "the README does not quote the ratio"
+
+
+# ------------------------------------------------- the live explorer
+def _source_radio(at):
+    """The explorer's source selector."""
+    radios = [r for r in at.radio if r.label == "Source"]
+    assert radios, "the explorer has no source selector"
+    return radios[0]
+
+
+def test_the_explorer_offers_all_three_sources():
+    """ENGIE with real weather, the labelled benchmark, and the reader's
+    own file -- the three things the project can be run against."""
+    at = _app_test()
+    at.run()
+    assert not at.exception
+    options = list(_source_radio(at).options)
+    assert len(options) == 3, options
+    assert any("ENGIE" in o for o in options)
+    assert any("CARE" in o for o in options)
+    assert any("Upload" in o for o in options)
+
+
+def test_the_upload_source_offers_the_sample_download():
+    """A reviewer on Cloud has no 19 GB of raw data, so the sample file is
+    how they can try the detector at all."""
+    at = _app_test()
+    at.run()
+    _source_radio(at).set_value("Upload a turbine CSV").run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    downloads = [d.label for d in at.get("download_button")]
+    assert any("sample" in d.lower() for d in downloads), downloads
+    assert at.get("file_uploader"), "the upload source has no file uploader"
+
+
+def test_running_the_upload_source_reports_rows_runtime_and_datasets():
+    """The banner has to say what the engine did: rows, seconds, and which
+    datasets were joined. A reader has to be able to check the working."""
+    at = _app_test()
+    at.run()
+    _source_radio(at).set_value("Upload a turbine CSV").run()
+    sample = ROOT / "assets" / "sample_turbine.csv"
+    at.get("file_uploader")[0].upload("sample_turbine.csv", sample.read_bytes(),
+                                      "text/csv")
+    at.run()
+    run = [b for b in at.button if b.label == "Run the explorer"]
+    assert run, "the upload source has no run button"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    banners = [s.value for s in at.success]
+    assert banners, "the run produced no success banner"
+    banner = banners[-1]
+    assert "rows" in banner.lower(), banner
+    assert "s**" in banner or " s " in banner, f"no runtime in the banner: {banner}"
+    assert "joined" in banner.lower(), f"no datasets named: {banner}"
+    assert "uploaded CSV" in banner, banner
+    # And it must have drawn the result.
+    assert len(at.get("plotly_chart")) >= 4, "the explorer rendered no chart"
+
+
+def test_the_explorer_runs_in_cloud_mode_with_no_raw_data(tmp_path):
+    """THE CLOUD TEST.
+
+    On Streamlit Community Cloud there is no data/raw/, so the ENGIE and CARE
+    sources cannot run. The upload path must still work, or the explorer is
+    decoration for a reviewer and a tool for the author.
+    """
+    from streamlit.testing.v1 import AppTest
+
+    cloud = _cloud_copy(tmp_path)
+    at = AppTest.from_file(str(cloud / "app.py"), default_timeout=180)
+    at.run()
+    assert not at.exception, f"the app raised in cloud mode: {at.exception}"
+
+    # The badge says snapshot mode.
+    text = "\n".join(m.value for m in at.sidebar.markdown)
+    assert "CLOUD SNAPSHOT MODE" in text
+
+    # The upload source is offered, with the sample, and it RUNS.
+    _source_radio(at).set_value("Upload a turbine CSV").run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    sample = cloud / "assets" / "sample_turbine.csv"
+    assert sample.exists(), "the cloud copy has no sample file"
+    at.get("file_uploader")[0].upload("sample_turbine.csv", sample.read_bytes(),
+                                      "text/csv")
+    at.run()
+    run = [b for b in at.button if b.label == "Run the explorer"]
+    assert run, "no run button in cloud mode"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    banners = [s.value for s in at.success]
+    assert banners, "the cloud run produced no success banner"
+    assert "rows" in banners[-1].lower()
+    assert "joined" in banners[-1].lower()
+
+
+def test_the_engie_source_offers_all_four_turbines():
+    """The four La Haute Borne turbines are the case study and its controls."""
+    at = _app_test()
+    at.run()
+    turbines = [s for s in at.selectbox if s.label == "Turbine"]
+    if not turbines:
+        pytest.skip("the ENGIE source is not available without the raw data")
+    options = list(turbines[0].options)
+    assert set(options) == {"R80711", "R80721", "R80736", "R80790"}, options
+
+
+def test_running_the_engie_source_reports_what_it_joined():
+    """The ENGIE source joins SCADA and ERA5 -- two different datasets, and
+    the banner has to say so."""
+    if not ((ROOT / "data" / "raw").exists()
+            and any((ROOT / "data" / "raw").rglob("*R80711*F99*.csv"))):
+        pytest.skip("the raw ENGIE data is not present")
+
+    at = _app_test()
+    at.run()
+    run = [b for b in at.button if b.label == "Run the explorer"]
+    assert run, "no run button"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    banners = [s.value for s in at.success]
+    assert banners, "the ENGIE run produced no success banner"
+    banner = banners[-1]
+    assert "SCADA" in banner, banner
+    assert "ERA5" in banner, banner

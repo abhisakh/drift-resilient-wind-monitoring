@@ -306,6 +306,374 @@ def tab_executive(engie, care_score, multiv, lgbm):
             )
 
 
+# ------------------------------------------------- the live explorer
+# The engine itself lives in src/windmill/live.py (repo rule 2: domain logic
+# in src/, orchestration in the app). These wrappers only add caching, so
+# that re-running the explorer with the same inputs is instant.
+
+def _engine():
+    """Import the live engine, with the project's src/ on the path."""
+    import sys
+    if str(ROOT / "src") not in sys.path:
+        sys.path.insert(0, str(ROOT / "src"))
+    from windmill import live
+    return live
+
+
+@st.cache_data(show_spinner=False)
+def _run_engie_cached(turbine: str, window: str, z: float, peers: bool):
+    live = _engine()
+    return live.run_engie(ROOT / "data", turbine=turbine, window=window,
+                          z_threshold=z, with_peers=peers)
+
+
+@st.cache_data(show_spinner=False)
+def _run_care_cached(farm: str, event_id: str, quantile: float):
+    live = _engine()
+    return live.run_care(ROOT / "data", farm=farm, event_id=event_id,
+                         quantile=quantile)
+
+
+@st.cache_data(show_spinner=False)
+def _parse_upload_cached(payload: bytes):
+    """Parse an uploaded CSV and infer what its columns are."""
+    import io
+    import pandas as pd
+    live = _engine()
+    df = pd.read_csv(io.BytesIO(payload), low_memory=False)
+    return df, live.infer_columns(df)
+
+
+@st.cache_data(show_spinner=False)
+def _run_upload_cached(payload: bytes, channel: str, z: float, ref_frac: float):
+    import io
+    import pandas as pd
+    live = _engine()
+    df = pd.read_csv(io.BytesIO(payload), low_memory=False)
+    return live.run_upload(df, z_threshold=z, ref_frac=ref_frac,
+                           display_channel=channel or None)
+
+
+def _provenance_banner(prov: dict) -> None:
+    """The banner that says what the engine just did.
+
+    Rows processed, runtime, and the datasets that were joined -- because
+    "SCADA plus reanalysis weather" and "SCADA alone" are different
+    measurements, and a reader has to be able to tell which one they are
+    looking at.
+    """
+    joined = " · ".join(prov.get("joined", []))
+    st.success(
+        f"**{prov.get('rows', 0):,} rows** processed in "
+        f"**{prov.get('seconds', 0.0):.2f} s** — joined: {joined}"
+    )
+
+
+def _render_live_result(result: dict, z_threshold: float) -> None:
+    """Draw whatever the engine produced, whatever the source was.
+
+    The three sources share one renderer, so the reader learns one layout:
+    the channel, the detector's score, and the alarms.
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    frame = result["frame"]
+    prov = result["provenance"]
+
+    has_value = "value" in frame.columns and frame["value"].notna().any()
+    rows = 2 if has_value else 1
+    fig = make_subplots(
+        rows=rows, cols=1, shared_xaxes=True,
+        row_heights=[0.6, 0.4] if has_value else [1.0],
+        vertical_spacing=0.06,
+        subplot_titles=(("Component temperature (°C)",) if has_value else ())
+        + (("Detector z-score and alarms",) if has_value else ()),
+    )
+
+    if has_value:
+        fig.add_trace(go.Scatter(
+            x=frame.get("ts"), y=frame["value"], name="channel",
+            mode="lines", line=dict(width=1.6)), row=1, col=1)
+        if "peer" in frame.columns and frame["peer"].notna().any():
+            fig.add_trace(go.Scatter(
+                x=frame.get("ts"), y=frame["peer"], name="control group (median)",
+                mode="lines", line=dict(width=2.0, dash="dash"),
+                opacity=0.9), row=1, col=1)
+        for col in frame.columns:
+            if col.startswith("peer_") and frame[col].notna().any():
+                fig.add_trace(go.Scatter(
+                    x=frame.get("ts"), y=frame[col], name=col.replace("peer_", ""),
+                    mode="lines", line=dict(width=1.0), opacity=0.7), row=1, col=1)
+        fig.update_yaxes(title_text="°C", row=1, col=1)
+
+    zrow = 2 if has_value else 1
+    for col, style in (("z_rolling", dict(width=1.4)),
+                       ("z_frozen", dict(width=1.1, dash="dot"))):
+        if col in frame.columns and frame[col].notna().any():
+            fig.add_trace(go.Scatter(
+                x=frame.get("ts"), y=frame[col],
+                name=col.replace("_", " "), mode="lines",
+                line=style), row=zrow, col=1)
+    shown = "z_rolling" if ("z_rolling" in frame.columns
+                            and frame["z_rolling"].notna().any()) else "z_frozen"
+    if shown in frame.columns:
+        alarm = frame[shown] > z_threshold
+        fig.add_trace(go.Scatter(
+            x=frame.get("ts"), y=frame[shown].where(alarm),
+            name=f"alarm (z > {z_threshold:.1f})", mode="markers",
+            marker=dict(size=4, color="#e05263")), row=zrow, col=1)
+    fig.add_hline(y=z_threshold, line_dash="dash", line_color="#e05263",
+                  row=zrow, col=1, annotation_text=f"threshold {z_threshold:.1f}")
+
+    # The ground-truth event window, where the source has one.
+    if "in_event" in frame.columns and frame["in_event"].any():
+        xs = frame.get("ts")
+        if xs is not None:
+            flagged = frame[frame["in_event"].fillna(False)]
+            if len(flagged):
+                x0, x1 = flagged["ts"].min(), flagged["ts"].max()
+                fig.add_vrect(x0=x0, x1=x1, fillcolor="#e05263", opacity=0.12,
+                              line_width=0,
+                              annotation_text="ground-truth event window",
+                              row=1, col=1)
+
+    fig.update_yaxes(title_text="robust deviations", row=zrow, col=1)
+    fig.update_xaxes(title_text="UTC", row=zrow, col=1)
+    fig.update_layout(height=560, margin=dict(l=10, r=10, t=60, b=10),
+                      hovermode="x unified")
+    st.plotly_chart(fig, width="stretch")
+
+    # --- the numbers ------------------------------------------------------
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        kpi(f"{prov.get('rows', 0):,}", "rows scored",
+            f"{prov.get('seconds', 0.0):.2f} s")
+    with k2:
+        kpi(str(len(prov.get("channels") or [])), "thermal channels",
+            prov.get("reference", "")[:48])
+    with k3:
+        kpi(f"{prov.get('alarms', 0):,}", "alarms",
+            f"z > {prov.get('z_threshold', z_threshold):.1f}")
+    with k4:
+        rate = (100.0 * prov.get("alarms", 0) / max(1, prov.get("rows", 1)))
+        kpi(f"{rate:.2f} %", "alarm rate", "of the scored rows")
+
+    st.markdown(
+        f"<div class='note'><b>Reference:</b> {prov.get('reference', 'n/a')}. "
+        f"<b>Joined:</b> {' · '.join(prov.get('joined', []))}.</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def tab_explorer(live: bool) -> None:
+    """Live Multi-Turbine & Weather-Conditioned Explorer.
+
+    Three sources, one detector. The reader can run the project against the
+    ENGIE site, against a labelled CARE event, or against their own turbine
+    file -- and see the detector calibrate, score and alarm on it, with the
+    provenance of every run on screen.
+    """
+    st.markdown("#### Live Multi-Turbine & Weather-Conditioned Explorer")
+    st.markdown(
+        "<div class='note'>The same detector that produced the results above, "
+        "run live on the data you choose. Every run reports what it read, how "
+        "many rows it processed and how long it took -- so you can check the "
+        "working rather than take it on trust.</div>",
+        unsafe_allow_html=True,
+    )
+
+    live_mod = _engine()
+    source = st.radio(
+        "Source", ("ENGIE La Haute Borne + ERA5", "CARE benchmark events",
+                   "Upload a turbine CSV"),
+        horizontal=True,
+        help="ENGIE is the healthy multi-turbine site with real weather "
+             "joined on. CARE is the labelled benchmark. The upload path runs "
+             "the detector on your own file, self-calibrated on its history.",
+    )
+
+    result = None
+    z_threshold = 4.0
+
+    # ------------------------------------------------------- ENGIE + ERA5
+    if source == "ENGIE La Haute Borne + ERA5":
+        if not live:
+            st.info(
+                "**The 19 GB raw release is not present**, so this source "
+                "cannot run here. The *Upload a turbine CSV* source below "
+                "works anywhere, including on Streamlit Community Cloud — "
+                "download the sample and run the detector on it."
+            )
+        else:
+            c1, c2, c3 = st.columns([1.1, 1.6, 1.0])
+            with c1:
+                turbine = st.selectbox("Turbine", live_mod.ENGIE_TURBINES)
+            with c2:
+                window = st.selectbox("Window", list(live_mod.ENGIE_WINDOWS))
+            with c3:
+                with_peers = st.checkbox("Control group", value=True,
+                                         help="Score the three sibling "
+                                              "turbines as the control group.")
+            z_threshold = st.slider("Alarm threshold (z)", 0.5, 12.0, 4.0, 0.1)
+            if st.button("Run the explorer", type="primary",
+                         key="run_engie"):
+                with st.spinner(
+                    f"Reading {turbine}'s SCADA, joining ERA5, fitting the "
+                    f"reference and scoring…"
+                ):
+                    try:
+                        result = _run_engie_cached(turbine, window, z_threshold,
+                                                   with_peers)
+                    except Exception as exc:
+                        st.error(f"the live engine failed: {exc}")
+            if turbine == "R80711":
+                st.markdown(
+                    "<div class='note'>R80711 is the case study: its gearbox "
+                    "bearing 2 runs hot from September 2017 while its three "
+                    "siblings do not. The other three turbines are the "
+                    "control group — they are healthy throughout, so every "
+                    "alarm on them is a false alarm.</div>",
+                    unsafe_allow_html=True,
+                )
+
+    # ------------------------------------------------------- CARE events
+    elif source == "CARE benchmark events":
+        if not live:
+            st.info(
+                "**The CARE dataset is not present** (it is 19 GB "
+                "extracted), so the labelled benchmark cannot be run live "
+                "here. Its scores are in the *CARE benchmark* tab, and the "
+                "upload path below runs the same detector on any file."
+            )
+        else:
+            events = live_mod.care_events(ROOT / "data")
+            if not events:
+                st.warning("No CARE events found under data/.")
+            else:
+                labels = {
+                    e["event_id"]: (
+                        f"{'ANOMALY' if e['label'] == 'anomaly' else 'normal '} "
+                        f"· {e['farm']} · dataset {e['event_id']} "
+                        f"— {e['description'][:44]}"
+                    )
+                    for e in events
+                }
+                c1, c2 = st.columns([1.6, 1.0])
+                with c1:
+                    event_id = st.selectbox(
+                        "Event", list(labels),
+                        format_func=lambda e: labels[e],
+                        help="The labelled anomaly events first, then the "
+                             "normal control datasets — the healthy case "
+                             "matters as much as the faulty one.",
+                    )
+                with c2:
+                    st.metric("labelled events", f"{len(events)}")
+                chosen = next(e for e in events if e["event_id"] == event_id)
+                st.caption(f"ground truth: rows {chosen['start']}–{chosen['end']}")
+                if st.button("Run the explorer", type="primary",
+                             key="run_care"):
+                    with st.spinner(
+                        f"Loading CARE {chosen['farm']} dataset "
+                        f"{chosen['event_id']} and scoring it…"
+                    ):
+                        try:
+                            result = _run_care_cached(chosen["farm"],
+                                                     chosen["event_id"], 0.90)
+                        except Exception as exc:
+                            st.error(f"the live engine failed: {exc}")
+
+    # ---------------------------------------------------------- upload
+    else:
+        sample = live_mod.sample_csv_path()
+        d1, d2 = st.columns([1.4, 1.0])
+        with d1:
+            upload = st.file_uploader(
+                "Turbine CSV", type=["csv"],
+                help="Any 10-minute SCADA file with a timestamp, a power "
+                     "column and at least one component temperature. The "
+                     "columns are recognised by name.",
+            )
+        with d2:
+            if sample.exists():
+                st.download_button(
+                    "Download sample turbine CSV",
+                    data=sample.read_bytes(),
+                    file_name="sample_turbine.csv",
+                    mime="text/csv",
+                    help="A real four-month slice of the ENGIE release, with "
+                         "the ERA5 ambient temperature added. Use it to try "
+                         "the detector without a 19 GB download.",
+                )
+            else:
+                st.caption("the sample file is not committed")
+
+        if sample.exists():
+            with st.expander("What is in the sample?"):
+                st.markdown(
+                    "\n".join([
+                        f"- {sample.stat().st_size/1e6:.2f} MB, "
+                        "August-November 2017 for R80711, straight from the "
+                        "ENGIE release (Mendeley v2, CC BY 4.0).",
+                        "- `era5_temp_2m` is the **reanalysis** ambient "
+                        "temperature, not a turbine sensor: the ENGIE release "
+                        "ships no ambient sensor, so ERA5 supplies it.",
+                        "- The engine calibrates on the file's **own first "
+                        "60 %** and scores the rest - the same thing a "
+                        "commissioned machine does.",
+                    ])
+                )
+
+        if upload is None:
+            st.info(
+                "Upload a CSV, or download the sample above and upload it, to "
+                "watch the detector calibrate on it."
+            )
+        else:
+            payload = upload.getvalue()
+            try:
+                df, mapping = _parse_upload_cached(payload)
+            except Exception as exc:
+                st.error(f"could not read that file: {exc}")
+                df, mapping = None, None
+            if df is not None:
+                st.markdown(
+                    f"<div class='note'>{_engine()._describe_mapping(mapping)}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                c1, c2 = st.columns([1.2, 1.0])
+                with c1:
+                    channel = st.selectbox(
+                        "Channel to display", mapping["thermal"],
+                        help="The detector always uses every temperature "
+                             "channel it found; this is only which one you "
+                             "look at.",
+                    ) if mapping["thermal"] else None
+                with c2:
+                    ref_frac = st.slider(
+                        "Reference fraction", 0.3, 0.85, 0.6, 0.05,
+                        help="The first share of the file is the reference; "
+                             "the rest is scored.")
+                z_threshold = st.slider("Alarm threshold (z)", 0.5, 12.0,
+                                        4.0, 0.1, key="upload_z")
+                if st.button("Run the explorer", type="primary",
+                             key="run_upload"):
+                    with st.spinner(
+                        "Calibrating on the file's own history and scoring…"
+                    ):
+                        try:
+                            result = _run_upload_cached(payload, channel or "",
+                                                        z_threshold, ref_frac)
+                        except Exception as exc:
+                            st.error(f"the live engine failed: {exc}")
+
+    if result is not None:
+        _provenance_banner(result["provenance"])
+        _render_live_result(result, z_threshold)
+
+
 # ---------------------------------------------------------------- tab 2
 def _snapshot_frame(snap) -> pd.DataFrame:
     df = pd.DataFrame(snap["series"])
@@ -425,35 +793,18 @@ def tab_monitor(snap, live):
             f"and a stale reference turns slow drift into a flood of alarms.</div>",
             unsafe_allow_html=True)
 
-    # --- live mode ---------------------------------------------------------
-    if live:
-        st.markdown("#### Live SCADA")
-        st.markdown(
-            "<div class='note'>The raw 19 GB release is present, so the series "
-            "above can be re-derived from the source files and the detector "
-            "re-run. The snapshot and the live run are the same measurement — "
-            "the snapshot exists so the dashboard also works without the data.</div>",
-            unsafe_allow_html=True)
-        with st.expander("Re-run the detector on the raw SCADA now"):
-            if st.button("Run the live engine", type="primary"):
-                with st.spinner("Fitting the reference and scoring 4 turbines…"):
-                    try:
-                        sys.path.insert(0, str(ROOT / "src"))
-                        from windmill import multivariate  # noqa: E402
-                        live_ok = True
-                    except Exception as exc:  # pragma: no cover
-                        live_ok = False
-                        st.error(f"live engine unavailable: {exc}")
-                    if live_ok:
-                        st.success("Live engine available — the raw SCADA is "
-                                   "readable through windmill.loaders.")
-    else:
+    # --- snapshot mode -----------------------------------------------------
+    if not live:
         st.info(
-            "**Snapshot mode.** The raw 19 GB release is not present, so this "
-            "reads `results/demo_r80711.json` — exported by "
-            "`scripts/pipeline/11_demo.py` from the same detector and the same "
-            "frozen 2014 reference."
+            "**Snapshot mode.** The raw 19 GB release is not present, so the "
+            "series above is read from `results/demo_r80711.json` — exported "
+            "by `scripts/pipeline/11_demo.py` from the same detector and the "
+            "same frozen 2014 reference. The explorer below still runs live: "
+            "it can score any turbine CSV you give it."
         )
+
+    # --- the live explorer -------------------------------------------------
+    tab_explorer(live)
 
 
 # ---------------------------------------------------------------- tab 3
