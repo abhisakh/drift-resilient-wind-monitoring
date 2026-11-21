@@ -450,74 +450,114 @@ def section_ae_comparability() -> str:
             "authors' own autoencoder under a leak-free threshold rule and the "
             "gap survives.\n")
         out.append(
-            "Two things also differ in scope rather than in method: the AE sees "
+            "And the status-column question was measured rather than argued. "
+            "The package has two feature-building entry points, one of which "
+            "keeps `status_type_id` -- the fault annotation -- as a feature. "
+            "The AE was run over all 95 datasets both ways: the scores are "
+            "**identical to four decimal places**. The reason is that the AE "
+            "trains only on normal rows, where the status column is constantly "
+            "0, so it carries no information the AE could exploit. That leak "
+            "was never there.\n")
+        out.append(
+            "One thing does differ in scope rather than in method: the AE sees "
             "the **full sensor vector** (power, wind, pitch, hydraulic, "
             "electrical), while this project's detector sees only the thermal "
-            "channels -- so a hydraulic or pitch fault is invisible to it; and "
-            "the AE's feature set depends on which of the package's two entry "
-            "points was used, one of which keeps `status_type_id` (the fault "
-            "annotation) as a feature.\n")
+            "channels -- so a hydraulic or pitch fault is invisible to it. The "
+            "section above measures exactly what that costs.\n")
     # --- the like-for-like comparison -------------------------------------
     sc = load("subset_comparison.json")
-    if sc:
-        ours = sc.get("this_project", {})
-        theirs = sc.get("published_ae_baseline_measured_here", {})
+    mv_all = load("multivariate.json")
+    ae_all = (a.get("per_config") or {}).get("published_s0")
+    if sc and mv_all and ae_all:
+        ours_all = mv_all["max_combiner"]["sub_scores"]
+        ours_all_score = mv_all["max_combiner"]["care_score"]
         out.append(
-            f"**The like-for-like measurement.** Both figures above are over all "
-            f"95 datasets, so they cannot be subtracted from one another. So "
-            f"both arms were scored on the **same** "
-            f"{sc.get('n_datasets')} datasets, with the same CARE scorer:\n")
+            "**The like-for-like measurement.** Both arms were run over the "
+            "**same 95 datasets** and scored with the same CARE scorer:\n")
         out.append("| arm | datasets | coverage | accuracy | reliability | "
                    "earliness | CARE |")
         out.append("|---|---|---|---|---|---|---|")
-        for label, v in (("this project (deterministic, max z)", ours),
-                          ("published AE (authors' own implementation)", theirs)):
-            out.append(f"| {label} | {v.get('n_datasets')} | "
-                       f"{fmt(v.get('coverage'))} | {fmt(v.get('accuracy'))} | "
-                       f"{fmt(v.get('reliability'))} | {fmt(v.get('earliness'))} | "
-                       f"{fmt(v.get('care_score'))} |")
+        out.append(f"| this project (deterministic, max z) | 95 | "
+                   f"{fmt(ours_all.get('coverage'))} | {fmt(ours_all.get('accuracy'))} | "
+                   f"{fmt(ours_all.get('reliability'))} | {fmt(ours_all.get('earliness'))} | "
+                   f"{fmt(ours_all_score)} |")
+        out.append(f"| published AE (authors' own implementation) | "
+                   f"{ae_all.get('n_datasets')} | {fmt(ae_all.get('coverage'))} | "
+                   f"{fmt(ae_all.get('accuracy'))} | {fmt(ae_all.get('reliability'))} | "
+                   f"{fmt(ae_all.get('earliness'))} | {fmt(ae_all.get('care_score'))} |")
+        out.append(f"| published AE (paper, Optuna-tuned) | 95 | - | - | - | - | "
+                   f"0.66 |")
         out.append("")
-        if ours.get("care_score") is not None and theirs.get("care_score") is not None:
-            gap = theirs["care_score"] - ours["care_score"]
-            out.append(
-                f"**The honest answer: the AE is genuinely better on these "
-                f"events**, by {fmt(gap, 3)} CARE "
-                f"({fmt(theirs['care_score'])} against {fmt(ours['care_score'])}). "
-                f"That holds even with a leak-free threshold rule and even with "
-                f"the status column removed from the AE's features -- so the "
-                f"gap is NOT a protocol artefact.\n")
-            out.append(
-                "The shape of the gap is informative. This project's detector "
-                f"has the better **accuracy** ({fmt(ours.get('accuracy'))} against "
-                f"{fmt(theirs.get('accuracy'))}): it raises far fewer false "
-                f"alarms. The AE has the better **coverage** "
-                f"({fmt(theirs.get('coverage'))} against {fmt(ours.get('coverage'))}) "
-                f"and the better **earliness** ({fmt(theirs.get('earliness'))} "
-                f"against {fmt(ours.get('earliness'))}): it finds more of the "
-                f"true anomalies and finds them earlier.\n")
-            out.append(
-                "The reason is visible in the threshold rule rather than in the "
-                "physics. A leak-free threshold set at a training quantile has "
-                "to be conservative to avoid false alarms, and this project's "
-                "arm pays for that in exactly the sub-scores the AE wins: it "
-                "detects late and rarely. A threshold selected on the scored "
-                "events would lift its coverage considerably -- the fixed-z "
-                "upper bound in the sweep above reaches a coverage comparable "
-                "to the AE's -- but that number is an upper bound, not a "
-                "result.\n")
+        gap = ae_all["care_score"] - ours_all_score
+        tuning = 0.66 - ae_all["care_score"]
+        out.append(
+            f"**The honest answer: the AE beats us, by {fmt(gap, 3)} CARE** "
+            f"({fmt(ae_all['care_score'])} against {fmt(ours_all_score)}) -- with a "
+            f"leak-free threshold rule, over the whole benchmark, with the status "
+            f"column removed. The gap is not a protocol artefact.\n")
+        out.append(
+            f"But note the third row. The authors' **published** 0.66 is "
+            f"{fmt(tuning, 3)} above what their own default configuration "
+            f"reproduces here ({fmt(ae_all['care_score'])}). That difference is "
+            f"the part of the published number that comes from the Optuna "
+            f"search, the per-farm adaptive thresholds and the per-farm "
+            f"sensitivities -- none of which has a held-out protocol behind it. "
+            f"So 0.66 is the right number to quote as the state of the art, and "
+            f"it is not the right number to quote as a like-for-like baseline.\n")
+        out.append(
+            "The shape of the gap is informative. This project's detector has "
+            f"the better **accuracy** ({fmt(ours_all.get('accuracy'))} against "
+            f"{fmt(ae_all.get('accuracy'))}): it raises far fewer false alarms. "
+            f"The AE has the better **coverage** "
+            f"({fmt(ae_all.get('coverage'))} against {fmt(ours_all.get('coverage'))}) "
+            f"and the better **earliness** ({fmt(ae_all.get('earliness'))} against "
+            f"{fmt(ours_all.get('earliness'))}): it finds more of the true "
+            f"anomalies and finds them earlier.\n")
+        out.append(
+            "And the section above says why: a leak-free threshold set at a "
+            "training quantile has to be conservative to avoid false alarms, "
+            "and this project's arm pays for that in exactly the sub-scores the "
+            "AE wins -- it detects late and rarely. A threshold selected on the "
+            "scored events would lift its coverage considerably -- the fixed-z "
+            "upper bound in the sweep above reaches a coverage comparable to the "
+            "AE's -- but that number is an upper bound, not a result.\n")
+        out.append(
+            f"As a cross-check, both arms were also scored on an identical "
+            f"{sc.get('n_datasets')}-dataset subset, chosen and stratified by "
+            f"label: this project {fmt(sc.get('this_project', {}).get('care_score'))}, "
+            f"the AE {fmt(sc.get('published_ae_baseline_measured_here', {}).get('care_score'))}. "
+            f"Same ordering, same conclusion, on a different sample.\n")
     pc = a.get("per_config") or {}
     if pc:
-        out.append("The authors' own autoencoder, run on the same subset in two "
-                   "configurations, and scored with their own CARE scorer:\n")
+        # The audit's own configurations, on however many datasets it ran.
+        label = {"published_s0": "published protocol (as the authors' code runs it)",
+                 "no_status_s0": "same, with status_type_id removed from the features",
+                 "published_s1": "published protocol, a different random seed"}
+        out.append("The authors' own autoencoder, run here and scored with their "
+                   "own CARE scorer:\n")
         out.append("| configuration | datasets | coverage | accuracy | "
                    "reliability | earliness | CARE |")
         out.append("|---|---|---|---|---|---|---|")
         for name, v in pc.items():
-            out.append(f"| {name} | {v.get('n_datasets')} | "
+            out.append(f"| {label.get(name, name)} | {v.get('n_datasets')} | "
                        f"{fmt(v.get('coverage'))} | {fmt(v.get('accuracy'))} | "
                        f"{fmt(v.get('reliability'))} | {fmt(v.get('earliness'))} | "
                        f"{fmt(v.get('care_score'))} |")
         out.append("")
+        # Two configurations with the same protocol and different seeds measure
+        # the run-to-run spread -- which is the point about the published
+        # number being a single stochastic run.
+        seeds = {k: v for k, v in pc.items() if k.startswith("published_s")}
+        if len(seeds) > 1:
+            vals = [v.get("care_score") for v in seeds.values()
+                    if v.get("care_score") is not None]
+            if len(vals) > 1:
+                out.append(
+                    f"Same protocol, different seeds: CARE {', '.join(fmt(v) for v in vals)}. "
+                    f"The spread between two runs of the SAME configuration "
+                    f"({fmt(max(vals) - min(vals), 4)}) is the size of the "
+                    f"uncertainty in any single published figure -- and the "
+                    f"published pipeline is not seeded at all.\n")
     if a.get("subsample_note"):
         out.append(a["subsample_note"] + "\n")
     out.append("**What we claim, precisely.** We claim that our "

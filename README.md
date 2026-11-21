@@ -274,29 +274,39 @@ Read out of the paper (sec. 4.2.2), which is where the comparability question is
 
 > The published 0.66 is therefore the output of a search whose objective was the CARE score itself: a **tuned-on-the-benchmark** number, not a held-out one. That is a reason to be careful about quoting it as a like-for-like baseline -- but it is NOT by itself an explanation of the gap, because the measurement below runs the authors' own autoencoder under a leak-free threshold rule and the gap survives.
 
-Two things also differ in scope rather than in method: the AE sees the **full sensor vector** (power, wind, pitch, hydraulic, electrical), while this project's detector sees only the thermal channels -- so a hydraulic or pitch fault is invisible to it; and the AE's feature set depends on which of the package's two entry points was used, one of which keeps `status_type_id` (the fault annotation) as a feature.
+And the status-column question was measured rather than argued. The package has two feature-building entry points, one of which keeps `status_type_id` -- the fault annotation -- as a feature. The AE was run over all 95 datasets both ways: the scores are **identical to four decimal places**. The reason is that the AE trains only on normal rows, where the status column is constantly 0, so it carries no information the AE could exploit. That leak was never there.
 
-**The like-for-like measurement.** Both figures above are over all 95 datasets, so they cannot be subtracted from one another. So both arms were scored on the **same** 12 datasets, with the same CARE scorer:
+One thing does differ in scope rather than in method: the AE sees the **full sensor vector** (power, wind, pitch, hydraulic, electrical), while this project's detector sees only the thermal channels -- so a hydraulic or pitch fault is invisible to it. The section above measures exactly what that costs.
+
+**The like-for-like measurement.** Both arms were run over the **same 95 datasets** and scored with the same CARE scorer:
 
 | arm | datasets | coverage | accuracy | reliability | earliness | CARE |
 |---|---|---|---|---|---|---|
-| this project (deterministic, max z) | 12 | 0.1160 | 0.9673 | 0.4545 | 0.0311 | 0.5072 |
-| published AE (authors' own implementation) | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
+| this project (deterministic, max z) | 95 | 0.1513 | 0.9512 | 0.3810 | 0.0795 | 0.5028 |
+| published AE (authors' own implementation) | 95 | 0.4082 | 0.7792 | 0.5204 | 0.4173 | 0.5809 |
+| published AE (paper, Optuna-tuned) | 95 | - | - | - | - | 0.66 |
 
-**The honest answer: the AE is genuinely better on these events**, by 0.089 CARE (0.5966 against 0.5072). That holds even with a leak-free threshold rule and even with the status column removed from the AE's features -- so the gap is NOT a protocol artefact.
+**The honest answer: the AE beats us, by 0.078 CARE** (0.5809 against 0.5028) -- with a leak-free threshold rule, over the whole benchmark, with the status column removed. The gap is not a protocol artefact.
 
-The shape of the gap is informative. This project's detector has the better **accuracy** (0.9673 against 0.8725): it raises far fewer false alarms. The AE has the better **coverage** (0.3423 against 0.1160) and the better **earliness** (0.3187 against 0.0311): it finds more of the true anomalies and finds them earlier.
+But note the third row. The authors' **published** 0.66 is 0.079 above what their own default configuration reproduces here (0.5809). That difference is the part of the published number that comes from the Optuna search, the per-farm adaptive thresholds and the per-farm sensitivities -- none of which has a held-out protocol behind it. So 0.66 is the right number to quote as the state of the art, and it is not the right number to quote as a like-for-like baseline.
 
-The reason is visible in the threshold rule rather than in the physics. A leak-free threshold set at a training quantile has to be conservative to avoid false alarms, and this project's arm pays for that in exactly the sub-scores the AE wins: it detects late and rarely. A threshold selected on the scored events would lift its coverage considerably -- the fixed-z upper bound in the sweep above reaches a coverage comparable to the AE's -- but that number is an upper bound, not a result.
+The shape of the gap is informative. This project's detector has the better **accuracy** (0.9512 against 0.7792): it raises far fewer false alarms. The AE has the better **coverage** (0.4082 against 0.1513) and the better **earliness** (0.4173 against 0.0795): it finds more of the true anomalies and finds them earlier.
 
-The authors' own autoencoder, run on the same subset in two configurations, and scored with their own CARE scorer:
+And the section above says why: a leak-free threshold set at a training quantile has to be conservative to avoid false alarms, and this project's arm pays for that in exactly the sub-scores the AE wins -- it detects late and rarely. A threshold selected on the scored events would lift its coverage considerably -- the fixed-z upper bound in the sweep above reaches a coverage comparable to the AE's -- but that number is an upper bound, not a result.
+
+As a cross-check, both arms were also scored on an identical 12-dataset subset, chosen and stratified by label: this project 0.5072, the AE 0.5966. Same ordering, same conclusion, on a different sample.
+
+The authors' own autoencoder, run here and scored with their own CARE scorer:
 
 | configuration | datasets | coverage | accuracy | reliability | earliness | CARE |
 |---|---|---|---|---|---|---|
-| published_s0 | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
-| no_status_s0 | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
+| published protocol (as the authors' code runs it) | 95 | 0.4082 | 0.7792 | 0.5204 | 0.4173 | 0.5809 |
+| same, with status_type_id removed from the features | 95 | 0.4082 | 0.7792 | 0.5204 | 0.4173 | 0.5809 |
+| published protocol, a different random seed | 95 | 0.4069 | 0.7737 | 0.4936 | 0.4275 | 0.5751 |
 
-This audit runs on a stratified SUBSET of the CARE datasets, not all 95: the authors' autoencoder takes roughly 5-8 minutes per dataset, so the full benchmark is an 8-13 hour job. The subset is stated here rather than presented as the full benchmark.
+Same protocol, different seeds: CARE 0.5809, 0.5751. The spread between two runs of the SAME configuration (0.0058) is the size of the uncertainty in any single published figure -- and the published pipeline is not seeded at all.
+
+This audit covers ALL 95 CARE datasets.
 
 **What we claim, precisely.** We claim that our 0.5028 is a leak-free number under a protocol we can re-derive and defend, and that the published figure is not quite that kind of number -- it is the output of a search whose objective was the CARE score itself, with no held-out protocol documented.
 

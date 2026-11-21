@@ -38,6 +38,8 @@ from windmill import care, multivariate, scoring  # noqa: E402
 
 #: The training quantile the scored arm uses (scripts/pipeline/08_multivariate.py).
 TRAIN_QUANTILE = 0.90
+#: Which of the audit's configurations to compare against.
+AE_CONFIG = "published_s0"
 FARMS = ("Wind Farm A", "Wind Farm B", "Wind Farm C")
 
 
@@ -149,8 +151,12 @@ def main() -> int:
 
     # The AE's numbers on the SAME datasets, from the audit artefact.
     ae = json.loads((ROOT / "results" / "ae_audit.json").read_text())
+    # Match ONE configuration exactly. The audit now runs several (different
+    # feature sets, different seeds), and a prefix match would pull in every
+    # one of them -- double-counting each event.
     ae_rows = [r for r in ae.get("per_dataset", [])
-               if r.get("event_id") in set(ids) and r.get("config", "").startswith("published")]
+               if r.get("event_id") in set(ids)
+               and r.get("config") == AE_CONFIG]
     theirs = care_score([{**r, "label": r.get("label", "")} for r in ae_rows
                           if r.get("label") in ("anomaly", "normal")])
 
