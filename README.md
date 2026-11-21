@@ -1,4 +1,4 @@
-# Windmill — Drift-Resilient Wind Turbine Condition Monitoring
+# Windmill: Drift-Resilient Wind Turbine Condition Monitoring
 
 Weather-conditioned residuals, deterministic gates, and auditability.
 
