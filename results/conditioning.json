@@ -1,0 +1,165 @@
+{
+  "site": {
+    "lat": 48.4569,
+    "lon": 5.5847,
+    "rated_kw": 2050.0
+  },
+  "scada_rows": 801209,
+  "scada_span": [
+    "2012-12-31 23:00:00+00:00",
+    "2018-01-12 23:00:00+00:00"
+  ],
+  "era5_hours": 45336,
+  "annual_climatology": {
+    "per_year": {
+      "2012": {
+        "ws": 8.5542,
+        "p": 1022.5854,
+        "cf": 49.8822,
+        "era_ws": 8.3189,
+        "era_temp": 2.8665,
+        "ws_dev_pct": 36.8141,
+        "era_ws_dev_pct": 40.8315,
+        "cf_dev_pct": 133.9307,
+        "amplification": 3.2801,
+        "n_days": 1.0
+      },
+      "2013": {
+        "ws": 6.2683,
+        "p": 436.9418,
+        "cf": 21.3142,
+        "era_ws": 5.8923,
+        "era_temp": 8.7213,
+        "ws_dev_pct": 0.2549,
+        "era_ws_dev_pct": -0.2483,
+        "cf_dev_pct": -0.0435,
+        "amplification": 0.1751,
+        "n_days": 364.0
+      },
+      "2014": {
+        "ws": 6.1328,
+        "p": 405.7092,
+        "cf": 19.7907,
+        "era_ws": 5.7805,
+        "era_temp": 10.3759,
+        "ws_dev_pct": -1.9136,
+        "era_ws_dev_pct": -2.1402,
+        "cf_dev_pct": -7.1884,
+        "amplification": 3.3588,
+        "n_days": 365.0
+      },
+      "2015": {
+        "ws": 6.3933,
+        "p": 472.8817,
+        "cf": 23.0674,
+        "era_ws": 6.0418,
+        "era_temp": 10.2282,
+        "ws_dev_pct": 2.2531,
+        "era_ws_dev_pct": 2.2826,
+        "cf_dev_pct": 8.1783,
+        "amplification": 3.5828,
+        "n_days": 365.0
+      },
+      "2016": {
+        "ws": 6.1625,
+        "p": 419.6975,
+        "cf": 20.473,
+        "era_ws": 5.7965,
+        "era_temp": 9.4881,
+        "ws_dev_pct": -1.4374,
+        "era_ws_dev_pct": -1.8692,
+        "cf_dev_pct": -3.9883,
+        "amplification": 2.1337,
+        "n_days": 365.0
+      },
+      "2017": {
+        "ws": 6.3051,
+        "p": 450.4289,
+        "cf": 21.9721,
+        "era_ws": 6.0236,
+        "era_temp": 10.3769,
+        "ws_dev_pct": 0.843,
+        "era_ws_dev_pct": 1.975,
+        "cf_dev_pct": 3.0419,
+        "amplification": 1.5402,
+        "n_days": 359.0
+      },
+      "2018": {
+        "ws": 8.0553,
+        "p": 833.7429,
+        "cf": 40.6704,
+        "era_ws": 8.4437,
+        "era_temp": 5.1432,
+        "ws_dev_pct": 28.8351,
+        "era_ws_dev_pct": 42.9454,
+        "cf_dev_pct": 90.7303,
+        "amplification": 2.1127,
+        "n_days": 12.0
+      }
+    },
+    "full_years_only": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+    ],
+    "corr_era5_ws_dev_vs_cf_dev": 0.9546,
+    "corr_scada_ws_dev_vs_cf_dev": 0.992,
+    "mean_amplification_cf_per_wind": 2.158,
+    "annual_cf_range_pp": 3.277,
+    "annual_cf_cv_pct": 5.994
+  },
+  "static_vs_conditioned": {
+    "reference_year": 2014,
+    "reference_expected_kw": 403.49,
+    "per_year": [
+      {
+        "year": 2013,
+        "cf_pct": 21.314,
+        "climatology_shift_kw": 25.57,
+        "static_false_cf_pp": 0.1336,
+        "static_mae_kw": 40.29
+      },
+      {
+        "year": 2014,
+        "cf_pct": 19.791,
+        "climatology_shift_kw": 0.0,
+        "static_false_cf_pp": 0.08,
+        "static_mae_kw": 38.93
+      },
+      {
+        "year": 2015,
+        "cf_pct": 23.067,
+        "climatology_shift_kw": 56.51,
+        "static_false_cf_pp": 0.4413,
+        "static_mae_kw": 47.99
+      },
+      {
+        "year": 2016,
+        "cf_pct": 20.473,
+        "climatology_shift_kw": 4.2,
+        "static_false_cf_pp": 0.3985,
+        "static_mae_kw": 44.9
+      },
+      {
+        "year": 2017,
+        "cf_pct": 21.972,
+        "climatology_shift_kw": 39.27,
+        "static_false_cf_pp": 0.2613,
+        "static_mae_kw": 46.34
+      }
+    ],
+    "corr_climatology_shift_vs_static_false_signal": 0.4837,
+    "max_static_false_cf_pp": 0.4413
+  },
+  "era5_scada_agreement": {
+    "n_hours": 37648,
+    "pearson_r_scada_vs_era5": 0.8103,
+    "r2": 0.6566,
+    "bias_ms_scada_minus_era5": -0.004,
+    "slope_scada_on_era5": 0.619,
+    "intercept": 2.419,
+    "note": "SCADA wind is a nacelle anemometer at 80 m hub height; ERA5 is a 0.25 deg grid cell at 100 m. The intercept reflects the nacelle anemometer's low-wind floor, so ERA5 cannot substitute for the turbine's own sensor below ~4 m/s -- it can only condition the long-term reference."
+  }
+}

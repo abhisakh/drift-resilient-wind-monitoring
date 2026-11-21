@@ -1,0 +1,24 @@
+{
+  "engie_la_haute_borne": {
+    "url": "https://data.mendeley.com/public-api/zip/vmyg4yp3s8/download/2",
+    "licence": "CC BY 4.0",
+    "note": "Mendeley Data v2, DOI 10.17632/vmyg4yp3s8.2. Contains one nested zip of 'Cleaned data' per turbine plus static-information.csv and data_description.csv.",
+    "present": true,
+    "bytes": 77088681,
+    "sha256": "8f6ae60a6351dc504209e9cf6d345b067be0dfa9036ab625e5c190e60a5f17c4"
+  },
+  "era5_openmeteo": {
+    "url": "https://archive-api.open-meteo.com/v1/era5?latitude=48.4569&longitude=5.5847&hourly=wind_speed_100m,wind_direction_100m,temperature_2m,surface_pressure&start_date=2012-12-01&end_date=2018-02-01&wind_speed_unit=ms&timezone=UTC",
+    "licence": "Copernicus/ECMWF ERA5 (public)",
+    "note": "ERA5 hourly reanalysis at the site; no API key required.",
+    "present": true,
+    "bytes": 1740336,
+    "sha256": "dbe8facbdc74cee115a4921335b0b2433500c10a16843c75936ce0c9aeee3371"
+  },
+  "care_to_compare": {
+    "url": "https://zenodo.org/api/records/15846963/files/CARE_To_Compare.zip/content",
+    "licence": "CC BY-SA 4.0",
+    "note": "Zenodo v6, DOI 10.5281/zenodo.15846963. 5.5 GB.",
+    "present": false
+  }
+}

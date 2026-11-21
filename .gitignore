@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+data/raw/
+data/external/
+*.zip
+*.csv
+.DS_Store
+
+# --- results ARE committed: they are the evidence behind every number ---
+!results/
+!results/*.json
+!results/*.csv

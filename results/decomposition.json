@@ -1,0 +1,76 @@
+{
+  "curve_comparison": [
+    {
+      "year": 2013,
+      "curve_mean_diff_kw": 9.67,
+      "curve_weighted_diff_kw": 1.12,
+      "curve_shape_corr": 1.0,
+      "n_bins": 26
+    },
+    {
+      "year": 2014,
+      "curve_mean_diff_kw": 0.0,
+      "curve_weighted_diff_kw": 0.0,
+      "curve_shape_corr": 1.0,
+      "n_bins": 26
+    },
+    {
+      "year": 2015,
+      "curve_mean_diff_kw": 4.06,
+      "curve_weighted_diff_kw": 7.93,
+      "curve_shape_corr": 0.9999,
+      "n_bins": 26
+    },
+    {
+      "year": 2016,
+      "curve_mean_diff_kw": 0.98,
+      "curve_weighted_diff_kw": 7.5,
+      "curve_shape_corr": 0.9999,
+      "n_bins": 26
+    },
+    {
+      "year": 2017,
+      "curve_mean_diff_kw": -3.57,
+      "curve_weighted_diff_kw": 4.05,
+      "curve_shape_corr": 0.9999,
+      "n_bins": 26
+    }
+  ],
+  "decomposition": [
+    {
+      "year": 2013,
+      "total_kw": 27.94,
+      "dist_effect_kw": 26.55,
+      "curve_effect_kw": 1.39,
+      "share_curve_pct": 5.0
+    },
+    {
+      "year": 2014,
+      "total_kw": 0.0,
+      "dist_effect_kw": 0.0,
+      "curve_effect_kw": 0.0,
+      "share_curve_pct": NaN
+    },
+    {
+      "year": 2015,
+      "total_kw": 64.74,
+      "dist_effect_kw": 57.27,
+      "curve_effect_kw": 7.47,
+      "share_curve_pct": 11.5
+    },
+    {
+      "year": 2016,
+      "total_kw": 11.69,
+      "dist_effect_kw": 4.87,
+      "curve_effect_kw": 6.82,
+      "share_curve_pct": 58.4
+    },
+    {
+      "year": 2017,
+      "total_kw": 42.92,
+      "dist_effect_kw": 39.67,
+      "curve_effect_kw": 3.25,
+      "share_curve_pct": 7.6
+    }
+  ]
+}

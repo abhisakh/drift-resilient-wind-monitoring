@@ -1,0 +1,646 @@
+{
+  "reference_year": 2014,
+  "schemes": {
+    "A_pooled_static": {
+      "per_year": {
+        "2013": {
+          "n": 105646.0,
+          "alarms": 3704.0,
+          "alarm_rate_pct": 3.50605,
+          "alarms_per_10min": 0.03506
+        },
+        "2014": {
+          "n": 128652.0,
+          "alarms": 3966.0,
+          "alarm_rate_pct": 3.08273,
+          "alarms_per_10min": 0.03083
+        },
+        "2015": {
+          "n": 133637.0,
+          "alarms": 10143.0,
+          "alarm_rate_pct": 7.58996,
+          "alarms_per_10min": 0.0759
+        },
+        "2016": {
+          "n": 126039.0,
+          "alarms": 8107.0,
+          "alarm_rate_pct": 6.43214,
+          "alarms_per_10min": 0.06432
+        },
+        "2017": {
+          "n": 125098.0,
+          "alarms": 8625.0,
+          "alarm_rate_pct": 6.89459,
+          "alarms_per_10min": 0.06895
+        }
+      },
+      "spread_pp": 4.50723,
+      "min_rate_pct": 3.08273,
+      "max_rate_pct": 7.58996,
+      "mean_alarms_per_10min": 0.05501,
+      "corr_alarm_rate_vs_climatology_shift": 0.5136
+    },
+    "B_perturbine_static": {
+      "per_year": {
+        "2013": {
+          "n": 105646.0,
+          "alarms": 3690.0,
+          "alarm_rate_pct": 3.4928,
+          "alarms_per_10min": 0.03493
+        },
+        "2014": {
+          "n": 128652.0,
+          "alarms": 3679.0,
+          "alarm_rate_pct": 2.85965,
+          "alarms_per_10min": 0.0286
+        },
+        "2015": {
+          "n": 133637.0,
+          "alarms": 10282.0,
+          "alarm_rate_pct": 7.69398,
+          "alarms_per_10min": 0.07694
+        },
+        "2016": {
+          "n": 126039.0,
+          "alarms": 8270.0,
+          "alarm_rate_pct": 6.56146,
+          "alarms_per_10min": 0.06561
+        },
+        "2017": {
+          "n": 125098.0,
+          "alarms": 8829.0,
+          "alarm_rate_pct": 7.05767,
+          "alarms_per_10min": 0.07058
+        }
+      },
+      "spread_pp": 4.83433,
+      "min_rate_pct": 2.85965,
+      "max_rate_pct": 7.69398,
+      "mean_alarms_per_10min": 0.05533,
+      "corr_alarm_rate_vs_climatology_shift": 0.5152
+    },
+    "C_perturbine_density": {
+      "per_year": {
+        "2013": {
+          "n": 105646.0,
+          "alarms": 2639.0,
+          "alarm_rate_pct": 2.49796,
+          "alarms_per_10min": 0.02498
+        },
+        "2014": {
+          "n": 128652.0,
+          "alarms": 3475.0,
+          "alarm_rate_pct": 2.70109,
+          "alarms_per_10min": 0.02701
+        },
+        "2015": {
+          "n": 133637.0,
+          "alarms": 9314.0,
+          "alarm_rate_pct": 6.96963,
+          "alarms_per_10min": 0.0697
+        },
+        "2016": {
+          "n": 126039.0,
+          "alarms": 7875.0,
+          "alarm_rate_pct": 6.24807,
+          "alarms_per_10min": 0.06248
+        },
+        "2017": {
+          "n": 125098.0,
+          "alarms": 8082.0,
+          "alarm_rate_pct": 6.46053,
+          "alarms_per_10min": 0.06461
+        }
+      },
+      "spread_pp": 4.47167,
+      "min_rate_pct": 2.49796,
+      "max_rate_pct": 6.96963,
+      "mean_alarms_per_10min": 0.04976,
+      "corr_alarm_rate_vs_climatology_shift": 0.4048
+    },
+    "D_perturbine_density_band": {
+      "per_year": {
+        "2013": {
+          "n": 105646.0,
+          "alarms": 402.0,
+          "alarm_rate_pct": 0.38052,
+          "alarms_per_10min": 0.00381
+        },
+        "2014": {
+          "n": 128652.0,
+          "alarms": 521.0,
+          "alarm_rate_pct": 0.40497,
+          "alarms_per_10min": 0.00405
+        },
+        "2015": {
+          "n": 133637.0,
+          "alarms": 1763.0,
+          "alarm_rate_pct": 1.31925,
+          "alarms_per_10min": 0.01319
+        },
+        "2016": {
+          "n": 126039.0,
+          "alarms": 1731.0,
+          "alarm_rate_pct": 1.37338,
+          "alarms_per_10min": 0.01373
+        },
+        "2017": {
+          "n": 125098.0,
+          "alarms": 1539.0,
+          "alarm_rate_pct": 1.23024,
+          "alarms_per_10min": 0.0123
+        }
+      },
+      "spread_pp": 0.99286,
+      "min_rate_pct": 0.38052,
+      "max_rate_pct": 1.37338,
+      "mean_alarms_per_10min": 0.00942,
+      "corr_alarm_rate_vs_climatology_shift": 0.2743
+    },
+    "E_perturbine_density_band_season": {
+      "per_year": {
+        "2013": {
+          "n": 105646.0,
+          "alarms": 947.0,
+          "alarm_rate_pct": 0.89639,
+          "alarms_per_10min": 0.00896
+        },
+        "2014": {
+          "n": 128652.0,
+          "alarms": 480.0,
+          "alarm_rate_pct": 0.3731,
+          "alarms_per_10min": 0.00373
+        },
+        "2015": {
+          "n": 133637.0,
+          "alarms": 3634.0,
+          "alarm_rate_pct": 2.71931,
+          "alarms_per_10min": 0.02719
+        },
+        "2016": {
+          "n": 126039.0,
+          "alarms": 2990.0,
+          "alarm_rate_pct": 2.37228,
+          "alarms_per_10min": 0.02372
+        },
+        "2017": {
+          "n": 125098.0,
+          "alarms": 2852.0,
+          "alarm_rate_pct": 2.27981,
+          "alarms_per_10min": 0.0228
+        }
+      },
+      "spread_pp": 2.34621,
+      "min_rate_pct": 0.3731,
+      "max_rate_pct": 2.71931,
+      "mean_alarms_per_10min": 0.01728,
+      "corr_alarm_rate_vs_climatology_shift": 0.4786
+    }
+  },
+  "gates": [
+    {
+      "turbine": "R80711",
+      "year": 2013,
+      "n_samples": 33355,
+      "alarms_raw": 125,
+      "alarms_after_persistence": 21,
+      "alarms_final": 21,
+      "raw_rate_pct": 0.3748,
+      "final_rate_pct": 0.063,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 7 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.39 (2013), limit 3.0",
+        "alarm_budget": "21 alarms in 33355 samples = 0.001/10min (limit 1.0), flood 0.06% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80711",
+      "year": 2014,
+      "n_samples": 33915,
+      "alarms_raw": 137,
+      "alarms_after_persistence": 7,
+      "alarms_final": 0,
+      "raw_rate_pct": 0.404,
+      "final_rate_pct": 0.0,
+      "gates": {
+        "operating_state": true,
+        "persistence": false,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 2 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.33 (2014), limit 3.0",
+        "alarm_budget": "7 alarms in 33915 samples = 0.000/10min (limit 1.0), flood 0.02% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80711",
+      "year": 2015,
+      "n_samples": 35422,
+      "alarms_raw": 595,
+      "alarms_after_persistence": 114,
+      "alarms_final": 114,
+      "raw_rate_pct": 1.6797,
+      "final_rate_pct": 0.3218,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 16 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.47 (2015), limit 3.0",
+        "alarm_budget": "114 alarms in 35422 samples = 0.003/10min (limit 1.0), flood 0.32% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80711",
+      "year": 2016,
+      "n_samples": 33134,
+      "alarms_raw": 522,
+      "alarms_after_persistence": 67,
+      "alarms_final": 67,
+      "raw_rate_pct": 1.5754,
+      "final_rate_pct": 0.2022,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 6 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.34 (2016), limit 3.0",
+        "alarm_budget": "67 alarms in 33134 samples = 0.002/10min (limit 1.0), flood 0.20% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80711",
+      "year": 2017,
+      "n_samples": 33103,
+      "alarms_raw": 537,
+      "alarms_after_persistence": 98,
+      "alarms_final": 98,
+      "raw_rate_pct": 1.6222,
+      "final_rate_pct": 0.296,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 17 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.42 (2017), limit 3.0",
+        "alarm_budget": "98 alarms in 33103 samples = 0.003/10min (limit 1.0), flood 0.30% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80721",
+      "year": 2013,
+      "n_samples": 30916,
+      "alarms_raw": 129,
+      "alarms_after_persistence": 6,
+      "alarms_final": 0,
+      "raw_rate_pct": 0.4173,
+      "final_rate_pct": 0.0,
+      "gates": {
+        "operating_state": true,
+        "persistence": false,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 2 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.21 (2013), limit 3.0",
+        "alarm_budget": "6 alarms in 30916 samples = 0.000/10min (limit 1.0), flood 0.02% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80721",
+      "year": 2014,
+      "n_samples": 30900,
+      "alarms_raw": 92,
+      "alarms_after_persistence": 13,
+      "alarms_final": 13,
+      "raw_rate_pct": 0.2977,
+      "final_rate_pct": 0.0421,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 4 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.14 (2014), limit 3.0",
+        "alarm_budget": "13 alarms in 30900 samples = 0.000/10min (limit 1.0), flood 0.04% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80721",
+      "year": 2015,
+      "n_samples": 31944,
+      "alarms_raw": 313,
+      "alarms_after_persistence": 27,
+      "alarms_final": 27,
+      "raw_rate_pct": 0.9798,
+      "final_rate_pct": 0.0845,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 6 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.27 (2015), limit 3.0",
+        "alarm_budget": "27 alarms in 31944 samples = 0.001/10min (limit 1.0), flood 0.08% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80721",
+      "year": 2016,
+      "n_samples": 30276,
+      "alarms_raw": 277,
+      "alarms_after_persistence": 17,
+      "alarms_final": 17,
+      "raw_rate_pct": 0.9149,
+      "final_rate_pct": 0.0562,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 6 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.20 (2016), limit 3.0",
+        "alarm_budget": "17 alarms in 30276 samples = 0.001/10min (limit 1.0), flood 0.06% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80721",
+      "year": 2017,
+      "n_samples": 30491,
+      "alarms_raw": 255,
+      "alarms_after_persistence": 18,
+      "alarms_final": 18,
+      "raw_rate_pct": 0.8363,
+      "final_rate_pct": 0.059,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 3 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.25 (2017), limit 3.0",
+        "alarm_budget": "18 alarms in 30491 samples = 0.001/10min (limit 1.0), flood 0.06% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80736",
+      "year": 2013,
+      "n_samples": 31293,
+      "alarms_raw": 101,
+      "alarms_after_persistence": 1,
+      "alarms_final": 0,
+      "raw_rate_pct": 0.3228,
+      "final_rate_pct": 0.0,
+      "gates": {
+        "operating_state": true,
+        "persistence": false,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 1 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.26 (2013), limit 3.0",
+        "alarm_budget": "1 alarms in 31293 samples = 0.000/10min (limit 1.0), flood 0.00% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80736",
+      "year": 2014,
+      "n_samples": 31323,
+      "alarms_raw": 144,
+      "alarms_after_persistence": 19,
+      "alarms_final": 19,
+      "raw_rate_pct": 0.4597,
+      "final_rate_pct": 0.0607,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 4 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.22 (2014), limit 3.0",
+        "alarm_budget": "19 alarms in 31323 samples = 0.001/10min (limit 1.0), flood 0.06% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80736",
+      "year": 2015,
+      "n_samples": 32507,
+      "alarms_raw": 269,
+      "alarms_after_persistence": 17,
+      "alarms_final": 17,
+      "raw_rate_pct": 0.8275,
+      "final_rate_pct": 0.0523,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 4 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.34 (2015), limit 3.0",
+        "alarm_budget": "17 alarms in 32507 samples = 0.001/10min (limit 1.0), flood 0.05% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80736",
+      "year": 2016,
+      "n_samples": 30389,
+      "alarms_raw": 303,
+      "alarms_after_persistence": 21,
+      "alarms_final": 21,
+      "raw_rate_pct": 0.9971,
+      "final_rate_pct": 0.0691,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 5 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.26 (2016), limit 3.0",
+        "alarm_budget": "21 alarms in 30389 samples = 0.001/10min (limit 1.0), flood 0.07% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80736",
+      "year": 2017,
+      "n_samples": 30151,
+      "alarms_raw": 271,
+      "alarms_after_persistence": 8,
+      "alarms_final": 8,
+      "raw_rate_pct": 0.8988,
+      "final_rate_pct": 0.0265,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 3 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.32 (2017), limit 3.0",
+        "alarm_budget": "8 alarms in 30151 samples = 0.000/10min (limit 1.0), flood 0.03% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80790",
+      "year": 2013,
+      "n_samples": 10082,
+      "alarms_raw": 47,
+      "alarms_after_persistence": 12,
+      "alarms_final": 12,
+      "raw_rate_pct": 0.4662,
+      "final_rate_pct": 0.119,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 6 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.41 (2013), limit 3.0",
+        "alarm_budget": "12 alarms in 10082 samples = 0.001/10min (limit 1.0), flood 0.12% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80790",
+      "year": 2014,
+      "n_samples": 32514,
+      "alarms_raw": 148,
+      "alarms_after_persistence": 2,
+      "alarms_final": 0,
+      "raw_rate_pct": 0.4552,
+      "final_rate_pct": 0.0,
+      "gates": {
+        "operating_state": true,
+        "persistence": false,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 1 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.19 (2014), limit 3.0",
+        "alarm_budget": "2 alarms in 32514 samples = 0.000/10min (limit 1.0), flood 0.01% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80790",
+      "year": 2015,
+      "n_samples": 33764,
+      "alarms_raw": 586,
+      "alarms_after_persistence": 77,
+      "alarms_final": 77,
+      "raw_rate_pct": 1.7356,
+      "final_rate_pct": 0.2281,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 14 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.37 (2015), limit 3.0",
+        "alarm_budget": "77 alarms in 33764 samples = 0.002/10min (limit 1.0), flood 0.23% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80790",
+      "year": 2016,
+      "n_samples": 32240,
+      "alarms_raw": 629,
+      "alarms_after_persistence": 79,
+      "alarms_final": 79,
+      "raw_rate_pct": 1.951,
+      "final_rate_pct": 0.245,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 9 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.26 (2016), limit 3.0",
+        "alarm_budget": "79 alarms in 32240 samples = 0.002/10min (limit 1.0), flood 0.25% (limit 1%)"
+      }
+    },
+    {
+      "turbine": "R80790",
+      "year": 2017,
+      "n_samples": 31353,
+      "alarms_raw": 476,
+      "alarms_after_persistence": 38,
+      "alarms_final": 38,
+      "raw_rate_pct": 1.5182,
+      "final_rate_pct": 0.1212,
+      "gates": {
+        "operating_state": true,
+        "persistence": true,
+        "climatology_consistency": true,
+        "alarm_budget": true
+      },
+      "gate_detail": {
+        "operating_state": "100.0% of samples in a generating state",
+        "persistence": "longest sustained excursion = 6 samples (need 3)",
+        "climatology_consistency": "worst period z = 0.32 (2017), limit 3.0",
+        "alarm_budget": "38 alarms in 31353 samples = 0.001/10min (limit 1.0), flood 0.12% (limit 1%)"
+      }
+    }
+  ],
+  "climatology": {
+    "ws_mean": 6.252,
+    "ws_sd": 1.9581
+  }
+}

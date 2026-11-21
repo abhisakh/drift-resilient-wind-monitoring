@@ -1,0 +1,8 @@
+numpy>=1.26,<3
+pandas>=2.2,<4
+scikit-learn>=1.4,<2
+requests>=2.31
+pytest>=8
+# The CARE score is cross-checked against the benchmark authors' own implementation.
+# It requires Python < 3.12 (see docs/environment.md).
+energy-fault-detector==0.8.1; python_version < "3.12"

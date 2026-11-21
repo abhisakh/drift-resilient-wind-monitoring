@@ -1,0 +1,83 @@
+# Data provenance
+
+Every dataset is public and pinned. Nothing here is redistributed in the repository —
+`scripts/01_build_dataset.py` downloads each file and records its checksum, so a
+reviewer reproduces the exact bytes.
+
+## 1. ENGIE La Haute Borne — SCADA
+
+| | |
+|---|---|
+| Source | Mendeley Data, DOI [10.17632/vmyg4yp3s8.2](https://doi.org/10.17632/vmyg4yp3s8.2) (v2, published 2026-09-01) |
+| Direct file | `https://data.mendeley.com/public-api/zip/vmyg4yp3s8/download/2` (74 MB) |
+| Licence | **CC BY 4.0** |
+| Site | Meuse, Grand Est, France — onshore |
+| Turbines | 4 × Senvion MM82, 2050 kW, hub 80 m, rotor 82 m, commissioned 2009-01-15 |
+| Coordinates | R80736 48.4461,5.5925 · R80721 48.4497,5.5869 · R80711 48.4569,5.5847 · R80790 48.4536,5.5875 |
+| Coverage | 2013-01-01 → 2018-01-13, 10-min, per-turbine |
+| Files | `Cleaned data/Turbine_data_<id>_2013-2018_F95.csv` and `_F99.csv` |
+
+**Note on the Mendeley record.** Its title reads "La Houte Bourne" and the description
+gives "Villeneuve-d'Ascq" — both are wrong. The `static-information.csv` inside the
+archive gives the true location (Meuse, Grand Est) and the GPS above. Cite the
+coordinates from `static-information.csv`, not from the record text.
+
+**Note on F95 / F99.** These are *not* two datasets — they are the same SCADA after
+cluster-based outlier filtering at two aggressiveness settings (5 % and 1 % outlier
+thresholds, per Kijanowski, Barszcz & Dao, *Energies* 18(22):5954, 2025). F95 retains
+~210 k rows/turbine, F99 ~212 k. **We use F99** (less aggressive, keeps more of the
+signal) and treat F95/F99 as a preprocessing-sensitivity axis.
+
+**Known gaps in the released data (verified, not assumed):**
+
+- The documented gearbox bearing failure (R80721, 2015-01-02 08:50, 84.12 °C peak at
+  raw sample 70 995) is **not present** in the released cleaned CSVs — max
+  `Gb2t_avg` over the whole period is 78.85 °C. The cluster filter removed the
+  anomaly peak. The failure therefore cannot be used as a labelled detection target
+  from this release; it is used only as historical context.
+- The release carries **16 of the 34 variables** listed in `data_description.csv`.
+  Absent: `Ot` (ambient temperature), `Wa`/`Wa_c` (wind direction), `Ba`/`Pas`
+  (pitch), `Na_c`/`Ya` (nacelle angle), `Ws1`/`Ws2` (second anemometer),
+  `Va`/`Va1`/`Va2` (vane), `Rm`/`Cm` (torque), `Rs` (rotor speed), `Nf`/`Nu`
+  (grid), `Cosphi`. Ambient temperature therefore comes from ERA5, not SCADA.
+- 19.6 %–31.8 % of expected 10-min timestamps are absent per turbine.
+- ~30–32 duplicate timestamps per turbine; timestamps carry mixed `+01:00`/`+02:00`
+  offsets (CET/CEST), so DST is present in the raw strings.
+
+## 2. Copernicus ERA5
+
+| | |
+|---|---|
+| Source | ERA5 reanalysis, served by the open-meteo archive API (no key required) |
+| Endpoint | `https://archive-api.open-meteo.com/v1/era5` |
+| Variables | `wind_speed_100m`, `wind_direction_100m`, `temperature_2m`, `surface_pressure` |
+| Coverage used | 2012-12-01 → 2018-02-01, hourly, UTC, at 48.4569, 5.5847 |
+
+ERA5 is the correct source for this site: it is a 0.25° (≈ 25 km) global reanalysis
+covering inland France. NORA3 is *not* appropriate — its domain is the North Sea and
+Baltic, offshore.
+
+The canonical CDS route (`cds.climate.copernicus.eu`) now requires an account and
+API key; open-meteo serves the same ERA5 fields without one, which keeps the
+project reproducible with `pip install requests` and no credential.
+
+## 3. WeDoWind CARE to Compare
+
+| | |
+|---|---|
+| Source | Zenodo, DOI [10.5281/zenodo.15846963](https://doi.org/10.5281/zenodo.15846963) (v6) |
+| Direct file | `https://zenodo.org/api/records/15846963/files/CARE_To_Compare.zip/content` (5.5 GB) |
+| Licence | **CC BY-SA 4.0** |
+| Contents | 95 CSVs, 89 turbine-years, 36 turbines, 3 farms, 10-min resolution; 44 files with labelled anomaly windows, ~51 normal-operation files |
+| Scoring | CARE score = Coverage, Accuracy, Reliability, Earliness |
+
+Published baselines to beat: **AE 0.66**, random 0.5, iForest < 0.5, trivial 0.
+
+**Known limitations (from the CARE paper and the dataset README):** farms B and C have
+their **locations removed** by anonymisation, so they cannot be joined to weather;
+**all timestamps are year-shifted** to start within 2022, so calendar year is not
+recoverable; farm A (onshore Portugal, EDP open data) has turbine coordinates published
+separately under different terms, which must be checked before redistribution.
+
+CARE is used for the **labelled detection benchmark** (early detection + alert
+reliability), not for the weather-shift study — it cannot support the latter.
