@@ -1,8 +1,9 @@
 {
-  "arm": "Deterministic Multivariate Bins on ENGIE (healthy turbines)",
+  "arm": "Multivariate thermal detection on ENGIE (healthy turbines)",
   "reference_year": 2014,
   "z_threshold_rolling": 4.0,
   "window_days": 30,
+  "train_quantile": 0.9,
   "n_channels_available": 10,
   "strategies": {
     "frozen_2014": {
@@ -36,6 +37,38 @@
       "max_rate_pct": 37.7254,
       "spread_pp": 22.8371,
       "mean_rate_pct": 26.3668
+    },
+    "frozen_2014_lightgbm": {
+      "per_year": {
+        "2013": {
+          "year": 2013,
+          "n_samples": 41643,
+          "n_flags": 8003,
+          "rate_pct": 19.2181
+        },
+        "2015": {
+          "year": 2015,
+          "n_samples": 43477,
+          "n_flags": 3088,
+          "rate_pct": 7.1026
+        },
+        "2016": {
+          "year": 2016,
+          "n_samples": 42248,
+          "n_flags": 4087,
+          "rate_pct": 9.6738
+        },
+        "2017": {
+          "year": 2017,
+          "n_samples": 41336,
+          "n_flags": 11231,
+          "rate_pct": 27.17
+        }
+      },
+      "min_rate_pct": 7.1026,
+      "max_rate_pct": 27.17,
+      "spread_pp": 20.0674,
+      "mean_rate_pct": 15.7911
     },
     "rolling_30d": {
       "per_year": {
@@ -74,6 +107,44 @@
       "max_rate_pct": 0.9485,
       "spread_pp": 0.6058,
       "mean_rate_pct": 0.5665
+    },
+    "rolling_30d_lightgbm": {
+      "per_year": {
+        "2013": {
+          "year": 2013,
+          "n_samples": 38956,
+          "n_flags": 2231,
+          "rate_pct": 5.727
+        },
+        "2014": {
+          "year": 2014,
+          "n_samples": 42603,
+          "n_flags": 1091,
+          "rate_pct": 2.5609
+        },
+        "2015": {
+          "year": 2015,
+          "n_samples": 43477,
+          "n_flags": 1640,
+          "rate_pct": 3.7721
+        },
+        "2016": {
+          "year": 2016,
+          "n_samples": 42248,
+          "n_flags": 1737,
+          "rate_pct": 4.1114
+        },
+        "2017": {
+          "year": 2017,
+          "n_samples": 41336,
+          "n_flags": 1459,
+          "rate_pct": 3.5296
+        }
+      },
+      "min_rate_pct": 2.5609,
+      "max_rate_pct": 5.727,
+      "spread_pp": 3.1661,
+      "mean_rate_pct": 3.9402
     }
   }
 }

@@ -24,14 +24,56 @@ We test one falsifiable claim:
 
 | Dataset | What it gives | Licence |
 |---|---|---|
-| ENGIE La Haute Borne SCADA (Mendeley v2) | 4 Senvion MM82 turbines, 10-min, 2013-01→2018-01, GPS coordinates, one documented gearbox bearing failure | CC BY 4.0 |
+| ENGIE La Haute Borne SCADA (Mendeley v2) | 4 Senvion MM82 turbines, 10-min, 2013-01→2018-01, GPS coordinates, multi-year healthy operation | CC BY 4.0 |
 | Copernicus ERA5 via open-meteo archive | Hourly reanalysis wind speed @100 m and 2 m temperature at the site | free, no key |
 | WeDoWind CARE to Compare (Zenodo v6) | 3 farms, 36 turbines, 10-min, labelled anomaly windows, CARE score | CC BY-SA 4.0 |
 
-ENGIE gives the **year-over-year weather shift** test bed. CARE gives the **labelled
+ENGIE gives the **year-over-year weather shift** test bed and the **false-alarm**
+measurement — but **no usable fault label**: the one documented gearbox bearing
+failure (R80721, 2015) is *absent* from the released cleaned CSVs, whose maximum
+`Gb2t_avg` over the whole period is 78.85 °C against a documented 84.12 °C peak.
+The cluster-based outlier filter removed it. CARE gives the **labelled
 fault-detection benchmark** with a published score to beat (AE baseline 0.66).
 
+One consequence is worth stating plainly: the abnormal turbine we *do* find in
+ENGIE (R80711, September 2017) is **not** a labelled fault. It is an abnormality
+discovered in unlabelled data with its three siblings as the control group.
+
 Provenance, checksums and the measured data limitations are in `data/README.md`.
+
+<!-- METHOD:START -->
+
+## What this is, and what it is not
+
+The method is **deterministic**: a per-turbine reference conditioned on load and
+ambient temperature, a robust (MAD) spread, a one-sided z-score, and a fixed
+threshold rule. There is no learned model in the primary arm.
+
+A learned arm (LightGBM normal-behaviour model) is included as a **comparison**,
+measured with the same statistic (max-z), the same threshold rule and the same
+reference strategies, so only the model differs. On the CARE benchmark it
+detects more of the true anomalies (coverage 0.2157 vs 0.1513) and pays for that with
+false alarms on normal behaviour (accuracy 0.8517 vs 0.9512).
+
+On the ENGIE site the comparison is more interesting than a clean sweep,
+and the honest reading is this: **with a stale reference the learned arm is
+the better one** (15.79 % false alarms against the
+deterministic arm's 26.37 %), because a smooth model of
+the operating point drifts less sharply than a set of fixed per-bin
+medians. **With a current reference the deterministic arm wins by a wide
+margin** (0.57 % against 3.94 %, about 7x fewer false alarms), and
+it does so with no model to train and no thresholds to re-validate.
+
+The project's claim is therefore not 'the deterministic method is better'
+but the sharper one: **the reference matters more than the model.**
+Re-estimating the reference reduced false alarms by 47x for the deterministic
+detector and 4x for the learned one.
+
+We also do **not** claim operational weather forecasting. ERA5 conditions a
+long-term reference; it is not a forecast engine, and the residual is always
+measured against the turbine's own anemometer.
+
+<!-- METHOD:END -->
 
 <!-- RESULTS:START -->
 
@@ -81,23 +123,34 @@ Refitting the reference on each year removes most of the bias -- so what a singl
 
 ### ENGIE: the reference strategy decides the false-alarm rate
 
-The same multivariate thermal method on the ENGIE site, with every turbine healthy throughout -- so **every alarm is a false alarm**. Two reference strategies:
+The same multivariate thermal method on the ENGIE site, with every turbine healthy throughout -- so **every alarm is a false alarm**. Two detectors (the deterministic bins and a learned LightGBM normal-behaviour model) under two reference strategies:
 
-| strategy | year | false-alarm rate % |
-|---|---|---|
-| frozen_2014 | 2013 | 37.7254 |
-| frozen_2014 | 2015 | 17.5334 |
-| frozen_2014 | 2016 | 14.8883 |
-| frozen_2014 | 2017 | 35.3203 |
-| rolling_30d | 2013 | 0.9485 |
-| rolling_30d | 2014 | 0.3427 |
-| rolling_30d | 2015 | 0.5014 |
-| rolling_30d | 2016 | 0.5633 |
-| rolling_30d | 2017 | 0.4766 |
+| detector | reference | year | false-alarm rate % |
+|---|---|---|---|
+| deterministic | frozen_2014 | 2013 | 37.7254 |
+| deterministic | frozen_2014 | 2015 | 17.5334 |
+| deterministic | frozen_2014 | 2016 | 14.8883 |
+| deterministic | frozen_2014 | 2017 | 35.3203 |
+| learned (LightGBM) | frozen_2014 | 2013 | 19.2181 |
+| learned (LightGBM) | frozen_2014 | 2015 | 7.1026 |
+| learned (LightGBM) | frozen_2014 | 2016 | 9.6738 |
+| learned (LightGBM) | frozen_2014 | 2017 | 27.1700 |
+| deterministic | rolling_30d | 2013 | 0.9485 |
+| deterministic | rolling_30d | 2014 | 0.3427 |
+| deterministic | rolling_30d | 2015 | 0.5014 |
+| deterministic | rolling_30d | 2016 | 0.5633 |
+| deterministic | rolling_30d | 2017 | 0.4766 |
+| learned (LightGBM) | rolling_30d | 2013 | 5.7270 |
+| learned (LightGBM) | rolling_30d | 2014 | 2.5609 |
+| learned (LightGBM) | rolling_30d | 2015 | 3.7721 |
+| learned (LightGBM) | rolling_30d | 2016 | 4.1114 |
+| learned (LightGBM) | rolling_30d | 2017 | 3.5296 |
 
 A **frozen 2014 reference** -- what a naive deployment does -- gives 14.89-37.73 % false alarms (mean 26.37 %, spread 22.84 pp). Each turbine's thermal channels move by 5-9 K between years, so the frozen reference leaves a systematic offset that reads as overheating on every channel at once.
 
 A **rolling local reference** -- each row compared against its own recent history at the same load bin, re-estimated continuously -- gives 0.34-0.95 % (mean 0.57 %, spread 0.61 pp). That is a **47x** reduction in false alarms from changing nothing but the reference.
+
+The **learned** arm was given the same two reference strategies, so the comparison is like for like: its model is refitted weekly on the trailing 30 days, exactly as the deterministic arm's reference is re-estimated continuously. With a frozen reference the learned arm is 15.79 % (mean false-alarm rate) against the deterministic arm's 26.37 % -- so the model is *not* the deciding factor; the reference is. With a rolling reference the learned arm gives 3.94 % against the deterministic arm's 0.57 %.
 
 This is the project's central result on the weather-shift side: the model matters far less than the reference it is compared against, and a reference that is not re-estimated turns slow drift into a flood of alarms.
 
@@ -177,9 +230,16 @@ The threshold is the arm's one free parameter, so it was swept rather than chose
 | multivariate bins (L2) | 0.1342 | 0.9538 | 0.3608 | 0.0685 | 0.4942 |
 | LightGBM thermal NBM | 0.2157 | 0.8517 | 0.3356 | 0.1785 | 0.4866 |
 
-All four arms are scored on the same 95 events (45 anomaly, 50 normal). The learned arm has the **best coverage** of the three, and pays for it in accuracy: it raises alarms on more of the true anomalies and also on more normal behaviour. On this benchmark the deterministic arm wins overall -- and on the ENGIE side it does so at a false-alarm rate below 1 %.
+All four arms are scored on the same 95 events (45 anomaly, 50 normal). The learned arm has the **best coverage** of the three, and pays for it in accuracy: it raises alarms on more of the true anomalies and also on more normal behaviour.
 
 Both the deterministic and the learned arm use the same threshold rule: the quantile of the TRAINING score distribution, so the threshold never sees an event it is later scored on. The learned arm's seeds are pinned explicitly (`random_state`, `seed`) and verified bit-identical across runs by `tests/test_lightgbm_determinism.py` -- without that, its score would not have been re-derivable, which is the whole point of the exercise.
+
+The same two arms on ENGIE, where every alarm is a false alarm:
+
+| arm | min % | max % | mean % | spread (pp) |
+|---|---|---|---|---|
+| deterministic (rolling ref) | 0.34 | 0.95 | 0.57 | 0.61 |
+| learned (rolling ref) | 2.56 | 5.73 | 3.94 | 3.17 |
 
 <!-- RESULTS:END -->
 
@@ -245,11 +305,23 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-57 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+63 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
-weighted score. `tests/test_data_paths.py` pins the download path to the read
-path, and `tests/test_provenance.py` checks every dataset's recorded checksum.
+weighted score.
+
+Also pinned:
+
+- `tests/test_data_paths.py` — the download path and the read path cannot
+  disagree (this caught a real bug: CARE used to be extracted somewhere no
+  script looked).
+- `tests/test_provenance.py` — every dataset carries a checksum a reviewer can
+  verify their own download against.
+- `tests/test_arm_comparison.py` — the deterministic and learned arms must be
+  scored with the same statistic, the same threshold rule and the same
+  reference strategies, so the comparison stays meaningful.
+- `tests/test_lightgbm_determinism.py` — the learned arm's score must be
+  re-derivable from a clean run.
 
 ## Licence
 

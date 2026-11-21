@@ -60,7 +60,12 @@
     {
       "arm": "LightGBM thermal NBM",
       "kind": "lightgbm",
-      "engie_far": null,
+      "engie_far": {
+        "spread_pp": 3.1661,
+        "mean_rate_pct": 3.9402,
+        "min_rate_pct": 2.5609,
+        "max_rate_pct": 5.727
+      },
       "care": {
         "coverage": 0.2157,
         "accuracy": 0.8517,

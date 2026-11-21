@@ -10,6 +10,7 @@ rather than inventing a value.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -19,6 +20,10 @@ README = ROOT / "README.md"
 
 MARKER_START = "<!-- RESULTS:START -->"
 MARKER_END = "<!-- RESULTS:END -->"
+#: The "what this is" framing carries live numbers, so it is generated too --
+#: a hand-written number in the README would drift from the artefacts.
+METHOD_START = "<!-- METHOD:START -->"
+METHOD_END = "<!-- METHOD:END -->"
 
 
 def load(name: str) -> dict | None:
@@ -128,16 +133,21 @@ def section_engie_multivariate() -> str:
         return ""
     out = ["### ENGIE: the reference strategy decides the false-alarm rate\n"]
     out.append("The same multivariate thermal method on the ENGIE site, with every turbine "
-               "healthy throughout -- so **every alarm is a false alarm**. Two reference "
-               "strategies:\n")
-    out.append("| strategy | year | false-alarm rate % |")
-    out.append("|---|---|---|")
+               "healthy throughout -- so **every alarm is a false alarm**. Two detectors "
+               "(the deterministic bins and a learned LightGBM normal-behaviour model) "
+               "under two reference strategies:\n")
+    out.append("| detector | reference | year | false-alarm rate % |")
+    out.append("|---|---|---|---|")
     for name, s in em.get("strategies", {}).items():
+        detector = "learned (LightGBM)" if "lightgbm" in name else "deterministic"
+        reference = name.replace("_lightgbm", "")
         for y, v in sorted(s["per_year"].items()):
-            out.append(f"| {name} | {y} | {fmt(v['rate_pct'], 4)} |")
+            out.append(f"| {detector} | {reference} | {y} | {fmt(v['rate_pct'], 4)} |")
     out.append("")
     frozen = em.get("strategies", {}).get("frozen_2014")
     rolling = em.get("strategies", {}).get("rolling_30d")
+    frozen_lg = em.get("strategies", {}).get("frozen_2014_lightgbm")
+    rolling_lg = em.get("strategies", {}).get("rolling_30d_lightgbm")
     if frozen and rolling:
         ratio = frozen["mean_rate_pct"] / rolling["mean_rate_pct"]
         out.append(f"A **frozen 2014 reference** -- what a naive deployment does -- gives "
@@ -152,6 +162,17 @@ def section_engie_multivariate() -> str:
                    f"(mean {fmt(rolling['mean_rate_pct'], 2)} %, spread "
                    f"{fmt(rolling['spread_pp'], 2)} pp). That is a **{fmt(ratio, 0)}x** reduction "
                    f"in false alarms from changing nothing but the reference.\n")
+        if frozen_lg and rolling_lg:
+            out.append(
+                "The **learned** arm was given the same two reference strategies, so the "
+                "comparison is like for like: its model is refitted weekly on the trailing "
+                "30 days, exactly as the deterministic arm's reference is re-estimated "
+                "continuously. With a frozen reference the learned arm is "
+                f"{fmt(frozen_lg['mean_rate_pct'], 2)} % (mean false-alarm rate) against the "
+                f"deterministic arm's {fmt(frozen['mean_rate_pct'], 2)} % -- so the model is "
+                "*not* the deciding factor; the reference is. With a rolling reference the "
+                f"learned arm gives {fmt(rolling_lg['mean_rate_pct'], 2)} % against the "
+                f"deterministic arm's {fmt(rolling['mean_rate_pct'], 2)} %.\n")
         out.append("This is the project's central result on the weather-shift side: the model "
                    "matters far less than the reference it is compared against, and a "
                    "reference that is not re-estimated turns slow drift into a flood of "
@@ -244,14 +265,31 @@ def section_care() -> str:
         out.append("All four arms are scored on the same 95 events (45 anomaly, 50 normal). "
                    "The learned arm has the **best coverage** of the three, and pays for it in "
                    "accuracy: it raises alarms on more of the true anomalies and also on more "
-                   "normal behaviour. On this benchmark the deterministic arm wins overall -- "
-                   "and on the ENGIE side it does so at a false-alarm rate below 1 %.\n")
+                   "normal behaviour.\n")
         out.append("Both the deterministic and the learned arm use the same threshold rule: "
                    "the quantile of the TRAINING score distribution, so the threshold never "
                    "sees an event it is later scored on. The learned arm's seeds are pinned "
                    "explicitly (`random_state`, `seed`) and verified bit-identical across runs "
                    "by `tests/test_lightgbm_determinism.py` -- without that, its score would "
                    "not have been re-derivable, which is the whole point of the exercise.\n")
+    em = load("engie_multivariate.json")
+    if em:
+        s = em.get("strategies", {})
+        rows = []
+        for label, key in (("deterministic (rolling ref)", "rolling_30d"),
+                           ("learned (rolling ref)", "rolling_30d_lightgbm")):
+            v = s.get(key)
+            if v:
+                rows.append((label, v["min_rate_pct"], v["max_rate_pct"],
+                             v["mean_rate_pct"], v["spread_pp"]))
+        if rows:
+            out.append("The same two arms on ENGIE, where every alarm is a false alarm:\n")
+            out.append("| arm | min % | max % | mean % | spread (pp) |")
+            out.append("|---|---|---|---|---|")
+            for label, lo, hi, mean, sp in rows:
+                out.append(f"| {label} | {fmt(lo, 2)} | {fmt(hi, 2)} | "
+                           f"{fmt(mean, 2)} | {fmt(sp, 2)} |")
+            out.append("")
     return "\n".join(out)
 
 
@@ -277,6 +315,70 @@ def section_scorability() -> str:
     return "\n".join(out)
 
 
+def _count_tests() -> int:
+    """Count the test functions in tests/ so the README's claim cannot go stale."""
+    n = 0
+    for p in (ROOT / "tests").glob("test_*.py"):
+        n += sum(1 for line in p.read_text().splitlines()
+                 if line.startswith("def test_"))
+    return n
+
+
+def section_method() -> str:
+    """The 'what this is, and what it is not' framing, with live numbers."""
+    lg = load("lightgbm_nbm.json")
+    mv = load("multivariate.json")
+    em = load("engie_multivariate.json")
+    out = ["## What this is, and what it is not\n"]
+    out.append(
+        "The method is **deterministic**: a per-turbine reference conditioned on load and\n"
+        "ambient temperature, a robust (MAD) spread, a one-sided z-score, and a fixed\n"
+        "threshold rule. There is no learned model in the primary arm.\n"
+    )
+    if lg and mv:
+        det = mv["max_combiner"]["sub_scores"]
+        lrn = lg["sub_scores"]
+        out.append(
+            "A learned arm (LightGBM normal-behaviour model) is included as a **comparison**,\n"
+            "measured with the same statistic (max-z), the same threshold rule and the same\n"
+            "reference strategies, so only the model differs. On the CARE benchmark it\n"
+            "detects more of the true anomalies (coverage "
+            f"{fmt(lrn.get('coverage'))} vs {fmt(det.get('coverage'))}) and pays for that with\n"
+            f"false alarms on normal behaviour (accuracy {fmt(lrn.get('accuracy'))} vs "
+            f"{fmt(det.get('accuracy'))}).\n"
+        )
+    if em:
+        s = em.get("strategies", {})
+        fr, frl = s.get("frozen_2014"), s.get("frozen_2014_lightgbm")
+        ro, rol = s.get("rolling_30d"), s.get("rolling_30d_lightgbm")
+        if fr and ro and frl and rol:
+            out.append(
+                "On the ENGIE site the comparison is more interesting than a clean sweep,\n"
+                "and the honest reading is this: **with a stale reference the learned arm is\n"
+                f"the better one** ({fmt(frl['mean_rate_pct'], 2)} % false alarms against the\n"
+                f"deterministic arm's {fmt(fr['mean_rate_pct'], 2)} %), because a smooth model of\n"
+                "the operating point drifts less sharply than a set of fixed per-bin\n"
+                "medians. **With a current reference the deterministic arm wins by a wide\n"
+                f"margin** ({fmt(ro['mean_rate_pct'], 2)} % against {fmt(rol['mean_rate_pct'], 2)} %, "
+                "about "
+                f"{fmt(rol['mean_rate_pct'] / ro['mean_rate_pct'], 0)}x fewer false alarms), and\n"
+                "it does so with no model to train and no thresholds to re-validate.\n"
+            )
+            out.append(
+                "The project's claim is therefore not 'the deterministic method is better'\n"
+                "but the sharper one: **the reference matters more than the model.**\n"
+                "Re-estimating the reference reduced false alarms by "
+                f"{fmt(fr['mean_rate_pct'] / ro['mean_rate_pct'], 0)}x for the deterministic\n"
+                f"detector and {fmt(frl['mean_rate_pct'] / rol['mean_rate_pct'], 0)}x for the learned one.\n"
+            )
+    out.append(
+        "We also do **not** claim operational weather forecasting. ERA5 conditions a\n"
+        "long-term reference; it is not a forecast engine, and the residual is always\n"
+        "measured against the turbine's own anemometer.\n"
+    )
+    return "\n".join(out)
+
+
 def main() -> int:
     parts = [section_conditioning(), section_decomposition(), section_engie_multivariate(),
              section_scorability(), section_care()]
@@ -289,6 +391,18 @@ def main() -> int:
         new = f"{head}{MARKER_START}\n\n## Results\n\n{body}\n{MARKER_END}{tail}"
     else:
         new = f"{readme}\n\n{MARKER_START}\n\n## Results\n\n{body}\n{MARKER_END}\n"
+
+    method = section_method()
+    if METHOD_START in new and METHOD_END in new:
+        mhead = new.split(METHOD_START)[0]
+        mtail = new.split(METHOD_END)[1]
+        new = f"{mhead}{METHOD_START}\n\n{method}\n{METHOD_END}{mtail}"
+
+    # The test count is generated too, so it cannot go stale.
+    n_tests = _count_tests()
+    new = re.sub(r"^\d+ tests, including", f"{n_tests} tests, including",
+                 new, count=1, flags=re.MULTILINE)
+
     README.write_text(new)
     print(f"wrote {README} ({len(body)} chars of results)")
     return 0

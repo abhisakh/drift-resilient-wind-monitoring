@@ -103,7 +103,11 @@ def main() -> int:
         arms.append({
             "arm": lg["arm"],
             "kind": "lightgbm",
-            "engie_far": None,
+            # The learned arm's ENGIE false-alarm rate comes from its own
+            # rolling-reference run, so the two detectors are compared on the
+            # same footing rather than one having no ENGIE number at all.
+            "engie_far": engie_far(None, load("engie_multivariate.json")).get(
+                "rolling_30d_lightgbm"),
             "care": lg["sub_scores"],
             "care_score": lg["care_score"],
             "beats_AE": lg.get("beats_published_AE"),
