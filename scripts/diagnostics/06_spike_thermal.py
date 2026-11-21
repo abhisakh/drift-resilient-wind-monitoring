@@ -27,7 +27,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from windmill import care  # noqa: E402
+from windmill import care, multivariate  # noqa: E402
 
 CARE_ROOT = care.care_root(ROOT / "data")
 FARMS = ("Wind Farm A", "Wind Farm B", "Wind Farm C")
@@ -48,59 +48,25 @@ def feature_rows(farm_dir: Path, columns: list[str]):
 
 
 def combined_score(
-    train: pd.DataFrame, test: pd.DataFrame, channels: list[str], pcol: str
+    train: pd.DataFrame, test: pd.DataFrame, channels: list[str], pcol: str,
+    ambient: str | None = None,
 ) -> tuple[pd.Series, pd.Series]:
-    """Load-conditioned thermal residual, combined over channels."""
-    tr = train.dropna(subset=[pcol] + [c for c in channels if c in train.columns])
-    tr = tr[tr[pcol] > 0.02]
-    if tr.empty:
+    """Load- and ambient-conditioned thermal z-scores, combined over channels.
+
+    This used to be a local re-implementation of the detector's maths. That
+    was wrong in a way that mattered: it had none of the spread floors, so
+    a channel whose robust spread collapsed produced z-scores in the
+    HUNDREDS, and the probe reported Wind Farm C's thermal channels running
+    "517 sigma" hot. The shared detector in windmill.multivariate has the
+    floors, the ambient correction and the cross-fitting, so the probe uses
+    it and reports what the project actually measures.
+    """
+    res = multivariate.detect(train, test, channels, pcol, ambient_col=ambient,
+                              quantile=0.90, max_channels=24)
+    if not res.channels_used:
         z = pd.Series(0.0, index=test.index)
         return z, z
-    load_bin_tr = np.floor(tr[pcol] / LOAD_BIN).astype("int64")
-
-    z_cols = {}
-    for c in channels:
-        if c not in tr.columns or c not in test.columns:
-            continue
-        t = tr.dropna(subset=[c])
-        if len(t) < 200:
-            continue
-        lb = np.floor(t[pcol] / LOAD_BIN).astype("int64")
-        g = pd.DataFrame({"lb": lb, "c": t[c].to_numpy()})
-        counts = g.groupby("lb")["c"].size()
-        med = g.groupby("lb")["c"].median()
-        med = med[counts[counts >= 15].index]
-        if len(med) < 3:
-            continue
-        resid = t[c].to_numpy() - med.reindex(lb).to_numpy()
-        g2 = pd.DataFrame({"lb": lb, "r": resid})
-        spreads = {}
-        for b, gg in g2.groupby("lb"):
-            r = gg["r"].to_numpy()
-            if len(r) < 15:
-                continue
-            m = np.median(r)
-            mad = np.median(np.abs(r - m))
-            spreads[b] = 1.4826 * mad if mad > 0 else (np.std(r) or np.nan)
-        if not spreads:
-            continue
-
-        lb_te = np.floor(test[pcol].to_numpy() / LOAD_BIN).astype("int64")
-        ref = med.reindex(lb_te).to_numpy()
-        sp = pd.Series(spreads).reindex(lb_te).to_numpy()
-        r_te = test[c].to_numpy() - ref
-        z = np.where(np.isfinite(sp) & (sp > 0), (r_te - 0.0) / sp, np.nan)
-        z_cols[c] = pd.Series(z, index=test.index)
-
-    if not z_cols:
-        z = pd.Series(0.0, index=test.index)
-        return z, z
-    Z = pd.DataFrame(z_cols)
-    # One-sided: overheating is the failure mode we care about.
-    pos = Z.clip(lower=0)
-    zmax = Z.max(axis=1, skipna=True)
-    l2 = np.sqrt((pos ** 2).sum(axis=1, skipna=True))
-    return zmax.fillna(0.0), l2.fillna(0.0)
+    return res.zmax, res.l2
 
 
 def main() -> int:
@@ -114,7 +80,7 @@ def main() -> int:
         if not sample:
             continue
         columns = pd.read_csv(sample[0], sep=SEP, nrows=0).columns.tolist()
-        pcol, thermal, _wind, _ambient = feature_rows(farm_dir, columns)
+        pcol, thermal, _wind, ambient = feature_rows(farm_dir, columns)
         chans = [c for c in thermal if c in columns]
         print(f"[{farm}] power={pcol} thermal channels={len(chans)}")
 
@@ -137,7 +103,7 @@ def main() -> int:
             use = [c for c in chans if c in df.columns]
             if not use:
                 continue
-            zmax, l2 = combined_score(train, test, use, pcol)
+            zmax, l2 = combined_score(train, test, use, pcol, ambient)
 
             ids = test.index.to_numpy()
             in_event = (ids >= int(row["event_start_id"])) & (ids <= int(row["event_end_id"]))
@@ -179,6 +145,12 @@ def main() -> int:
         for col, name in (("zmax_median_event", "max-z"), ("l2_median_event", "L2")):
             e = scorable[col].dropna()
             o = scorable[col.replace("_event", "_outside")].dropna()
+            # The two series are dropped independently, so their indices can
+            # differ. Comparing them unaligned raises "Can only compare
+            # identically-labeled Series objects"; the pairwise comparison
+            # must be over the events where BOTH values exist.
+            both = e.index.intersection(o.index)
+            e, o = e.loc[both], o.loc[both]
             if len(e):
                 sep = float((e > o).mean())
                 print(f"  {name:>6}: median in-event {e.median():8.3f} | outside {o.median():8.3f} "
