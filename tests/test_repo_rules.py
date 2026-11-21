@@ -124,6 +124,33 @@ def test_every_referenced_script_path_exists():
     assert not stale, f"references to scripts that do not exist: {stale}"
 
 
+def test_diagnostics_write_no_artefacts():
+    """scripts/diagnostics/ must not write into results/.
+
+    The split between pipeline/ and diagnostics/ is only useful if it is
+    true: a reader must be able to trust that results/*.json comes from
+    scripts/pipeline/ and from nowhere else. One diagnostic used to write
+    results/spike_thermal.json.
+    """
+    import re
+
+    pattern = re.compile(r"""results["']?\s*/\s*["']?(\w+\.json)|["']results["']""")
+    offenders = []
+    for p in sorted(DIAGNOSTICS.glob("*.py")):
+        for i, line in enumerate(p.read_text().splitlines(), 1):
+            if "results" not in line:
+                continue
+            # a mention in a comment or docstring is fine; a write is not
+            if line.lstrip().startswith("#"):
+                continue
+            if re.search(r"""(write_text|to_csv|open|json\.dump|mkdir)\s*\(""",
+                         line) and "results" in line:
+                offenders.append(f"{p.name}:{i}: {line.strip()[:70]}")
+    assert not offenders, (
+        f"diagnostics write into results/: {offenders}"
+    )
+
+
 def test_scripts_are_split_into_pipeline_and_diagnostics():
     """The split tells a reader which scripts produce results and which do not."""
     assert PIPELINE.is_dir(), "scripts/pipeline/ is missing"

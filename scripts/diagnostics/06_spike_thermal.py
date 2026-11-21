@@ -36,36 +36,15 @@ NORMAL_STATUS_IDS = (0, 2)
 LOAD_BIN = 0.05   # fraction of rated power per bin
 
 
-def temp_channels(farm_dir: Path) -> list[str]:
-    """Average-statistic channels whose unit is a temperature."""
-    fd = pd.read_csv(farm_dir / "feature_description.csv", sep=SEP)
-    fd["sensor_name"] = fd["sensor_name"].astype(str)
-    fd["unit"] = fd["unit"].astype(str)
-    fd["description"] = fd["description"].astype(str)
-    unit_ok = fd["unit"].str.contains("Celsius|°C", case=False, na=False, regex=True)
-    has_avg = fd["statistics_type"].astype(str).str.contains("average", case=False, na=False)
-    out = []
-    for base in fd.loc[unit_ok & has_avg, "sensor_name"]:
-        for cand in (f"{base}_avg", base):
-            out.append(cand)
-    return out
+def feature_rows(farm_dir: Path, columns: list[str]):
+    """(power channel, thermal channels, wind channels, ambient channel).
 
-
-def power_channel(farm_dir: Path) -> str | None:
-    fd = pd.read_csv(farm_dir / "feature_description.csv", sep=SEP)
-    fd["sensor_name"] = fd["sensor_name"].astype(str)
-    fd["description"] = fd["description"].astype(str)
-    pw = fd[fd["sensor_name"].str.startswith("power_")
-            & fd["description"].str.contains("active power", case=False, na=False)]
-    if pw.empty:
-        pw = fd[fd["sensor_name"].str.startswith("power_")]
-    for base in pw["sensor_name"]:
-        if f"{base}_avg" in ALL_COLUMNS:
-            return f"{base}_avg"
-    return None
-
-
-ALL_COLUMNS: dict[str, list[str]] = {}
+    This uses the SHARED implementation in windmill.care rather than a local
+    copy. The local copy was wrong: it tested `f"{base}_avg" in ALL_COLUMNS`,
+    which asks whether a COLUMN NAME is a key of the farm->columns dict, and
+    so never found the power channel for two of the three farms.
+    """
+    return care.feature_rows(farm_dir, columns)
 
 
 def combined_score(
@@ -134,9 +113,9 @@ def main() -> int:
         sample = sorted((farm_dir / "datasets").glob("*.csv"))
         if not sample:
             continue
-        ALL_COLUMNS[farm] = pd.read_csv(sample[0], sep=SEP, nrows=0).columns.tolist()
-        pcol = power_channel(farm_dir)
-        chans = [c for c in temp_channels(farm_dir) if c in ALL_COLUMNS[farm]]
+        columns = pd.read_csv(sample[0], sep=SEP, nrows=0).columns.tolist()
+        pcol, thermal, _wind, _ambient = feature_rows(farm_dir, columns)
+        chans = [c for c in thermal if c in columns]
         print(f"[{farm}] power={pcol} thermal channels={len(chans)}")
 
         for path in sample:
@@ -183,11 +162,17 @@ def main() -> int:
                 "l2_median_outside": round(float(np.nanmedian(l2.to_numpy()[out_ev])), 3),
             })
 
+    if not rows:
+        print("no anomaly events were scored -- is the CARE data extracted?")
+        return 1
     df = pd.DataFrame(rows)
-    res = ROOT / "results"
-    res.mkdir(exist_ok=True)
-    (res / "spike_thermal.json").write_text(json.dumps(df.to_dict("records"), indent=2) + "\n")
 
+    # A DIAGNOSTIC writes no artefact. It is a probe for exploring the data,
+    # not a pipeline step: anything it produced that mattered was promoted
+    # into scripts/pipeline/ and committed as a result file. The old version
+    # wrote results/spike_thermal.json, which contradicted both this file's
+    # home in scripts/diagnostics/ and the README's statement that the
+    # diagnostics produce nothing.
     scorable = df[df["n_scorable_event_rows"] > 0]
     print(f"\n=== SPIKE: {len(df)} anomaly events, {len(scorable)} with scorable rows ===")
     if len(scorable):
@@ -202,7 +187,8 @@ def main() -> int:
         print(scorable[["farm", "event_id", "n_scorable_event_rows", "zmax_median_event",
                         "zmax_median_outside", "l2_median_event", "l2_median_outside",
                         "description"]].head(12).to_string(index=False))
-    print(f"\nwrote {res/'spike_thermal.json'}")
+    print("\n(this diagnostic writes no artefact -- it is a probe, not a "
+          "pipeline step)")
     return 0
 
 
