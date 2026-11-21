@@ -73,6 +73,8 @@ We also do **not** claim operational weather forecasting. ERA5 conditions a
 long-term reference; it is not a forecast engine, and the residual is always
 measured against the turbine's own anemometer.
 
+And we do **not** claim to beat the published autoencoder baseline. Measured on the same events, it beats us -- by how much, and in which sub-scores, is set out in the AE-comparability section below, with the numbers in `results/`.
+
 <!-- METHOD:END -->
 
 <!-- RESULTS:START -->
@@ -242,15 +244,42 @@ Read out of the benchmark authors' own implementation (`energy-fault-detector` 0
 - the threshold is fitted on a 20% validation split of the TRAINING data -- so the threshold RULE itself does not use the scored events
 - but the split and the Keras training are **not** seeded, so the published number is one stochastic run
 
-Measured, by running the authors' own autoencoder on a subset of the datasets and scoring it with their own CARE scorer:
+Read out of the paper (sec. 4.2.2), which is where the comparability question is actually decided:
+
+- the AE's architecture and hyperparameters were tuned with Optuna, and the threshold calibration is **per wind farm**
+- farms A and B use an adaptive threshold with a per-farm sensitivity gamma, also optimised with Optuna
+- farm C's fixed threshold was chosen by **maximising the F(1/2) score** against ground truth derived from the status-IDs
+- the paper documents no held-out protocol for that search
+
+> The published 0.66 is therefore the output of a search whose objective was the CARE score itself: a **tuned-on-the-benchmark** number, not a held-out one. That is a reason to be careful about quoting it as a like-for-like baseline -- but it is NOT by itself an explanation of the gap, because the measurement below runs the authors' own autoencoder under a leak-free threshold rule and the gap survives.
+
+Two things also differ in scope rather than in method: the AE sees the **full sensor vector** (power, wind, pitch, hydraulic, electrical), while this project's detector sees only the thermal channels -- so a hydraulic or pitch fault is invisible to it; and the AE's feature set depends on which of the package's two entry points was used, one of which keeps `status_type_id` (the fault annotation) as a feature.
+
+**The like-for-like measurement.** Both figures above are over all 95 datasets, so they cannot be subtracted from one another. So both arms were scored on the **same** 12 datasets, with the same CARE scorer:
+
+| arm | datasets | coverage | accuracy | reliability | earliness | CARE |
+|---|---|---|---|---|---|---|
+| this project (deterministic, max z) | 12 | 0.1160 | 0.9673 | 0.4545 | 0.0311 | 0.5072 |
+| published AE (authors' own implementation) | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
+
+**The honest answer: the AE is genuinely better on these events**, by 0.089 CARE (0.5966 against 0.5072). That holds even with a leak-free threshold rule and even with the status column removed from the AE's features -- so the gap is NOT a protocol artefact.
+
+The shape of the gap is informative. This project's detector has the better **accuracy** (0.9673 against 0.8725): it raises far fewer false alarms. The AE has the better **coverage** (0.3423 against 0.1160) and the better **earliness** (0.3187 against 0.0311): it finds more of the true anomalies and finds them earlier.
+
+The reason is visible in the threshold rule rather than in the physics. A leak-free threshold set at a training quantile has to be conservative to avoid false alarms, and this project's arm pays for that in exactly the sub-scores the AE wins: it detects late and rarely. A threshold selected on the scored events would lift its coverage considerably -- the fixed-z upper bound in the sweep above reaches a coverage comparable to the AE's -- but that number is an upper bound, not a result.
+
+The authors' own autoencoder, run on the same subset in two configurations, and scored with their own CARE scorer:
 
 | configuration | datasets | coverage | accuracy | reliability | earliness | CARE |
 |---|---|---|---|---|---|---|
-| published | 3 | 0.4073 | not measured | 0.7143 | 0.3995 | nan |
+| published_s0 | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
+| no_status_s0 | 12 | 0.3423 | 0.8725 | 0.5769 | 0.3187 | 0.5966 |
 
 This audit runs on a stratified SUBSET of the CARE datasets, not all 95: the authors' autoencoder takes roughly 5-8 minutes per dataset, so the full benchmark is an 8-13 hour job. The subset is stated here rather than presented as the full benchmark.
 
-**What we claim:** that our 0.5028 is a leak-free number under a protocol we can re-derive and defend, and that the published 0.66 is not that. We do **not** claim to beat it -- the honest statement is that the two numbers are not the same kind of number, and that closing the gap honestly would require re-running the published baseline's own tuning loop under a held-out protocol, which is a separate piece of work.
+**What we claim, precisely.** We claim that our 0.5028 is a leak-free number under a protocol we can re-derive and defend, and that the published figure is not quite that kind of number -- it is the output of a search whose objective was the CARE score itself, with no held-out protocol documented.
+
+We do **not** claim to beat the published baseline. Measured on the same events, it beats us. The useful, defensible claim is narrower and more interesting: **we can tell you exactly where we lose and why**, we can tell you what part of the gap is protocol and what part is method, and every number above is re-derivable from the artefacts in `results/`.
 
 The same two arms on ENGIE, where every alarm is a false alarm:
 
@@ -339,7 +368,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-75 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+77 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

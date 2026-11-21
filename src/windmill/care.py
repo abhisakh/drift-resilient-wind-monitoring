@@ -132,3 +132,39 @@ def event_info(farm_dir: Path) -> pd.DataFrame:
 
 def dataset_columns(path: Path) -> list[str]:
     return pd.read_csv(path, sep=SEP, nrows=0).columns.tolist()
+
+
+def audit_subset(data_dir: Path, per_farm: int | None = None) -> list:
+    """A label-stratified subset of the CARE datasets.
+
+    Shared so that every arm measured on "the same subset" is measured on
+    literally the same datasets -- the AE audit and the comparison against
+    this project's detector must not drift apart.
+
+    The subset is stratified BY LABEL because the CARE score's Accuracy
+    sub-score is averaged over the NORMAL datasets: an all-anomaly subset
+    leaves it undefined and the final score a NaN.
+
+    Returns (path, farm_dir, event_info_row) triples.
+    """
+    out = []
+    for farm in ("Wind Farm A", "Wind Farm B", "Wind Farm C"):
+        farm_dir = care_root(data_dir) / farm
+        if not farm_dir.exists():
+            continue
+        info = event_info(farm_dir)
+        by_label: dict[str, list] = {"anomaly": [], "normal": []}
+        for _, row in info.iterrows():
+            eid = int(row["event_id"])
+            path = farm_dir / "datasets" / f"{eid}.csv"
+            if not path.exists():
+                continue
+            label = str(row.get("event_label", "")).strip().lower()
+            if label in by_label:
+                by_label[label].append((path, farm_dir, row))
+        if per_farm is None:
+            out.extend(by_label["anomaly"] + by_label["normal"])
+            continue
+        out.extend(by_label["anomaly"][: (per_farm + 1) // 2])
+        out.extend(by_label["normal"][: per_farm // 2])
+    return out

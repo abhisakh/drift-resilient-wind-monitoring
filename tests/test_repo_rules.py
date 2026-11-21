@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 PIPELINE = SCRIPTS / "pipeline"
 DIAGNOSTICS = SCRIPTS / "diagnostics"
+RESULTS = ROOT / "results"
 
 
 # --- Rule 1: README.md is generated ----------------------------------------
@@ -170,6 +171,44 @@ def test_reusable_math_lives_in_src():
             f"{p.name} imports another script by path -- shared code belongs in "
             f"src/windmill/"
         )
+
+
+@pytest.mark.skipif(
+    not (RESULTS / "subset_comparison.json").exists(),
+    reason="subset comparison not generated",
+)
+def test_the_two_audits_cover_the_same_datasets():
+    """The AE comparison is only meaningful if both arms saw the same events.
+
+    The AE audit and the subset comparison each pick a subset. If they drift
+    apart the "like-for-like" claim becomes false while still looking true in
+    the README.
+    """
+    sc = json.loads((RESULTS / "subset_comparison.json").read_text())
+    ae = json.loads((RESULTS / "ae_audit.json").read_text())
+    subset_ids = set(sc.get("dataset_ids") or [])
+    ae_ids = {r.get("event_id") for r in ae.get("per_dataset", [])
+              if r.get("event_id") is not None}
+    assert subset_ids, "the subset comparison recorded no dataset ids"
+    assert subset_ids <= ae_ids, (
+        f"the subset comparison scored events the AE audit never ran: "
+        f"{sorted(subset_ids - ae_ids)}"
+    )
+
+
+@pytest.mark.skipif(
+    not (RESULTS / "subset_comparison.json").exists(),
+    reason="subset comparison not generated",
+)
+def test_the_subset_comparison_scores_both_labels():
+    """Accuracy is averaged over the NORMAL datasets, so both labels are needed."""
+    sc = json.loads((RESULTS / "subset_comparison.json").read_text())
+    for key in ("this_project", "published_ae_baseline_measured_here"):
+        v = sc.get(key, {})
+        assert v.get("n_anomaly", 0) > 0, key
+        assert v.get("n_normal", 0) > 0, key
+        assert v.get("accuracy") is not None, key
+        assert v.get("care_score") is not None, key
 
 
 # --- Rule 3: CI protects determinism ----------------------------------------

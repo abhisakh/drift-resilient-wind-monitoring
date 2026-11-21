@@ -365,9 +365,12 @@ def section_ae_comparability() -> str:
         out.append(f"- the paper documents no held-out protocol for that search\n")
         out.append(
             "> The published 0.66 is therefore the output of a search whose "
-            "objective was the CARE score itself. It is a "
-            "**tuned-on-the-benchmark** number, not a held-out one, and it is "
-            "not directly comparable with a leak-free score such as ours.\n")
+            "objective was the CARE score itself: a **tuned-on-the-benchmark** "
+            "number, not a held-out one. That is a reason to be careful about "
+            "quoting it as a like-for-like baseline -- but it is NOT by itself "
+            "an explanation of the gap, because the measurement below runs the "
+            "authors' own autoencoder under a leak-free threshold rule and the "
+            "gap survives.\n")
         out.append(
             "Two things also differ in scope rather than in method: the AE sees "
             "the **full sensor vector** (power, wind, pitch, hydraulic, "
@@ -376,11 +379,58 @@ def section_ae_comparability() -> str:
             "the AE's feature set depends on which of the package's two entry "
             "points was used, one of which keeps `status_type_id` (the fault "
             "annotation) as a feature.\n")
+    # --- the like-for-like comparison -------------------------------------
+    sc = load("subset_comparison.json")
+    if sc:
+        ours = sc.get("this_project", {})
+        theirs = sc.get("published_ae_baseline_measured_here", {})
+        out.append(
+            f"**The like-for-like measurement.** Both figures above are over all "
+            f"95 datasets, so they cannot be subtracted from one another. So "
+            f"both arms were scored on the **same** "
+            f"{sc.get('n_datasets')} datasets, with the same CARE scorer:\n")
+        out.append("| arm | datasets | coverage | accuracy | reliability | "
+                   "earliness | CARE |")
+        out.append("|---|---|---|---|---|---|---|")
+        for label, v in (("this project (deterministic, max z)", ours),
+                          ("published AE (authors' own implementation)", theirs)):
+            out.append(f"| {label} | {v.get('n_datasets')} | "
+                       f"{fmt(v.get('coverage'))} | {fmt(v.get('accuracy'))} | "
+                       f"{fmt(v.get('reliability'))} | {fmt(v.get('earliness'))} | "
+                       f"{fmt(v.get('care_score'))} |")
+        out.append("")
+        if ours.get("care_score") is not None and theirs.get("care_score") is not None:
+            gap = theirs["care_score"] - ours["care_score"]
+            out.append(
+                f"**The honest answer: the AE is genuinely better on these "
+                f"events**, by {fmt(gap, 3)} CARE "
+                f"({fmt(theirs['care_score'])} against {fmt(ours['care_score'])}). "
+                f"That holds even with a leak-free threshold rule and even with "
+                f"the status column removed from the AE's features -- so the "
+                f"gap is NOT a protocol artefact.\n")
+            out.append(
+                "The shape of the gap is informative. This project's detector "
+                f"has the better **accuracy** ({fmt(ours.get('accuracy'))} against "
+                f"{fmt(theirs.get('accuracy'))}): it raises far fewer false "
+                f"alarms. The AE has the better **coverage** "
+                f"({fmt(theirs.get('coverage'))} against {fmt(ours.get('coverage'))}) "
+                f"and the better **earliness** ({fmt(theirs.get('earliness'))} "
+                f"against {fmt(ours.get('earliness'))}): it finds more of the "
+                f"true anomalies and finds them earlier.\n")
+            out.append(
+                "The reason is visible in the threshold rule rather than in the "
+                "physics. A leak-free threshold set at a training quantile has "
+                "to be conservative to avoid false alarms, and this project's "
+                "arm pays for that in exactly the sub-scores the AE wins: it "
+                "detects late and rarely. A threshold selected on the scored "
+                "events would lift its coverage considerably -- the fixed-z "
+                "upper bound in the sweep above reaches a coverage comparable "
+                "to the AE's -- but that number is an upper bound, not a "
+                "result.\n")
     pc = a.get("per_config") or {}
     if pc:
-        out.append("Measured, by running the authors' own autoencoder on a "
-                   "subset of the datasets and scoring it with their own CARE "
-                   "scorer:\n")
+        out.append("The authors' own autoencoder, run on the same subset in two "
+                   "configurations, and scored with their own CARE scorer:\n")
         out.append("| configuration | datasets | coverage | accuracy | "
                    "reliability | earliness | CARE |")
         out.append("|---|---|---|---|---|---|---|")
@@ -392,13 +442,18 @@ def section_ae_comparability() -> str:
         out.append("")
     if a.get("subsample_note"):
         out.append(a["subsample_note"] + "\n")
-    out.append("**What we claim:** that our 0.5028 is a leak-free number under a "
-               "protocol we can re-derive and defend, and that the published "
-               "0.66 is not that. We do **not** claim to beat it -- the honest "
-               "statement is that the two numbers are not the same kind of "
-               "number, and that closing the gap honestly would require "
-               "re-running the published baseline's own tuning loop under a "
-               "held-out protocol, which is a separate piece of work.\n")
+    out.append("**What we claim, precisely.** We claim that our "
+               f"{fmt((load('multivariate.json') or {}).get('max_combiner', {}).get('care_score'))} "
+               "is a leak-free number under a protocol we can re-derive and "
+               "defend, and that the published figure is not quite that kind of "
+               "number -- it is the output of a search whose objective was the "
+               "CARE score itself, with no held-out protocol documented.\n")
+    out.append("We do **not** claim to beat the published baseline. Measured on "
+               "the same events, it beats us. The useful, defensible claim is "
+               "narrower and more interesting: **we can tell you exactly where "
+               "we lose and why**, we can tell you what part of the gap is "
+               "protocol and what part is method, and every number above is "
+               "re-derivable from the artefacts in `results/`.\n")
     return "\n".join(out)
 
 
@@ -453,6 +508,12 @@ def section_method() -> str:
         "We also do **not** claim operational weather forecasting. ERA5 conditions a\n"
         "long-term reference; it is not a forecast engine, and the residual is always\n"
         "measured against the turbine's own anemometer.\n"
+    )
+    out.append(
+        "And we do **not** claim to beat the published autoencoder baseline. "
+        "Measured on the same events, it beats us -- by how much, and in which "
+        "sub-scores, is set out in the AE-comparability section below, with the "
+        "numbers in `results/`.\n"
     )
     return "\n".join(out)
 

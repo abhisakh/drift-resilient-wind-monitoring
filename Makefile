@@ -23,7 +23,7 @@ SCRIPTS := scripts/pipeline
 
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
-        diagnostics lint clean clean-results
+        compare diagnostics lint clean clean-results
 
 help: ## list the available targets
 	@echo ""
@@ -69,9 +69,14 @@ summary: ## write results/summary.json -- one table across every arm
 
 audit: ## re-run the AE-comparability audit (all 95 datasets, ~1 h)
 	$(PY) $(SCRIPTS)/12_ae_audit.py --datasets 0 --configs published:0,no_status:0,published:1
+	$(MAKE) compare
 
 audit-quick: ## AE-comparability audit on a small subset (a few minutes)
 	$(PY) $(SCRIPTS)/12_ae_audit.py --datasets 2 --configs published:0,no_status:0
+	$(MAKE) compare
+
+compare: ## score both arms on the SAME CARE subset (like-for-like vs the AE)
+	$(PY) $(SCRIPTS)/13_subset_comparison.py --datasets 4
 
 demo: ## watch the detector work on real SCADA
 	$(PY) $(SCRIPTS)/11_demo.py
