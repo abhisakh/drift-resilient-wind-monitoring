@@ -51,13 +51,23 @@ NORMAL_STATUS_IDS = (0, 2)
 
 
 def calculate_criticality(
-    anomalies: pd.Series, normal_idx: pd.Series | None = None
+    anomalies: pd.Series,
+    normal_idx: pd.Series | None = None,
+    init_criticality: int = 0,
+    max_criticality: int = 1000,
 ) -> pd.Series:
     """Algorithm 1 of the CARE paper.
 
     Criticality increases by one for each detected anomaly during normal
     operation, decreases by one (floor 0) for each normal reading during normal
     operation, and is held constant while the reading is not normal operation.
+
+    The counter is BOUNDED at `max_criticality` (1000, as in the benchmark
+    authors' implementation): the cap keeps the score from growing without
+    limit on a long, wholly anomalous series. It does not change any
+    classification -- the Reliability sub-score only asks whether the maximum
+    reaches 72 -- but the reported maximum does depend on it, so it is
+    implemented to match.
 
     Returns a Series indexed like `anomalies`.
     """
@@ -74,7 +84,7 @@ def calculate_criticality(
     a = anomalies.to_numpy(dtype=bool)
     n = normal_idx.to_numpy(dtype=bool)
     crit = np.zeros(len(a), dtype="int64")
-    cur = 0
+    cur = init_criticality
     for i in range(len(a)):
         if not n[i]:
             cur = cur            # held constant while not in normal operation
@@ -82,6 +92,7 @@ def calculate_criticality(
             cur = cur + 1
         else:
             cur = max(cur - 1, 0)
+        cur = max(0, min(max_criticality, cur))
         crit[i] = cur
     return pd.Series(crit, index=anomalies.index)
 

@@ -175,7 +175,7 @@ The threshold is the arm's one free parameter, so it was swept rather than chose
 | power-only residual (baseline) | 0.1263 | 0.9606 | 0.2459 | 0.1347 | 0.4856 |
 | multivariate bins (max z) | 0.1513 | 0.9512 | 0.3810 | 0.0795 | 0.5028 |
 | multivariate bins (L2) | 0.1342 | 0.9538 | 0.3608 | 0.0685 | 0.4942 |
-| LightGBM thermal NBM | 0.2167 | 0.8511 | 0.3356 | 0.1743 | 0.4857 |
+| LightGBM thermal NBM | 0.2167 | 0.8477 | 0.3268 | 0.1743 | 0.4826 |
 
 <!-- RESULTS:END -->
 

@@ -158,9 +158,13 @@ def run_dataset(path: Path, farm_dir: Path, info: pd.DataFrame, pcol: str,
     out = pd.Series(False, index=test.index)
     out.loc[flags.index] = flags.to_numpy()
 
-    ids = test.index.to_numpy()
-    in_event = (ids >= int(row["event_start_id"])) & (ids <= int(row["event_end_id"]))
-    status = test["status_type_id"].to_numpy()
+    # The event window is expressed in the TEST frame's id space, but `combined`
+    # is indexed by `te` (the rows with all the features present). The two have
+    # different lengths, so the masks must be built against `te`.
+    te_ids = te.index.to_numpy()
+    s, e = int(row["event_start_id"]), int(row["event_end_id"])
+    in_event = (te_ids >= s) & (te_ids <= e)
+    status = te["status_type_id"].to_numpy()
     scorable = in_event & np.isin(status, NORMAL_STATUS_IDS)
 
     return {

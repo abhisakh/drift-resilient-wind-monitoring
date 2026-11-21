@@ -1,11 +1,11 @@
 {
   "arm": "LightGBM thermal NBM",
-  "n_datasets": 94,
-  "care_score": 0.4857,
+  "n_datasets": 95,
+  "care_score": 0.4826,
   "sub_scores": {
     "coverage": 0.2167,
-    "accuracy": 0.8511,
-    "reliability": 0.3356,
+    "accuracy": 0.8477,
+    "reliability": 0.3268,
     "earliness": 0.1743
   },
   "published_baselines": {
@@ -676,6 +676,19 @@
       "combined_median_event": 1.9366,
       "combined_median_outside": 0.984,
       "anomaly_detected": false
+    },
+    {
+      "event_id": 36,
+      "farm": "Wind Farm C",
+      "label": "normal",
+      "description": "nan",
+      "n_channels": 12,
+      "threshold": 4.3011,
+      "n_flags_test": 923,
+      "n_scorable_event_rows": 1559,
+      "combined_median_event": 4.3694,
+      "combined_median_outside": 1.3559,
+      "anomaly_detected": true
     },
     {
       "event_id": 37,

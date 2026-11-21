@@ -60,11 +60,11 @@
       "engie_far": null,
       "care": {
         "coverage": 0.2167,
-        "accuracy": 0.8511,
-        "reliability": 0.3356,
+        "accuracy": 0.8477,
+        "reliability": 0.3268,
         "earliness": 0.1743
       },
-      "care_score": 0.4857,
+      "care_score": 0.4826,
       "beats_AE": false
     }
   ],

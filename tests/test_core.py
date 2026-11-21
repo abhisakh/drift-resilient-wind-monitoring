@@ -47,6 +47,27 @@ def test_criticality_never_negative():
     assert crit.min() >= 0
 
 
+def test_criticality_is_bounded():
+    """The counter must be capped, as in the benchmark authors' implementation.
+
+    A long, wholly anomalous series would otherwise drive the counter without
+    limit. The cap does not change any classification (Reliability only asks
+    whether the maximum reaches 72) but it does change the reported maximum.
+    """
+    anomalies = pd.Series([True] * 3000)
+    normal = pd.Series(True, index=anomalies.index)
+    crit = scoring.calculate_criticality(anomalies, normal)
+    assert crit.max() == 1000
+    assert crit.iloc[-1] == 1000
+
+
+def test_criticality_respects_a_custom_cap():
+    anomalies = pd.Series([True] * 100)
+    normal = pd.Series(True, index=anomalies.index)
+    crit = scoring.calculate_criticality(anomalies, normal, max_criticality=10)
+    assert crit.max() == 10
+
+
 # ------------------------------------------------------------- weighted score
 
 def test_weighted_score_all_detected_is_one():

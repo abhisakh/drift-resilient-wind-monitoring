@@ -17,15 +17,8 @@
     "n_anomaly": 45,
     "n_normal": 50,
     "n_events_detected": 15,
-    "n_mismatches_vs_reference": 1,
-    "mismatches": [
-      {
-        "event": 4,
-        "metric": "max_criticality",
-        "reference": 1000.0,
-        "ours": 1927.0
-      }
-    ],
+    "n_mismatches_vs_reference": 0,
+    "mismatches": [],
     "per_event": [
       {
         "event_id": 0,
@@ -1467,15 +1460,8 @@
     "n_anomaly": 45,
     "n_normal": 50,
     "n_events_detected": 13,
-    "n_mismatches_vs_reference": 1,
-    "mismatches": [
-      {
-        "event": 4,
-        "metric": "max_criticality",
-        "reference": 1000.0,
-        "ours": 1820.0
-      }
-    ],
+    "n_mismatches_vs_reference": 0,
+    "mismatches": [],
     "per_event": [
       {
         "event_id": 0,
