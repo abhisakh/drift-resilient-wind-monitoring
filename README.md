@@ -1,6 +1,6 @@
 # Drift-Resilient Wind Turbine Condition Monitoring: Weather-Conditioned Residuals, Deterministic Gates & Auditability
 
-**Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46.5× with an auditable, zero-leakage pipeline.**
+**A weather-aware wind turbine power and condition-monitoring pipeline that separates inter-annual weather shifts from genuine equipment degradation using climatology-conditioned power residuals, deterministic alert gating, and auditable MLOps workflows. Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46.5× with an auditable, zero-leakage pipeline.**
 
 >  This project demonstrates that reference calibration matters more than model complexity, cutting false alarms from **26.37%** to **0.57%** across multi-year ENGIE SCADA data and **95** CARE benchmark events.
 
