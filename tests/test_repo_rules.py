@@ -177,6 +177,8 @@ def test_pipeline_scripts_write_a_result_artifact():
         "09_report.py": "README.md",
         "10_summary.py": "summary.json",
         "12_ae_audit.py": "ae_audit.json",
+        "13_subset_comparison.py": "subset_comparison.json",
+        "14_thermal_signal.py": "thermal_signal.json",
     }
     for script, artefact in writers.items():
         p = PIPELINE / script

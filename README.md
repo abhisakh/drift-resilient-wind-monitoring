@@ -236,6 +236,27 @@ All four arms are scored on the same 95 events (45 anomaly, 50 normal). The lear
 
 Both the deterministic and the learned arm use the same threshold rule: the quantile of the TRAINING score distribution, so the threshold never sees an event it is later scored on. The learned arm's seeds are pinned explicitly (`random_state`, `seed`) and verified bit-identical across runs by `tests/test_lightgbm_determinism.py` -- without that, its score would not have been re-derivable, which is the whole point of the exercise.
 
+### How much thermal signal is actually inside a fault window?
+
+This project detects faults from **thermal channels**. Most of CARE's faults are not thermal -- "Hydraulic group", "Pitchfailure", "Converter Failure", "Safety chain relay open". It is worth measuring what that costs rather than assuming it.
+
+Over the 45 labelled anomaly events (34 of them with scorable rows), the detector's score inside the fault window compared with its score outside it, on the same dataset:
+
+| statistic | median inside the event | median outside | event higher in |
+|---|---|---|---|
+| max-z | 0.9942 | 1.1443 | 0.5152 |
+| L2 norm | 1.8803 | 1.8998 | 0.4848 |
+
+| farm | events | median inside | median outside | event higher in |
+|---|---|---|---|---|
+| Wind Farm A | 1 | 0.6745 | 0.5396 | 1.0000 |
+| Wind Farm B | 6 | 1.6873 | 1.9492 | 0.6000 |
+| Wind Farm C | 27 | 0.9683 | 1.1443 | 0.4815 |
+
+**The thermal signal inside a fault window is not stronger than outside it.** The event is higher in 0.5152 of events -- a coin flip.
+
+This is the quantitative form of the project's honest weakness, and it is a SCOPE limit rather than a badly chosen threshold: no threshold recovers a signal the thermal channels do not carry. It explains exactly where this project loses to the published autoencoder -- Coverage and Earliness -- while its Accuracy is better, because it raises fewer false alarms on normal behaviour.
+
 ### Is the published AE baseline (0.66) comparable with ours?
 
 Read out of the benchmark authors' own implementation (`energy-fault-detector` 0.8.1):
@@ -368,7 +389,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-127 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+130 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

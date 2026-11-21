@@ -272,6 +272,7 @@ def section_care() -> str:
                    "explicitly (`random_state`, `seed`) and verified bit-identical across runs "
                    "by `tests/test_lightgbm_determinism.py` -- without that, its score would "
                    "not have been re-derivable, which is the whole point of the exercise.\n")
+    out.append(section_thermal_signal())
     out.append(section_ae_comparability())
     em = load("engie_multivariate.json")
     if em:
@@ -345,6 +346,61 @@ def _count_tests() -> int:
         n += sum(1 for line in f.read_text().splitlines()
                  if line.startswith("def test_"))
     return n
+
+
+def section_thermal_signal() -> str:
+    """How much thermal signal is actually inside a fault window?
+
+    This project detects faults from thermal channels. CARE's faults are
+    mostly NOT thermal. This measures what that costs, so the limitation is
+    a number rather than an excuse.
+    """
+    ts = load("thermal_signal.json")
+    if not ts:
+        return ""
+    out = ["### How much thermal signal is actually inside a fault window?\n"]
+    out.append(
+        "This project detects faults from **thermal channels**. Most of CARE's "
+        "faults are not thermal -- \"Hydraulic group\", \"Pitchfailure\", "
+        "\"Converter Failure\", \"Safety chain relay open\". It is worth "
+        "measuring what that costs rather than assuming it.\n")
+    out.append(
+        f"Over the {ts.get('n_anomaly_events')} labelled anomaly events "
+        f"({ts.get('n_with_scorable_rows')} of them with scorable rows), the "
+        "detector's score inside the fault window compared with its score "
+        "outside it, on the same dataset:\n")
+    out.append("| statistic | median inside the event | median outside | "
+               "event higher in |")
+    out.append("|---|---|---|---|")
+    for stat, label in (("max_z", "max-z"), ("l2", "L2 norm")):
+        out.append(f"| {label} | {fmt(ts.get(f'{stat}_median_in_event'), 4)} | "
+                   f"{fmt(ts.get(f'{stat}_median_outside'), 4)} | "
+                   f"{fmt(ts.get(f'{stat}_event_higher_fraction'), 4)} |")
+    out.append("")
+    pf = ts.get("per_farm") or {}
+    if pf:
+        out.append("| farm | events | median inside | median outside | "
+                   "event higher in |")
+        out.append("|---|---|---|---|---|")
+        for farm, v in pf.items():
+            out.append(f"| {farm} | {v.get('n')} | "
+                       f"{fmt(v.get('zmax_median_in_event'), 4)} | "
+                       f"{fmt(v.get('zmax_median_outside'), 4)} | "
+                       f"{fmt(v.get('zmax_event_higher_fraction'), 4)} |")
+        out.append("")
+    frac = ts.get("max_z_event_higher_fraction")
+    out.append(
+        f"**The thermal signal inside a fault window is not stronger than "
+        f"outside it.** The event is higher in {fmt(frac, 4)} of events -- "
+        f"a coin flip.\n")
+    out.append(
+        "This is the quantitative form of the project's honest weakness, and it "
+        "is a SCOPE limit rather than a badly chosen threshold: no threshold "
+        "recovers a signal the thermal channels do not carry. It explains "
+        "exactly where this project loses to the published autoencoder -- "
+        "Coverage and Earliness -- while its Accuracy is better, because it "
+        "raises fewer false alarms on normal behaviour.\n")
+    return "\n".join(out)
 
 
 def section_ae_comparability() -> str:
