@@ -339,23 +339,20 @@ def _peer_median_at_wind(target: pd.DataFrame, peers: dict[str, pd.DataFrame],
 # ------------------------------------------------------------------- ENGIE
 def _engie_csv(data_dir: Path, turbine: str) -> Path:
     """Find one turbine's cleaned SCADA CSV."""
-    base = data_dir / "raw" / "engie_la_haute_borne_extracted"
-    if not base.exists():
-        base = data_dir / "raw" / "engie_v2_extracted"
-    if not base.exists():
-        raise LiveEngineError("the ENGIE release is not downloaded")
-    hits = sorted(base.rglob(f"*{turbine}*F99*.csv"))
-    if not hits:
-        raise LiveEngineError(f"no SCADA file for {turbine}")
-    return hits[0]
+    try:
+        return loaders.engie_turbine_csv(data_dir, turbine)
+    except FileNotFoundError as exc:
+        raise LiveEngineError(str(exc)) from exc
 
 
 def _read_engie(path: Path) -> pd.DataFrame:
     """Read one ENGIE CSV.
 
-    The cleaned CSVs are comma-separated with a UTF-8 BOM, and the
-    timestamps carry mixed +01:00/+02:00 offsets, so the parse is
-    offset-aware and then normalised to UTC.
+    Kept as a thin wrapper so the CSV path can be passed around, but the
+    parsing itself is the shared one in loaders: the cleaned CSVs are
+    comma-separated with a UTF-8 BOM, and the timestamps carry mixed
+    +01:00/+02:00 offsets, so the parse has to be offset-aware and then
+    normalised to UTC.
     """
     df = pd.read_csv(path, encoding="utf-8-sig", low_memory=False)
     tcol = next((c for c in df.columns

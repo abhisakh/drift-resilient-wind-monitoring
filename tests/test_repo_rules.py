@@ -175,7 +175,7 @@ def test_pipeline_scripts_write_a_result_artifact():
         "08b_sweep_threshold.py": "threshold_sweep.json",
         "08c_engie_multivariate.py": "engie_multivariate.json",
         "09_report.py": "README.md",
-        "11_demo.py": "demo_r80711.json",
+        "11_demo.py": ("demo_r80711.json", "demo_frozen_baselines.json"),
         "10_summary.py": "summary.json",
         "12_ae_audit.py": "ae_audit.json",
         "13_subset_comparison.py": "subset_comparison.json",
@@ -184,9 +184,14 @@ def test_pipeline_scripts_write_a_result_artifact():
     for script, artefact in writers.items():
         p = PIPELINE / script
         assert p.exists(), f"{script} is missing from scripts/pipeline/"
-        assert artefact in p.read_text(), (
-            f"{script} does not mention {artefact} -- it must produce it"
-        )
+        # A script may write more than one artefact, so the value is either
+        # a name or a tuple of names.
+        names = artefact if isinstance(artefact, tuple) else (artefact,)
+        text = p.read_text()
+        for name in names:
+            assert name in text, (
+                f"{script} does not mention {name} -- it must produce it"
+            )
 
 
 def test_pipeline_scripts_use_the_shared_module():

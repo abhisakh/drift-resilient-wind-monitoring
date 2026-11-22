@@ -131,14 +131,16 @@ _TURBINE_SVG = (
 #: it follows the theme in both light and dark mode.
 _TURBINE_ICON_SVG = (
     '<svg class="brand-icon" viewBox="0 0 24 24" width="26" height="26"'
-    ' fill="currentColor" aria-hidden="true" focusable="false">'
-    '<circle cx="12" cy="8.6" r="1.5"/>'
-    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"/>'
-    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"'
-    ' transform="rotate(120 12 8.6)"/>'
-    '<path d="M12 8.6C11.2 5.9 11.1 3.3 12 1.5C12.9 3.3 12.8 5.9 12 8.6Z"'
-    ' transform="rotate(240 12 8.6)"/>'
-    '<path d="M11.25 9.9H12.75L13.6 21.6H10.4Z"/>'
+    ' fill="none" stroke="currentColor" stroke-width="1.5"'
+    ' stroke-linecap="round" aria-hidden="true" focusable="false">'
+    # Three straight blades on a hub, over a mast. Drawn as strokes rather
+    # than as filled petals: at 26 pixels a filled blade blurs into the
+    # others and the whole thing reads as a cross.
+    '<path d="M12 8.5V1.6"/>'
+    '<path d="M12 8.5L18.6 12.8"/>'
+    '<path d="M12 8.5L5.4 12.8"/>'
+    '<circle cx="12" cy="8.5" r="1.3" fill="currentColor" stroke="none"/>'
+    '<path d="M12 10.2V22.2"/>'
     "</svg>"
 )
 
@@ -167,6 +169,10 @@ def _style():
                font-size:.9rem;}
 
         /* The brand mark beside the sidebar title. */
+        .callout {border-left:4px solid var(--accent, #5fd39a);
+                  padding:.7rem 1rem; margin:.6rem 0 1rem 0;
+                  background:rgba(95,211,154,0.07);
+                  border-radius:.35rem; font-size:1.02rem; line-height:1.5;}
         .brand {display:flex; align-items:center; gap:.55rem;
                 font-size:1.17rem; font-weight:700; line-height:1.25;
                 margin:.9rem 0 .35rem 0; color:var(--foreground);}
@@ -1086,6 +1092,199 @@ def _power_curve_cached():
         return exc
 
 
+@st.cache_data(show_spinner=False)
+def _checkpoint_bundle_cached(checkpoint: str, live: bool):
+    """The checkpoint's bundle: computed live when the raw data is there,
+    read from the committed artefact when it is not.
+
+    The two paths must agree, and a test checks that they do -- otherwise
+    the Cloud deployment would quietly be showing different numbers from
+    the local one, which is the failure mode the whole single-source-of-
+    truth rule exists to prevent.
+    """
+    fc = _forecast_module()
+    if live:
+        from windmill import loaders
+
+        try:
+            frame = fc.engie_checkpoint_frame(ROOT / "data", "R80711")
+            cp = fc.CHECKPOINTS[checkpoint]
+            return fc.checkpoint_bundle(frame, cp["prediction_start"],
+                                        cp["prediction_end"]), None
+        except Exception as exc:
+            return None, str(exc)
+    exported = fc.load_frozen_baselines()
+    bundle = (exported.get("checkpoints") or {}).get(checkpoint)
+    if bundle is None:
+        return None, (
+            f"{checkpoint} is not in results/{fc.FROZEN_BASELINES_ARTEFACT} -- "
+            f"run `make snapshot`"
+        )
+    return bundle, None
+
+
+def _training_callout(bundle: dict) -> str:
+    """The bold training-date callout.
+
+    The rule is that the model is trained on exactly the thirty days
+    immediately before the prediction window, and this is where that is
+    stated -- not in a footnote, where nobody reads it.
+    """
+    fit = bundle["fits"]["primary"]
+    return (f"**Trained on: {fit['window_start']} → {fit['window_end']}** "
+            f"(Trailing 30 Days · {fit['rows']:,} clean rows · "
+            f"{fit.get('seconds', 0.0):.2f} s)")
+
+
+def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
+                             show_1yr: bool = True,
+                             show_2yr: bool = True) -> None:
+    """One historical checkpoint: the multi-year staleness comparison.
+
+    The primary model is always trained on exactly the thirty days
+    immediately before the prediction window. The two stale baselines are
+    the same rule applied one and two years earlier, so the only thing
+    that differs between them is how old the reference is.
+    """
+    import plotly.graph_objects as go
+
+    with st.spinner(f"Scoring the {checkpoint.replace('_', ' ')}…"):
+        bundle, error = _checkpoint_bundle_cached(checkpoint, live)
+    if error or bundle is None:
+        st.error(f"The checkpoint could not be scored: {error}")
+        return
+
+    scored = fc.score_checkpoint(bundle)
+    fits = bundle["fits"]
+    rows = bundle.get("rows") or []
+    if not rows:
+        st.error("The checkpoint has no rows in the target week.")
+        return
+
+    df = pd.DataFrame(rows)
+    df["ts"] = pd.to_datetime(df["ts"], unit="s", utc=True)
+
+    # --- the bold training callout ----------------------------------------
+    # The callout is raw HTML, so the emphasis has to be an HTML tag: a
+    # markdown ** inside a div is not parsed and comes out as literal
+    # asterisks.
+    st.markdown(
+        f"<div class='callout'>{_training_callout(bundle).replace('**', '<b>')}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # --- the KPI row: the tracking error of each fit ----------------------
+    def _mae(label):
+        s = scored["fits"].get(label, {})
+        return s.get("mae_kw") if s.get("available") else None
+
+    def _bias(label):
+        s = scored["fits"].get(label, {})
+        if not s.get("available"):
+            return None
+        pred = [v for v in s["predicted_kw"] if v is not None]
+        actual = df["actual_power_kw"].to_numpy()[:len(pred)]
+        if not pred:
+            return None
+        return float(sum(p - a for p, a in zip(pred, actual)) / len(pred))
+
+    primary_mae = _mae("primary")
+    mae_1yr = _mae("1_year_back")
+    mae_2yr = _mae("2_year_back")
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        kpi(f"{primary_mae:,.1f} kW" if primary_mae is not None else "—",
+            "MAE — last 30-day fit",
+            f"trained {fits['primary']['window_start']} → "
+            f"{fits['primary']['window_end']}")
+    with k2:
+        kpi(f"{mae_1yr:,.1f} kW" if mae_1yr is not None else "—",
+            "MAE — frozen 1-year-back",
+            f"trained {fits['1_year_back']['window_start']} → "
+            f"{fits['1_year_back']['window_end']}")
+    with k3:
+        kpi(f"{mae_2yr:,.1f} kW" if mae_2yr is not None else "—",
+            "MAE — frozen 2-years-back",
+            f"trained {fits['2_year_back']['window_start']} → "
+            f"{fits['2_year_back']['window_end']}")
+    with k4:
+        kpi(f"{df['actual_power_kw'].mean():,.0f} kW", "actual mean power",
+            f"{len(df):,} rows in the target week")
+
+    # --- the chart: four lines --------------------------------------------
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df["ts"], y=df["actual_power_kw"], name="Actual measured power (kW)",
+        mode="lines", line=dict(width=2.2, color="#e05263")))
+    for label, name, dash, colour in (
+            ("primary", "Predicted — last 30d fit", "solid", "#5fd39a"),
+            ("1_year_back", "Predicted — frozen 1-yr-back", "dash", "#9fb4ff"),
+            ("2_year_back", "Predicted — frozen 2-yrs-back", "dot", "#c9a227")):
+        s = scored["fits"].get(label, {})
+        if not s.get("available"):
+            continue
+        if label == "1_year_back" and not show_1yr:
+            continue
+        if label == "2_year_back" and not show_2yr:
+            continue
+        pred = s["predicted_kw"]
+        fig.add_trace(go.Scatter(
+            x=df["ts"], y=pred, name=name, mode="lines",
+            line=dict(width=1.7, dash=dash, color=colour)))
+    fig.update_layout(
+        title=(f"Power in the target week — the actual output against what "
+               f"each reference predicts"),
+        xaxis_title="UTC", yaxis_title="power (kW)", height=460,
+        margin=dict(l=10, r=10, t=54, b=10), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left",
+                    x=0),
+    )
+    st.plotly_chart(fig, width="stretch")
+
+    # --- the wind and the air --------------------------------------------
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=df["ts"], y=df["wind_speed"], name="wind speed at 100 m (m/s)",
+        mode="lines", line=dict(width=1.6, color="#5fd39a")))
+    fig2.add_trace(go.Scatter(
+        x=df["ts"], y=df["air_density"], name="air density (kg/m³)",
+        mode="lines", line=dict(width=1.6, color="#9fb4ff"), yaxis="y2"))
+    fig2.update_layout(
+        title="The weather the prediction was made from",
+        xaxis_title="UTC", height=320, margin=dict(l=10, r=10, t=54, b=10),
+        hovermode="x unified",
+        yaxis=dict(title="wind speed (m/s)"),
+        yaxis2=dict(title="air density (kg/m³)", overlaying="y", side="right",
+                    showgrid=False),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left",
+                    x=0),
+    )
+    st.plotly_chart(fig2, width="stretch")
+
+    # --- what the numbers actually say ------------------------------------
+    st.markdown(
+        "<div class='note'><b>What the tracking error says.</b> Averaged "
+        "over the five curated checkpoints, the mean absolute error is "
+        "<b>40.5 kW</b> for the 30-day fit, <b>40.5 kW</b> for the "
+        "one-year-back fit and <b>44.5 kW</b> for the two-year-back fit; "
+        "in the steep part of the curve, where the curve's <i>shape</i> "
+        "matters rather than its level, it is <b>43.9 → 45.0 → 49.0 kW</b>. "
+        "The signed bias is cleanly ordered — <b>−13.0 → −14.7 → −19.7 kW</b> "
+        "— so the older the reference, the more it under-predicts. "
+        "But <b>week to week the ordering is not consistent</b>: in only one "
+        "of the five checkpoints does the 30-day fit beat the one-year-back "
+        "fit beat the two-year-back fit on the full window, because a "
+        "single week's power is dominated by that week's weather and the "
+        "age of the reference is a second-order effect on it. The honest "
+        "summary is that <b>reference freshness is a real but second-order "
+        "effect on power prediction</b> — which is a different claim from "
+        "the one the detection side of this project makes, and is why the "
+        "two are shown separately.</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def tab_forecast() -> None:
     """Weather Forecast & Power Prediction -- the operational opening.
 
@@ -1095,6 +1294,7 @@ def tab_forecast() -> None:
     comparisons come later, in their own tab.
     """
     fc = _forecast_module()
+    live = live_available()
 
     st.subheader("Weather Forecast & Power Prediction")
     st.markdown(
@@ -1105,6 +1305,34 @@ def tab_forecast() -> None:
         "catalogue curve -- so the prediction is what *this* turbine does "
         "in *this* wind."
     )
+
+    # --- the demo checkpoint selector, and the stale-baseline toggles -------
+    # A presenter can move between curated historical windows without
+    # touching anything else, and the two toggles sit right beside it.
+    labels = {"__forecast__": "Live 7-day forecast — Open-Meteo (now)"}
+    for key, cp in fc.CHECKPOINTS.items():
+        labels[key] = f"{cp['label']} — {cp['note']}"
+    choice = st.selectbox(
+        "Demo Checkpoint", list(labels),
+        format_func=lambda k: labels[k], key="forecast_checkpoint",
+        help="Switch between the live forecast and curated historical "
+             "windows. Each checkpoint is scored by a reference trained on "
+             "exactly the thirty days before it, and by references one and "
+             "two years older.")
+
+    t1, t2 = st.columns(2)
+    with t1:
+        show_1yr = st.checkbox(
+            "Show Frozen 1-Year-Back Baseline (2016 curve + 2017 weather)",
+            value=True, key="show_1yr")
+    with t2:
+        show_2yr = st.checkbox(
+            "Show Frozen 2-Years-Back Baseline (2015 curve + 2017 weather)",
+            value=True, key="show_2yr")
+
+    if choice != "__forecast__":
+        _tab_forecast_checkpoint(fc, choice, live, show_1yr, show_2yr)
+        return
 
     # --- the site ----------------------------------------------------------
     c1, c2, c3, c4 = st.columns([1.3, 1.0, 1.0, 1.0])
@@ -1160,6 +1388,22 @@ def tab_forecast() -> None:
                f"{frame['wind_speed_100m'].max():.1f} m/s · "
                f"air {frame['temperature_2m'].min():.1f}–"
                f"{frame['temperature_2m'].max():.1f} °C")
+
+    # The forecast is predicted with the same rule as the checkpoints: a
+    # reference fitted on the trailing thirty days of the record.
+    try:
+        win_start, win_end = fc.trailing_window(fc.sample_csv_path()
+                                                 if hasattr(fc, "sample_csv_path")
+                                                 else _engine().sample_csv_path())
+        curve_rows = len(pd.read_csv(_engine().sample_csv_path()))
+        st.markdown(
+            f"<div class='callout'><b>Trained on: {win_start} → {win_end}</b> "
+            f"(Trailing 30 Days · the power curve is fitted on the recent "
+            f"past, not the whole record)</div>",
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
 
     with st.spinner("Applying the power curve…"):
         pred = fc.forecast_frame(frame, curve, wind_shift=wind_shift,

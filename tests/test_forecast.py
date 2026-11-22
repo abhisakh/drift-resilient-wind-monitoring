@@ -224,3 +224,114 @@ def test_the_committed_sample_builds_a_power_curve():
     curve = fc.sample_power_curve(SAMPLE)
     assert len(curve) > 5
     assert curve["power_kw"].max() > 1000
+
+
+# ------------------------------------------------------------- checkpoints
+def test_the_training_window_is_the_thirty_days_immediately_before():
+    """The rule, and it is not negotiable: the reference is the thirty days
+    immediately before the prediction window, and nothing else."""
+    start, end = fc.training_window("2017-09-01")
+    assert start == "2017-08-02"
+    assert end == "2017-09-01"
+
+
+def test_the_training_window_never_overlaps_the_prediction_window():
+    """The interval is half-open, so the last training day is the day before
+    the first predicted one."""
+    for start in ("2017-09-01", "2017-10-01", "2017-11-01", "2016-09-01"):
+        w_start, w_end = fc.training_window(start)
+        assert w_end == start
+        assert w_start < w_end
+        assert (pd.Timestamp(w_end) - pd.Timestamp(w_start)).days == 30
+
+
+def test_the_curated_checkpoints_are_the_ones_the_brief_names():
+    assert fc.CHECKPOINTS["checkpoint_1"]["prediction_start"] == "2017-09-01"
+    assert fc.CHECKPOINTS["checkpoint_1"]["prediction_end"] == "2017-09-07"
+    assert fc.CHECKPOINTS["checkpoint_2"]["prediction_start"] == "2017-10-01"
+    assert fc.CHECKPOINTS["checkpoint_2"]["prediction_end"] == "2017-10-07"
+    assert fc.CHECKPOINTS["checkpoint_3"]["prediction_start"] == "2017-11-01"
+    assert fc.CHECKPOINTS["checkpoint_3"]["prediction_end"] == "2017-11-07"
+
+
+def test_the_stale_baselines_are_the_same_rule_one_and_two_years_back():
+    """A stale baseline is not a different rule -- it is the same rule, with
+    the window moved. So the only thing that differs between the three fits
+    is the age of the reference."""
+    bundle = _sample_bundle()
+    p = bundle["fits"]["primary"]
+    one = bundle["fits"]["1_year_back"]
+    two = bundle["fits"]["2_year_back"]
+    assert p["window_end"] == "2017-09-01"
+    assert one["window_end"] == "2016-09-01"
+    assert two["window_end"] == "2015-09-01"
+    for fit in (p, one, two):
+        assert (pd.Timestamp(fit["window_end"])
+                - pd.Timestamp(fit["window_start"])).days == 30
+
+
+def test_the_exported_frozen_baselines_are_committed():
+    """The Cloud deployment has no 19 GB of raw data, so the stale-baseline
+    curves have to be committed."""
+    path = fc.frozen_baselines_path()
+    assert path.exists(), (
+        f"{path.name} is missing -- the multi-year comparison cannot work on "
+        f"Streamlit Community Cloud without it"
+    )
+    exported = fc.load_frozen_baselines()
+    assert set(exported["checkpoints"]) == set(fc.CHECKPOINTS)
+    bundle = exported["checkpoints"]["checkpoint_1"]
+    assert bundle["fits"]["primary"]["window_start"] == "2017-08-02"
+    assert bundle["rows"], "the exported checkpoint has no target-week rows"
+
+
+def test_the_exported_bundle_reproduces_the_live_computation():
+    """The Cloud path and the local path must give the same numbers.
+
+    The exported artefact is what a reviewer on Streamlit sees; if it
+    disagreed with the live computation, the dashboard would be showing
+    two different answers to the same question.
+    """
+    if not ((ROOT / "data" / "raw").exists()
+            and any((ROOT / "data" / "raw").rglob("*R80711*F99*.csv"))):
+        pytest.skip("the raw ENGIE data is not present")
+
+    exported = fc.load_frozen_baselines()["checkpoints"]["checkpoint_1"]
+    frame = fc.engie_checkpoint_frame(ROOT / "data", "R80711")
+    live = fc.checkpoint_bundle(frame, "2017-09-01", "2017-09-07")
+
+    assert live["fits"]["primary"]["window_start"] == \
+        exported["fits"]["primary"]["window_start"]
+    assert live["fits"]["primary"]["rows"] == exported["fits"]["primary"]["rows"]
+    a = fc.score_checkpoint(live)["fits"]["primary"]["mae_kw"]
+    b = fc.score_checkpoint(exported)["fits"]["primary"]["mae_kw"]
+    assert a == pytest.approx(b, abs=0.05), (a, b)
+
+
+def test_the_scoring_reports_the_tracking_error_of_every_fit():
+    bundle = _sample_bundle()
+    scored = fc.score_checkpoint(bundle)
+    for label in ("primary", "1_year_back", "2_year_back"):
+        fit = scored["fits"][label]
+        assert fit["available"], label
+        assert fit["mae_kw"] is not None
+        assert fit["mae_kw"] >= 0
+        assert len(fit["predicted_kw"]) == len(bundle["rows"])
+
+
+def test_the_prediction_applies_the_air_density_correction():
+    """A curve fitted in denser air must predict more power at the same
+    wind speed."""
+    curve = [{"wind_speed": 5.0, "power_kw": 200.0, "n": 100},
+             {"wind_speed": 10.0, "power_kw": 1200.0, "n": 100}]
+    thin = fc.predict_from_curve(curve, [8.0], 1.10, 1.225)
+    dense = fc.predict_from_curve(curve, [8.0], 1.35, 1.225)
+    assert float(dense[0]) > float(thin[0])
+
+
+def _sample_bundle():
+    """A checkpoint bundle built from the committed artefact."""
+    exported = fc.load_frozen_baselines()
+    if not exported:
+        pytest.skip("results/demo_frozen_baselines.json is not generated")
+    return exported["checkpoints"]["checkpoint_1"]

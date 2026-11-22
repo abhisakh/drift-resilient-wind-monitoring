@@ -638,3 +638,85 @@ def test_the_monthly_loop_runs_in_cloud_mode(tmp_path):
     body = "\n".join(m.value for m in at.markdown)
     assert "Avoided false dispatches" in body, "the cost cards are missing"
     assert "Cost saved" in body or "cost saved" in body.lower()
+
+
+# ------------------------------------------- the demo checkpoints on tab 1
+def _checkpoint_selector(at):
+    sel = [s for s in at.selectbox if s.label == "Demo Checkpoint"]
+    assert sel, "there is no demo checkpoint selector"
+    return sel[0]
+
+
+def test_the_checkpoint_selector_lists_every_curated_window():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    options = list(_checkpoint_selector(at).options)
+    assert len(options) >= 5, options
+    joined = " ".join(options)
+    for cp in ("2017-09-01", "2017-10-01", "2017-11-01"):
+        assert cp in joined, f"{cp} is not in the checkpoint list: {options}"
+
+
+def test_the_stale_baseline_toggles_are_present_and_default_on():
+    at = _app_test()
+    at.run()
+    boxes = {c.label: c.value for c in at.get("checkbox")}
+    one = [k for k in boxes if "1-Year-Back" in k]
+    two = [k for k in boxes if "2-Years-Back" in k]
+    assert one, f"the 1-year-back toggle is missing: {list(boxes)}"
+    assert two, f"the 2-years-back toggle is missing: {list(boxes)}"
+    assert boxes[one[0]] is True, "the 1-year-back baseline is off by default"
+    assert boxes[two[0]] is True, "the 2-years-back baseline is off by default"
+
+
+def test_switching_to_a_checkpoint_shows_the_training_dates():
+    """The training window has to be stated where it cannot be missed."""
+    at = _app_test()
+    at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Trained on" in body, "the training callout is missing"
+    assert "2017-08-02" in body, "the training start date is missing"
+    assert "2017-08-31" in body or "2017-09-01" in body, (
+        "the training end date is missing"
+    )
+    assert "Trailing 30 Days" in body, "the training rule is not stated"
+
+
+def test_the_checkpoint_view_reports_the_tracking_error_of_every_fit():
+    at = _app_test()
+    at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    for label in ("last 30-day fit", "frozen 1-year-back", "frozen 2-years-back"):
+        assert label in body, f"the {label} MAE is missing"
+    assert "MAE" in body
+
+
+def test_the_checkpoint_view_works_in_cloud_mode(tmp_path):
+    """The checkpoints have to work on Streamlit Community Cloud, where the
+    stale-baseline curves come from the committed artefact rather than from
+    the raw data."""
+    from streamlit.testing.v1 import AppTest
+
+    cloud = _cloud_copy(tmp_path)
+    at = AppTest.from_file(str(cloud / "app.py"), default_timeout=300)
+    at.run()
+    assert not at.exception, f"the app raised in cloud mode: {at.exception}"
+    sel = [s for s in at.selectbox if s.label == "Demo Checkpoint"]
+    assert sel, "the cloud copy has no checkpoint selector"
+    sel[0].set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Trained on" in body, "the cloud checkpoint has no training callout"
+    assert "2017-08-02" in body
+    assert "frozen 1-year-back" in body, "the cloud checkpoint has no MAEs"

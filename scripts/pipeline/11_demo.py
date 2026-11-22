@@ -42,7 +42,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from windmill import RATED_POWER_KW, care, live, loaders, multivariate  # noqa: E402
+from windmill import (RATED_POWER_KW, care, forecast, live, loaders,  # noqa: E402
+                    multivariate)
 
 # --- presentation -----------------------------------------------------------
 RESET = "\033[0m"
@@ -406,6 +407,15 @@ def export_snapshot(path: Path | None = None) -> int:
     # Cloud can run the detector on a real turbine without the 19 GB.
     sample = live.build_sample_csv(live.sample_csv_path(), ROOT / "data")
     print(f"wrote {sample} ({sample.stat().st_size/1e6:.2f} MB)")
+
+    # The frozen-baseline bundles -> results/demo_frozen_baselines.json.
+    # The reference curves for one and two years back, and the target
+    # weeks' actuals, so the multi-year staleness comparison works on
+    # Streamlit Community Cloud without the 19 GB of raw SCADA.
+    frozen = forecast.export_frozen_baselines(
+        forecast.frozen_baselines_path(), ROOT / "data")
+    print(f"wrote {frozen} ({frozen.stat().st_size/1e6:.2f} MB, "
+          f"{len(forecast.CHECKPOINTS)} checkpoints)")
     return 0
 
 

@@ -178,3 +178,60 @@ def resample_scada_to_hourly(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 def hourly_coverage(df: pd.DataFrame) -> pd.Series:
     """Hours present per turbine across the hourly-resampled frame."""
     return df.groupby("turbine")["ts"].nunique()
+
+
+# --- one turbine at a time -------------------------------------------------
+def engie_turbine_csv(data_dir: Path, turbine: str, variant: str = F99) -> Path:
+    """Find one turbine's cleaned SCADA CSV.
+
+    The archive unpacks into a deeply nested directory whose name changes
+    between releases, so the file is searched for rather than assumed.
+    """
+    for base_name in ("engie_la_haute_borne_extracted", "engie_v2_extracted"):
+        base = data_dir / "raw" / base_name
+        if not base.exists():
+            continue
+        hits = sorted(base.rglob(f"*{turbine}*{variant}*.csv"))
+        if hits:
+            return hits[0]
+        hits = sorted(base.rglob(f"*{turbine}*.csv"))
+        if hits:
+            return hits[0]
+    raise FileNotFoundError(f"no SCADA file for {turbine} under {data_dir}/raw")
+
+
+def load_engie_turbine(data_dir: Path, turbine: str,
+                       variant: str = F99) -> pd.DataFrame:
+    """One turbine's cleaned SCADA, with an offset-aware UTC timestamp.
+
+    The cleaned CSVs are comma-separated with a UTF-8 BOM, and the
+    timestamps carry mixed +01:00/+02:00 offsets, so the parse is
+    offset-aware and then normalised to UTC -- otherwise the DST hours
+    double-count. The ~30 duplicate timestamps per turbine are dropped.
+    """
+    path = engie_turbine_csv(data_dir, turbine, variant)
+    df = pd.read_csv(path, encoding="utf-8-sig", low_memory=False)
+    tcol = next((c for c in df.columns
+                 if "date" in c.lower() and "time" in c.lower()), None)
+    if tcol is None:
+        raise ValueError(f"{path.name} has no timestamp column")
+    df["ts"] = pd.to_datetime(df[tcol], format="mixed", utc=True, errors="coerce")
+    df = df[df["ts"].notna()]
+    df = df.drop_duplicates(subset=["ts"], keep="first")
+    return df.sort_values("ts").reset_index(drop=True)
+
+
+def load_era5_on_grid(data_dir: Path, freq: str = "10min") -> pd.DataFrame:
+    """ERA5 hourly, forward-filled onto the SCADA grid.
+
+    ERA5 is hourly and the SCADA is 10-minute, so the reanalysis is
+    forward-filled rather than interpolated: the hourly value is the
+    measurement for the hour that follows it, and carrying it forward is
+    the honest way to put the two on one grid.
+    """
+    era5 = load_era5(data_dir)
+    e = era5.copy()
+    e["ts"] = e["ts"].dt.floor("10min")
+    e = (e.set_index("ts")
+         .resample(freq).ffill().reset_index())
+    return e

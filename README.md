@@ -378,7 +378,7 @@ A four-tab Streamlit dashboard, ordered the way a control room works:
 
 | tab | what it does |
 |---|---|
-| 🌤️ **Weather Forecast & Power Prediction** | a real 7-day hourly forecast from Open-Meteo, the turbine's own conditioned power curve applied to it, and what-if sliders for a wind or temperature shift. No model comparison on this tab. |
+| 🌤️ **Weather Forecast & Power Prediction** | a real 7-day hourly forecast from Open-Meteo, the turbine's own conditioned power curve applied to it, and what-if sliders for a wind or temperature shift. Plus a **demo checkpoint** selector: curated historical weeks scored by a reference trained on exactly the thirty days before them, and by the same rule applied one and two years earlier. No model comparison on this tab. |
 | 🔍 **Daily Cross-Check: Weather vs. Hardware Wear** | the R80711 case study, then a **fresh monthly fit** scored against the target month, then the dispatch-episode and cost impact, then the live explorer. |
 | ⚖️ **Model & Benchmark Comparison** | the deterministic arm against the learned one, the false-alarm rate by year, the CARE benchmark, and the audit of the published autoencoder baseline. |
 | 🔧 **Engineering & Data Forensics** | the pipeline, the CI guarantees, and the upstream data bugs this project caught. |
@@ -417,6 +417,53 @@ joined.
 The forecast on the first tab falls back to a deterministic profile derived
 from the committed sample when the network is not there, and says so.
 
+### The demo checkpoints and the stale baselines
+
+The first tab carries a **Demo Checkpoint** selector, so a presenter can
+move between curated historical weeks without touching anything else:
+
+| checkpoint | prediction window | trained on |
+|---|---|---|
+| 1 | 2017-09-01 → 2017-09-07 | 2017-08-02 → 2017-08-31 |
+| 2 | 2017-10-01 → 2017-10-07 | 2017-09-01 → 2017-09-30 |
+| 3 | 2017-11-01 → 2017-11-07 | 2017-10-02 → 2017-10-31 |
+| 4 | 2016-09-01 → 2016-09-07 | 2016-08-02 → 2016-08-31 |
+| 5 | 2016-11-01 → 2016-11-07 | 2016-10-02 → 2016-10-31 |
+
+The rule is enforced in one place and is not negotiable: **the reference is
+always the thirty days immediately before the window being predicted** —
+`[prediction_start − 30d, prediction_start)`. The stale baselines are that
+same rule applied one and two years earlier, so the only thing that differs
+between the three fits is how old the reference is.
+
+The training window is stated in bold above the metrics, and again in each
+KPI card, because "which window was it fitted on?" is the question that
+decides whether a number means anything.
+
+On Streamlit Community Cloud the one- and two-year-back curves come from
+`results/demo_frozen_baselines.json`, exported by `make snapshot` from the
+raw data — the Cloud deployment has no 19 GB of SCADA, and a test checks
+that the exported artefact reproduces the live computation exactly.
+
+### What the tracking error actually shows
+
+Averaged over the five curated checkpoints, the mean absolute error is
+**40.5 kW** for the 30-day fit, **40.5 kW** for the one-year-back fit and
+**44.5 kW** for the two-year-back fit; in the steep part of the curve, where
+the curve's *shape* matters rather than its level, it is
+**43.9 → 45.0 → 49.0 kW**. The signed bias is cleanly ordered —
+**−13.0 → −14.7 → −19.7 kW** — so the older the reference, the more it
+under-predicts.
+
+But **week to week the ordering is not consistent**: in only one of the five
+checkpoints does the 30-day fit beat the one-year-back fit beat the
+two-year-back fit on the full window. A single week's power is dominated by
+that week's weather, and the age of the reference is a second-order effect
+on it. The honest summary is that **reference freshness is a real but
+second-order effect on power prediction** — a different claim from the one
+the detection side of this project makes, which is why the two are shown
+separately rather than merged into one story.
+
 The upload path is the one that works everywhere, including on Streamlit
 Community Cloud, and the dashboard offers a **downloadable sample** — a real
 four-month slice of the ENGIE release, with the ERA5 ambient temperature
@@ -448,7 +495,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-214 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+227 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.
