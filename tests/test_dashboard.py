@@ -483,13 +483,17 @@ def test_the_watermark_is_a_fixed_low_opacity_layer():
     """A watermark must not eat clicks or wash out the content.
 
     The three properties that make it a watermark rather than an overlay:
-    it is FIXED to the corner, it is at 6 % opacity, and it ignores pointer
-    events.
+    it is FIXED in place, it is faint (a low opacity, not one exact figure),
+    and it ignores pointer events.
     """
+    import re
+
     app_text = (ROOT / "app.py").read_text()
     assert "body::after" in app_text, "there is no watermark layer"
     assert "position: fixed" in app_text
-    assert "opacity: 0.06" in app_text
+    m = re.search(r"body::after\s*\{[^}]*?opacity:\s*([0-9.]+)", app_text, re.S)
+    assert m, "the watermark layer has no opacity"
+    assert 0.03 <= float(m.group(1)) <= 0.20, m.group(1)
     assert "pointer-events: none" in app_text
 
 

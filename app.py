@@ -111,27 +111,63 @@ def _fmt(x, nd=4):
         return str(x)
 
 
-#: A minimalist wind turbine silhouette, drawn rather than imported so the
-#: dashboard carries no image asset and the whole thing is a few hundred
-#: bytes. Three blades on a hub, over a tapered tower.
-_TURBINE_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">'
-    '<g fill="#ffffff">'
-    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"/>'
-    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"'
-    ' transform="rotate(120 200 132)"/>'
-    '<path d="M200 132C195 96 194 54 200 14C206 54 205 96 200 132Z"'
-    ' transform="rotate(240 200 132)"/>'
-    '<circle cx="200" cy="132" r="8"/>'
-    '<path d="M192 140L208 140L216 368L184 368Z"/>'
-    "</g></svg>"
+#: A wind farm skyline, drawn rather than imported so the dashboard carries
+#: no image asset. Each turbine is (hub x, scale, start angle, seconds per
+#: revolution): different sizes read as depth, and different start angles
+#: stop the rotors looking like copies of one another.
+#: Two clusters, one hugging each edge of the window, because the middle of
+#: the page is covered by the cards. Each is its own image, drawn at the
+#: same uniform scale, so a wide window gets wider gutters rather than
+#: stretched or cropped turbines.
+_FARM_LEFT = (
+    (70, 0.50, 15, 38),
+    (215, 0.85, 70, 30),
+    (355, 0.60, 40, 44),
 )
+_FARM_RIGHT = (
+    (60, 0.55, 25, 40),
+    (225, 1.00, 100, 26),
+    (375, 0.60, 55, 46),
+)
+
+#: One blade, hub at the origin, pointing up, 118 units long.
+_BLADE = "M0 0C-5 -36 -6 -78 0 -118C6 -78 5 -36 0 0Z"
+
+#: True makes the rotors turn slowly. Off by default: motion on a page that
+#: people read for minutes at a time is a distraction.
+WATERMARK_ANIMATE = True
+
+
+def _wind_farm_svg(farm=_FARM_RIGHT, animate: bool = False) -> str:
+    """A cluster of turbines standing on the ground line, as an SVG string.
+
+    No `preserveAspectRatio="slice"`: it crops whatever does not fit, and on
+    a wide window that cropped away the blades and left bare towers.
+    """
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 360">'
+             '<g fill="#5fd39a">']
+    for hx, s, start, secs in farm:
+        hy = 150 * s + 20              # hub height grows with the scale
+        base = 360 - (1 - s) * 40      # smaller = further away = higher base
+        parts.append(
+            f'<path d="M{hx - 3 * s:.1f} {hy:.1f}L{hx + 3 * s:.1f} {hy:.1f}'
+            f'L{hx + 6 * s:.1f} {base:.1f}L{hx - 6 * s:.1f} {base:.1f}Z"/>')
+        spin = (f'<animateTransform attributeName="transform" type="rotate" '
+                f'from="{start}" to="{start + 360}" dur="{secs}s" '
+                f'repeatCount="indefinite"/>') if animate else ""
+        blades = "".join(f'<path d="{_BLADE}" transform="rotate({k * 120})"/>'
+                         for k in range(3))
+        parts.append(f'<g transform="translate({hx} {hy:.1f}) scale({s})">'
+                     f'<g transform="rotate({start})">{spin}{blades}</g>'
+                     f'<circle r="8"/></g>')
+    parts.append("</g></svg>")
+    return "".join(parts)
 
 #: The crisp brand mark beside the sidebar title. Drawn in `currentColor` so
 #: it follows the theme in both light and dark mode.
 _TURBINE_ICON_SVG = (
     '<svg class="brand-icon" viewBox="0 0 24 24" width="26" height="26"'
-    ' fill="none" stroke="currentColor" stroke-width="1.5"'
+    ' fill="none" stroke="currentColor" stroke-width="2.5"'
     ' stroke-linecap="round" aria-hidden="true" focusable="false">'
     # Three straight blades on a hub, over a mast. Drawn as strokes rather
     # than as filled petals: at 26 pixels a filled blade blurs into the
@@ -145,12 +181,15 @@ _TURBINE_ICON_SVG = (
 )
 
 
-def _watermark_uri() -> str:
-    """The watermark as a data URI, so the CSS needs no external file."""
+def _watermark_uri(side: str = "right") -> str:
+    """One cluster of the watermark as a data URI, so the CSS needs no
+    external file."""
     import base64
 
+    farm = _FARM_LEFT if side == "left" else _FARM_RIGHT
+    svg = _wind_farm_svg(farm, WATERMARK_ANIMATE)
     return ("data:image/svg+xml;base64,"
-            + base64.b64encode(_TURBINE_SVG.encode("utf-8")).decode("ascii"))
+            + base64.b64encode(svg.encode("utf-8")).decode("ascii"))
 
 
 #: Every font size on the dashboard, in one place.
@@ -162,15 +201,15 @@ def _watermark_uri() -> str:
 FONT_SCALE = 1.0
 
 FONT_SIZES = {
-    "body": 34,        # prose in the tabs and the sidebar
+    "body": 30,        # prose in the tabs and the sidebar
     "caption": 26,     # small explanatory lines under a widget
-    "tab": 26,         # the four tab headers
+    "tab": 28,         # the four tab headers
     "sidebar": 22,     # the narrow sidebar column
     "check": 26,       # checkbox and radio labels
-    "widget": 30,      # widget labels: dropdowns, sliders, checkboxes
+    "widget": 28,      # widget labels: dropdowns, sliders, checkboxes
     "button": 28,      # button captions
     "selectbox": 26,   # the value shown inside a dropdown
-    "slider": 20,      # the value above a slider's thumb
+    "slider": 30,      # the value above a slider's thumb
     "table": 20,       # the reference tables
     "alert": 28,       # st.info / st.success / st.warning / st.error
     "metric_value": 44,
@@ -183,10 +222,24 @@ FONT_SIZES = {
     "callout": 30,     # the training-window callout
     "brand": 26,       # the sidebar title
     "badge": 18,       # the LIVE / CLOUD badges
-    "h2": 40,
-    "h3": 34,
-    "h4": 30,
+    "h2": 44,
+    "h3": 38,
+    "h4": 34,
 }
+
+#: The window width, in px, at which the sizes above apply in full. Narrower
+#: than that, the type scales down with the window -- but never below
+#: FLUID_FLOOR of its size -- so a smaller window gets smaller text instead
+#: of lines that run off the edge and are cropped.
+FLUID_REF_PX = 1400
+FLUID_FLOOR = 0.55
+
+
+def _fluid(px: float) -> str:
+    """A CSS font size: `px` on a wide window, shrinking with a narrow one."""
+    size = px * FONT_SCALE
+    floor = max(11, round(size * FLUID_FLOOR))
+    return f"clamp({floor}px, {size / FLUID_REF_PX * 100:.3f}vw, {round(size)}px)"
 
 
 def _style():
@@ -241,7 +294,7 @@ def _style():
         }
         .stApp [data-testid="stTabs"] [role="tablist"] {
             height: auto !important;
-            min-height: 96px !important;
+            min-height: 0 !important;
             align-items: flex-start !important;
         }
         .stApp [data-testid="stTab"] {
@@ -280,7 +333,11 @@ def _style():
             font-size: __slider__px !important;
         }
         .stApp [data-testid="stSliderThumbValue"] {
-            top: -20px !important;
+            top: -1.55em !important;
+        }
+        /* ...and the room between the label and the track for it. */
+        .stApp [data-testid="stSlider"] [data-testid="stWidgetLabel"] {
+            margin-bottom: calc(__slider__px * 1.6) !important;
         }
         .stApp [data-testid="stSlider"] [data-testid="stTickBarMin"],
         .stApp [data-testid="stSlider"] [data-testid="stTickBarMax"] {
@@ -334,43 +391,231 @@ def _style():
            it from CSS afterwards would leave the layout computed for a
            smaller font and the legends would run over each other. */
 
+        /* ------------------------------------------------------------------
+           Nothing is cut off. Streamlit puts some text on one line with an
+           ellipsis by default, and at these sizes that crops it. Here it
+           wraps instead, and the sizes above shrink with the window (see
+           _fluid) rather than staying fixed.
+           ------------------------------------------------------------------ */
+
+        /* st.metric truncates its label, value and delta with an ellipsis. */
+        .stApp [data-testid="stMetricLabel"],
+        .stApp [data-testid="stMetricLabel"] *,
+        .stApp [data-testid="stMetricValue"],
+        .stApp [data-testid="stMetricValue"] *,
+        .stApp [data-testid="stMetricDelta"],
+        .stApp [data-testid="stMetricDelta"] * {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            overflow-wrap: anywhere !important;
+        }
+
+        /* A long unbroken string wraps instead of running past the edge. */
+        .stApp [data-testid="stMarkdownContainer"],
+        .stApp [data-testid="stCaptionContainer"],
+        .stApp [data-testid="stAlert"],
+        .kpi, .note, .callout, .badge {
+            overflow-wrap: anywhere;
+        }
+
+        /* Code blocks wrap rather than scroll sideways. */
+        .stApp [data-testid="stCode"] pre,
+        .stApp [data-testid="stCode"] code {
+            white-space: pre-wrap !important;
+            overflow-wrap: anywhere !important;
+        }
+
+        /* Columns stack as the window narrows. Streamlit only stacks them at
+           640px, which is far too late for text this size. */
+        @media (max-width: 1000px) {
+            .stApp [data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+                flex: 1 1 calc(50% - 1rem) !important;
+                min-width: calc(50% - 1rem) !important;
+            }
+        }
+        @media (max-width: 700px) {
+            .stApp [data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+                flex: 1 1 calc(100% - 1rem) !important;
+                min-width: calc(100% - 1rem) !important;
+            }
+        }
+
+        /* A chart's title is a heading above it, not text inside it: Plotly
+           cannot wrap a title, so a long one was cut off by a narrow window,
+           whereas a heading wraps with the page. */
+        .chart-title {
+            font-size: __h4__px !important;
+            font-weight: 600;
+            line-height: 1.3;
+            margin: 10px 0 4px 0;
+        }
+
+        /* ------------------------------------------------------------------
+           Design system: one palette, one radius, one spacing rhythm.
+           (The old rules used --border, --foreground and --muted-foreground,
+           which nothing defined, so the cards were drawn with no border.)
+           ------------------------------------------------------------------ */
+        .stApp {
+            --accent: #5fd39a;
+            --accent-soft: rgba(95, 211, 154, 0.10);
+            --surface: #161b22;
+            --surface-2: #1c2330;
+            --border: rgba(240, 246, 252, 0.12);
+            --foreground: #e6edf3;
+            --muted-foreground: #9aa7b6;
+            --radius: 12px;
+        }
+
+        /* The page: a centred column, not a stretch across a wide monitor. */
+        [data-testid="stMainBlockContainer"] {
+            max-width: 1680px !important;
+            margin: 0 auto !important;
+            padding: 2rem 2.5rem 4rem 2.5rem !important;
+        }
+        footer { visibility: hidden; }
+        [data-testid="stHeader"] { background: transparent !important; }
+        [data-testid="stSidebar"] { border-right: 1px solid var(--border); }
+        .stApp [data-testid="stHorizontalBlock"] { gap: 1.25rem !important; }
+
+        /* Page header. */
+        .app-header {display: flex; flex-wrap: wrap; align-items: center; gap: 24px;
+                     padding: 26px 30px; margin-bottom: 18px;
+                     border: 1px solid var(--border); border-radius: 16px;
+                     background: linear-gradient(120deg, rgba(95, 211, 154, 0.12),
+                                 rgba(95, 211, 154, 0) 55%), var(--surface);}
+        .app-mark {flex: 0 0 auto; width: 64px; height: 64px; display: flex;
+                   align-items: center; justify-content: center;
+                   border-radius: 16px; color: var(--accent);
+                   background: var(--accent-soft);
+                   border: 1px solid rgba(95, 211, 154, 0.30);}
+        .app-mark .brand-icon {width: 38px; height: 38px; color: var(--accent);}
+        .app-title {font-size: __h2__px !important; font-weight: 700;
+                    line-height: 1.15; letter-spacing: -0.01em;}
+        .app-sub {font-size: __caption__px !important; color: var(--muted-foreground);
+                  margin-top: 6px; line-height: 1.4;}
+        .app-text {flex: 1 1 320px; min-width: 0;}
+        .chips {display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;}
+        .chip {padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border);
+               background: rgba(255, 255, 255, 0.04); color: var(--muted-foreground);
+               font-size: __badge__px !important; font-weight: 600; letter-spacing: .03em;}
+        .app-link {flex: 0 0 auto; padding: 10px 20px; border-radius: 10px;
+                   border: 1px solid rgba(95, 211, 154, 0.45);
+                   color: var(--accent) !important; font-weight: 600;
+                   text-decoration: none !important; font-size: __caption__px !important;}
+        .app-link:hover {background: var(--accent-soft);}
+        .eyebrow {font-size: __kpi_label__px !important; font-weight: 700;
+                  color: var(--accent); text-transform: uppercase;
+                  letter-spacing: .12em; margin: 8px 0 10px 2px;}
+        .app-footer {margin-top: 3rem; padding-top: 18px;
+                     border-top: 1px solid var(--border);
+                     color: var(--muted-foreground);
+                     font-size: __caption__px !important; line-height: 1.6;}
+        .app-footer a {color: var(--accent) !important; text-decoration: none;}
+
+        /* Tabs. */
+        .stApp [data-baseweb="tab-list"] {gap: 8px !important;
+                                         border-bottom: 1px solid var(--border);}
+        .stApp [data-testid="stTab"] {padding: 12px 20px !important;
+                                      border-radius: 10px 10px 0 0;}
+        .stApp [data-testid="stTab"]:hover {background: var(--accent-soft);}
+        .stApp [data-baseweb="tab-panel"] {padding-top: 1.4rem !important;}
+
+        /* Headings: a clear hierarchy, with the section titles marked. */
+        .stApp [data-testid="stMarkdownContainer"] h2,
+        .stApp [data-testid="stMarkdownContainer"] h3 {
+            font-weight: 700 !important; letter-spacing: -0.01em;
+            line-height: 1.2 !important; padding-top: .4rem !important;
+        }
+        .stApp [data-testid="stMarkdownContainer"] h4 {
+            font-weight: 600 !important; line-height: 1.25 !important;
+            border-left: 4px solid var(--accent);
+            padding: 2px 0 2px 14px !important;
+            margin: 1.4rem 0 .6rem 0 !important;
+        }
+
+        /* Controls. */
+        .stApp [data-baseweb="select"] > div {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px !important; min-height: 3.1rem;
+        }
+        .stApp [data-baseweb="select"] > div:hover {
+            border-color: var(--accent) !important;
+        }
+        .stApp [data-testid="stButton"] button,
+        .stApp [data-testid="stDownloadButton"] button {
+            border-radius: 10px; padding: .55rem 1.4rem; font-weight: 600;
+        }
+        .stApp [data-testid="stFileUploader"] section {
+            border-radius: var(--radius); background: var(--surface);
+            border: 1px dashed var(--border);
+        }
+        .stApp [data-testid="stAlert"] {
+            border-radius: var(--radius) !important;
+            border: 1px solid var(--border);
+        }
+
+        /* Charts, metrics and tables sit on cards. */
+        .stApp [data-testid="stPlotlyChart"] {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden;
+        }
+        .stApp [data-testid="stMetric"] {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px 20px;
+        }
+        .stApp [data-testid="stTable"] {
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background: var(--surface);
+        }
+        .stApp [data-testid="stTable"] th { background: var(--surface-2); }
+
         /* Custom components */
-        .badge {padding: 8px 16px; border-radius: 8px; font-weight: 700;
-                letter-spacing: .04em; font-size: __badge__px !important; display: inline-block;}
+        .badge {padding: 6px 14px; border-radius: 999px; font-weight: 700;
+                letter-spacing: .05em; font-size: __badge__px !important; display: inline-block;}
         .live {background:#0f3d2e; color:#5fd39a; border:1px solid #1d6b4e;}
         .cloud {background:#2b2f4a; color:#9fb4ff; border:1px solid #455089;}
-        .kpi {padding: 14px 18px; border:1px solid var(--border);
-              border-radius: 8px; margin-bottom: 8px;}
-        .kpi .v {font-size: __kpi_value__px !important; font-weight: 700; line-height: 1.2;}
-        .kpi .l {font-size: __kpi_label__px !important; font-weight: 600; color: #cbd5e1;
-                 text-transform: uppercase; letter-spacing: .05em; margin-top: 4px;}
+        .kpi {padding: 18px 22px; border: 1px solid var(--border);
+              border-top: 3px solid var(--accent); border-radius: var(--radius);
+              background: var(--surface); margin-bottom: 10px;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);}
+        .kpi .v {font-size: __kpi_value__px !important; font-weight: 700; line-height: 1.15;}
+        .kpi .l {font-size: __kpi_label__px !important; font-weight: 600;
+                 color: var(--muted-foreground); text-transform: uppercase;
+                 letter-spacing: .06em; margin-top: 6px;}
         /* The delta carries an inline font-size, so this has to win. */
         .kpi div[style*="font-size"] { font-size: __kpi_delta__px !important; }
-        .note {border-left: 3px solid var(--border); padding: 8px 14px; color: #cbd5e1;
-               font-size: __note__px !important; line-height: 1.5;}
+        .note {border: 1px solid var(--border); border-left: 4px solid var(--accent);
+               background: var(--surface); border-radius: var(--radius);
+               padding: 14px 20px; color: #c9d4df; margin: 6px 0 10px 0;
+               font-size: __note__px !important; line-height: 1.55;}
 
-        .callout {border-left: 4px solid var(--accent, #5fd39a);
-                  padding: 14px 18px; margin: 12px 0 18px 0;
-                  background: rgba(95,211,154,0.08);
-                  border-radius: 6px; font-size: __callout__px !important; line-height: 1.55;}
+        .callout {border: 1px solid rgba(95, 211, 154, 0.30);
+                  border-left: 4px solid var(--accent);
+                  padding: 14px 20px; margin: 12px 0 18px 0;
+                  background: var(--accent-soft);
+                  border-radius: var(--radius); font-size: __callout__px !important; line-height: 1.55;}
         .brand {display: flex; align-items: center; gap: 10px;
                 font-size: __brand__px !important; font-weight: 700; line-height: 1.25;
                 margin: 14px 0 6px 0; color: var(--foreground);}
         .brand-icon {flex: 0 0 auto; width: 28px; height: 28px; color: var(--foreground);}
 
-        /* Wind turbine watermark in bottom-right corner */
+        /* Wind farm skyline along the foot of the page. Fixed, so it stays
+           put as the page scrolls; kept to the two gutters beside the
+           content column; and it ignores the pointer. */
         body::after {
             content: "";
             position: fixed;
-            right: 1.4rem;
-            bottom: 0.6rem;
-            width: 320px;
-            height: 320px;
-            background-image: url("__WATERMARK__");
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: min(clamp(260px, 32vw, 620px), 65vh);
+            background-image: url("__WATERMARK_LEFT__"), url("__WATERMARK__");
             background-repeat: no-repeat;
-            background-position: right bottom;
-            background-size: contain;
-            opacity: 0.06;
+            background-position: left bottom, right bottom;
+            background-size: auto 100%, auto 100%;
+            opacity: 0.14;
             pointer-events: none;
             z-index: 0;
         }
@@ -381,8 +626,9 @@ def _style():
         </style>
     """
     for key, value in FONT_SIZES.items():
-        css = css.replace(f"__{key}__", str(round(value * FONT_SCALE)))
-    css = css.replace("__WATERMARK__", _watermark_uri())
+        css = css.replace(f"__{key}__px", _fluid(value))
+    css = css.replace("__WATERMARK_LEFT__", _watermark_uri("left"))
+    css = css.replace("__WATERMARK__", _watermark_uri("right"))
     st.markdown(css, unsafe_allow_html=True)
 
 
@@ -390,11 +636,17 @@ def _style():
 #: font it is given, so this has to be set on the figure: overriding it
 #: from CSS afterwards would leave the layout computed for a smaller font,
 #: and the legends would run over each other.
-CHART_FONT_PX = 18
+CHART_FONT_PX = 26
 
-#: A chart legend is a secondary element. Its entry names are long, and a
-#: horizontal legend cannot wrap, so it is a size smaller than the chart.
-CHART_LEGEND_FONT_PX = 15
+#: A chart legend is a secondary element. Its entry names are long, so it is
+#: a size smaller than the chart. Panel titles and threshold labels are the
+#: same size: they sit on one line above a panel and have to fit its width.
+CHART_LEGEND_FONT_PX = 22
+CHART_ANNOTATION_FONT_PX = 22
+
+#: Gridlines and axis lines: present enough to read values against, quiet
+#: enough not to compete with the data.
+CHART_GRID = "rgba(148, 163, 184, 0.14)"
 
 
 def _chart(fig, **kwargs):
@@ -404,16 +656,41 @@ def _chart(fig, **kwargs):
     layout: Streamlit applies its own theme to the figure at render time,
     and that theme sets an explicit tick font, which would otherwise win.
     """
+    import html
+
+    # The title becomes a heading above the chart (see .chart-title).
+    title = fig.layout.title.text
+    if title:
+        st.markdown(f"<div class='chart-title'>{html.escape(title)}</div>",
+                    unsafe_allow_html=True)
+    fig.update_layout(title=dict(text=None))
+    # Panel titles of a subplot figure still sit in the top margin; without
+    # them the margin the title used to need can go.
+    has_panel_titles = any(a.yref == "paper" and not a.showarrow
+                           for a in fig.layout.annotations)
+    if title and not has_panel_titles:
+        fig.update_layout(margin=dict(t=16))
+
     fig.update_layout(
         font=dict(size=CHART_FONT_PX),
-        title=dict(font=dict(size=CHART_FONT_PX + 2)),
         legend=dict(font=dict(size=CHART_LEGEND_FONT_PX)),
     )
+    # Breathing room at the edges, so the last tick label and the right-hand
+    # end of an annotation are never cut off by the card.
+    m = fig.layout.margin
+    fig.update_layout(margin=dict(
+        l=max(m.l if m.l is not None else 80, 24),
+        r=max(m.r if m.r is not None else 80, 30)))
+    # automargin lets the margins grow to fit the tick labels and axis
+    # titles, instead of cutting them off at a fixed margin.
     fig.update_xaxes(tickfont=dict(size=CHART_FONT_PX),
-                     title_font=dict(size=CHART_FONT_PX))
+                     title_font=dict(size=CHART_FONT_PX), automargin=True,
+                     gridcolor=CHART_GRID, linecolor=CHART_GRID)
     fig.update_yaxes(tickfont=dict(size=CHART_FONT_PX),
-                     title_font=dict(size=CHART_FONT_PX))
-    fig.update_annotations(font=dict(size=CHART_FONT_PX))
+                     title_font=dict(size=CHART_FONT_PX), automargin=True,
+                     gridcolor=CHART_GRID, zerolinecolor=CHART_GRID,
+                     linecolor=CHART_GRID)
+    fig.update_annotations(font=dict(size=CHART_ANNOTATION_FONT_PX))
     st.plotly_chart(fig, **kwargs)
 
 
@@ -496,7 +773,7 @@ def _model_comparison(engie, care_score, multiv, lgbm) -> None:
         fig.add_trace(go.Bar(
             x=g["mean %"], y=g["reference"], orientation="h",
             name=detector, text=[f"{v:.2f} %" for v in g["mean %"]],
-            textposition="outside",
+            textposition="outside", cliponaxis=False,
             hovertemplate="%{y}: %{x:.2f} % mean false alarms<extra>%{fullData.name}</extra>",
         ))
     # Headroom on the x-axis so the outside text labels are not clipped, and
@@ -505,14 +782,14 @@ def _model_comparison(engie, care_score, multiv, lgbm) -> None:
     fig.update_layout(
         title="Mean false-alarm rate on healthy turbines",
         xaxis_title="false alarms (% of 10-minute samples)",
-        xaxis_range=[0, xmax * 1.18],
+        xaxis_range=[0, xmax * 1.3],
         yaxis_title=None, barmode="group", height=380,
-        # The legend goes down the right-hand side. A horizontal legend
-        # cannot wrap, and at a readable font size its entries ran into the
-        # axis title and into each other.
-        legend=dict(title="detector", orientation="v", yanchor="top", y=1,
-                    xanchor="left", x=1.02),
-        margin=dict(l=130, r=250, t=56, b=70),
+        # The legend runs along the top and wraps onto more rows as the
+        # window narrows. A legend down the right-hand side took a fixed
+        # share of the width and squeezed the bars to almost nothing.
+        legend=dict(title=dict(text=""), orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="left", x=0),
+        margin=dict(l=10, r=40, t=16, b=70),
     )
     # The artefact stores the year as an integer INSIDE each entry; the
     # JSON object key is a string, and Plotly coerces a numeric-looking
@@ -562,11 +839,12 @@ def _model_comparison(engie, care_score, multiv, lgbm) -> None:
     fig2.update_layout(
         title="False-alarm rate by year — the frozen reference swings, the rolling one does not",
         xaxis_title="year", yaxis_title="false alarms (% of 10-minute samples)",
-        height=440, margin=dict(l=70, r=340, t=56, b=70),
-        # Four entries whose names are long: down the side, where they have
-        # room, rather than under the plot, where they would overlap.
-        legend=dict(title="detector — reference", orientation="v",
-                    yanchor="top", y=1, xanchor="left", x=1.02),
+        height=520, margin=dict(l=10, r=40, t=16, b=70),
+        # Four entries with long names: along the top, wrapping onto more
+        # rows as the window narrows, rather than down the side, where they
+        # took a fixed share of the width and squeezed the plot.
+        legend=dict(title=dict(text=""), orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="left", x=0),
         xaxis=dict(tickformat="d", dtick=1),
     )
     st.markdown(
@@ -634,8 +912,8 @@ def _monthly_telemetry_figure(frame, prov):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         row_heights=[0.55, 0.45], vertical_spacing=0.07,
                         subplot_titles=(
-                            f"{prov['target_month']} — weather, and the "
-                            "actual output against what was predicted",
+                            f"{prov['target_month']} — actual vs. predicted "
+                            "temperature",
                             "Cross-check residual (actual − predicted)"))
 
     fig.add_trace(go.Scatter(
@@ -694,9 +972,13 @@ def _monthly_telemetry_figure(frame, prov):
     # than half the width, and the whole point of the figure is that the
     # curves can be read against each other. The legend goes underneath.
     fig.update_layout(
-        height=860, margin=dict(l=10, r=10, t=62, b=130), hovermode="x unified",
-        legend=dict(orientation="h", yanchor="top", y=-0.14, x=0,
-                    font=dict(size=11)),
+        height=900, margin=dict(l=10, r=10, t=62, b=210), hovermode="x unified",
+        # Anchored to the bottom of the figure, not to the plot: a legend
+        # placed relative to the plot landed on its bottom edge, over the
+        # tick labels. The bottom margin holds the axis title and the
+        # legend rows.
+        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                    x=0, xanchor="left"),
         yaxis3=dict(overlaying="y", anchor="x", side="right", showgrid=False,
                     title="ambient °C"),
     )
@@ -716,8 +998,7 @@ def _monthly_daily_figure(daily, prov):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         row_heights=[0.55, 0.45], vertical_spacing=0.07,
                         subplot_titles=(
-                            "Daily bearing temperature — actual against the "
-                            "model's prediction",
+                            "Daily bearing temperature — actual vs. model",
                             "Daily cross-check residual (actual − predicted)"))
 
     fig.add_trace(go.Scatter(
@@ -751,9 +1032,10 @@ def _monthly_daily_figure(daily, prov):
     fig.update_yaxes(title_text="residual (K)", row=2, col=1)
     fig.update_xaxes(title_text="day (UTC)", row=2, col=1)
     fig.update_layout(
-        height=760, margin=dict(l=10, r=10, t=62, b=110), hovermode="x unified",
-        legend=dict(orientation="h", yanchor="top", y=-0.16, x=0,
-                    font=dict(size=11)),
+        height=800, margin=dict(l=10, r=10, t=62, b=170), hovermode="x unified",
+        # Anchored to the bottom of the figure -- see the telemetry view.
+        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                    x=0, xanchor="left"),
     )
     return fig
 
@@ -817,8 +1099,8 @@ def tab_monthly_loop(live: bool) -> dict | None:
                                       "multivariate continuous alerting in "
                                       "the benchmark tab uses 4.")
     with c3:
-        st.metric("Months available", f"{len(months)}",
-                  f"{months[0]} → {months[-1]}")
+        kpi(f"{len(months)}", "Months available",
+            f"{months[0]} → {months[-1]}")
 
     # The loop runs on arrival. The chart, the cross-check and the cost
     # should be on screen when a reviewer opens the tab, not one button
@@ -1649,7 +1931,10 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         title=(f"Power in the target week — the actual output against what "
                f"each reference predicts"),
         xaxis=x_axis, xaxis_title="UTC", yaxis_title="power (kW)", height=480,
-        margin=dict(l=10, r=10, t=54, b=96), hovermode="x unified",
+        # The same left and right margins as the weather chart below, which
+        # has a second axis on the right: the two plots must be the same
+        # width, or the dates on one do not line up with the other.
+        margin=dict(l=110, r=140, t=54, b=96), hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=-0.34, xanchor="left",
                     x=0),
     )
@@ -1666,7 +1951,7 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
     fig2.update_layout(
         title="The weather the prediction was made from",
         xaxis=x_axis, xaxis_title="UTC", height=360,
-        margin=dict(l=10, r=10, t=54, b=96),
+        margin=dict(l=110, r=140, t=54, b=96),
         hovermode="x unified",
         yaxis=dict(title="wind speed (m/s)"),
         yaxis2=dict(title="air density (kg/m³)", overlaying="y", side="right",
@@ -1876,7 +2161,7 @@ def tab_forecast() -> None:
         yaxis="y2"), row=1, col=1)
     fig.update_layout(
         title="Forecast: wind speed and the air density it implies",
-        xaxis_title="UTC", height=380, margin=dict(l=10, r=10, t=54, b=10),
+        xaxis_title="UTC", height=380, margin=dict(l=110, r=140, t=54, b=10),
         hovermode="x unified",
         xaxis=fx_axis,
         yaxis=dict(title="wind speed (m/s)"),
@@ -1903,13 +2188,13 @@ def tab_forecast() -> None:
                "the curve moves"),
         xaxis=fx_axis, xaxis_title="UTC", yaxis_title="power (kW)",
         height=380,
-        margin=dict(l=10, r=10, t=54, b=10), hovermode="x unified",
+        margin=dict(l=110, r=140, t=54, b=10), hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
                     x=0),
     )
     _chart(fig2, width="stretch")
 
-    
+
 
 
 # ---------------------------------------------------------------- tab 2
@@ -1942,7 +2227,7 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
     the CARE benchmark, and the audit of the published autoencoder baseline.
     """
     st.subheader("Model & Benchmark Comparison")
-    
+
     _model_comparison(engie, care_score, multiv, lgbm)
     st.markdown("---")
     st.subheader("The CARE benchmark — and what the published 0.66 really is")
@@ -2128,6 +2413,66 @@ def tab_forensics():
 
 
 # ---------------------------------------------------------------- main
+def _header() -> None:
+    """The page header: what this dashboard is, before any tab says what it
+    shows. The sidebar carries the brand; this carries the subject."""
+    st.markdown(
+        f"<div class='app-header'><div class='app-mark'>{_TURBINE_ICON_SVG}</div>"
+        "<div class='app-text'><div class='app-title'>Drift-Resilient Wind "
+        "Turbine Condition Monitoring</div>"
+        "<div class='app-sub'>Weather-conditioned fault detection on ENGIE "
+        "La Haute Borne SCADA, scored against the CARE benchmark</div>"
+        "<div class='chips'><span class='chip'>Python</span>"
+        "<span class='chip'>pandas</span><span class='chip'>LightGBM</span>"
+        "<span class='chip'>Plotly</span><span class='chip'>Streamlit</span>"
+        "<span class='chip'>CI-verified</span></div></div>"
+        "<a class='app-link' href='https://github.com/abhisakh' "
+        "target='_blank' rel='noopener'>GitHub ↗</a>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _hero(engie, care_score, snapshot) -> None:
+    """The headline results, above the tabs, so the first screen says what
+    the project found. Every figure is read from results/*.json."""
+    s = (engie or {}).get("strategies", {})
+    frozen = s.get("frozen_2014", {}).get("mean_rate_pct")
+    rolling = s.get("rolling_30d", {}).get("mean_rate_pct")
+    ratio = (frozen / rolling) if frozen and rolling else None
+    peak = ((snapshot or {}).get("kpis") or {}).get("r80711_max_c")
+
+    st.markdown("<div class='eyebrow'>Headline results</div>",
+                unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        kpi(f"{_fmt(ratio, 1)}×" if ratio else "—", "False-alarm reduction",
+            "changing only the reference")
+    with c2:
+        kpi(f"{_fmt(rolling, 2)} %" if rolling else "—",
+            "Rolling 30-day false-alarm rate",
+            f"against {_fmt(frozen, 2)} % for a frozen reference")
+    with c3:
+        kpi(_fmt(care_score["care_score"]) if care_score else "—",
+            "CARE score", "95 labelled events, leak-free")
+    with c4:
+        kpi(f"{peak:.2f} °C" if peak is not None else "—",
+            "R80711 bearing overheat", "caught against its sibling turbines")
+
+
+def _footer() -> None:
+    """Provenance and credit, at the foot of the page."""
+    st.markdown(
+        "<div class='app-footer'>Data: ENGIE La Haute Borne SCADA (CC BY 4.0) "
+        "· CARE to Compare (CC BY-SA 4.0) · Copernicus ERA5 via open-meteo. "
+        "Every figure on this page is read from <code>results/*.json</code>, "
+        "generated by the pipeline in <code>scripts/pipeline/</code>. "
+        "<a href='https://github.com/abhisakh' target='_blank' "
+        "rel='noopener'>github.com/abhisakh</a></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def main():
     _style()
 
@@ -2170,11 +2515,14 @@ def main():
             "implementation.</div>",
             unsafe_allow_html=True)
 
+    _header()
+    _hero(engie, care_score, load_snapshot())
+
     t1, t2, t3, t4 = st.tabs([
-        "🌤️ Weather Forecast & Power Prediction",
-        "🔍 Daily Cross-Check: Weather vs. Hardware Wear",
-        "⚖️ Model & Benchmark Comparison",
-        "🔧 Engineering & Data Forensics",
+        "🌤️ Weather Forecast",
+        "🔍 Daily Cross-Check",
+        "⚖️ Benchmark Comparison",
+        "🔧 Engineering & Forensics",
     ])
     with t1:
         tab_forecast()
@@ -2184,6 +2532,8 @@ def main():
         tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
     with t4:
         tab_forensics()
+
+    _footer()
 
 
 if __name__ == "__main__":
