@@ -440,13 +440,18 @@ The training window is stated in bold above the metrics, and again in each
 KPI card, because "which window was it fitted on?" is the question that
 decides whether a number means anything.
 
+The dashboard opens **on Checkpoint 1**, so the comparison controls are on
+screen the moment the app loads; the live Open-Meteo forecast is one
+dropdown click away.
+
 The chart opens **clean**: the actual output against the fresh 30-day
-prediction, two lines and two cards. The frozen one-year-back and
-two-years-back curves are one click away — each behind a toggle that also
-switches on its MAE card — so a presenter can add the stale references when
-they want to show the divergence, and the default view stays uncluttered.
-The last-30-day fit has a toggle too, for showing the actual output
-against the stale curves alone.
+prediction, two lines and two cards. Three independent checkboxes — *Last 30
+days rolling*, *Frozen 1 year before* and *Frozen 2 years before* — let a
+presenter plot any single prediction curve, or any combination of them,
+against the actual measured power. Each toggle also switches on its MAE
+card, so the KPI row grows with the chart. With all three off there is
+nothing to compare against, and the dashboard says so rather than showing a
+bare line.
 
 On Streamlit Community Cloud the one- and two-year-back curves come from
 `results/demo_frozen_baselines.json`, exported by `make snapshot` from the
@@ -503,7 +508,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-234 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+239 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

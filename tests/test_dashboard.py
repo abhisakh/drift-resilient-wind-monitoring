@@ -536,8 +536,13 @@ def test_the_forecast_tab_carries_no_benchmark_comparison():
 
 
 def test_the_forecast_tab_renders_the_prediction():
+    """The live forecast is still there -- it is one dropdown click away."""
     at = _app_test()
     at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    # The tab opens on the first historical checkpoint.
+    _checkpoint_selector(at).set_value(
+        "Live 7-day forecast — Open-Meteo (now)").run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
     assert "predicted power" in body.lower(), (
@@ -668,8 +673,8 @@ def test_the_stale_baseline_toggles_are_present_and_default_on():
     ).run()
     assert not at.exception, f"the app raised: {at.exception}"
     boxes = {c.label: c.value for c in at.get("checkbox")}
-    one = [k for k in boxes if "1-Year-Back" in k]
-    two = [k for k in boxes if "2-Years-Back" in k]
+    one = [k for k in boxes if "Frozen 1 year before" in k]
+    two = [k for k in boxes if "Frozen 2 years before" in k]
     assert one, f"the 1-year-back toggle is missing: {list(boxes)}"
     assert two, f"the 2-years-back toggle is missing: {list(boxes)}"
     # The chart opens clean, so the stale baselines are OFF by default and
@@ -781,7 +786,7 @@ def test_the_checkpoint_view_reports_the_tracking_error_of_every_fit():
     assert not at.exception, f"the app raised: {at.exception}"
 
     boxes = {c.label: c for c in at.get("checkbox")}
-    for label_fragment in ("1-Year-Back", "2-Years-Back"):
+    for label_fragment in ("Frozen 1 year before", "Frozen 2 years before"):
         box = [c for k, c in boxes.items() if label_fragment in k][0]
         box.set_value(True).run()
     assert not at.exception, f"the app raised: {at.exception}"
@@ -815,7 +820,7 @@ def test_the_checkpoint_view_works_in_cloud_mode(tmp_path):
 
     # The stale baselines are on demand in the cloud too.
     boxes = {c.label: c for c in at.get("checkbox")}
-    for fragment in ("1-Year-Back", "2-Years-Back"):
+    for fragment in ("Frozen 1 year before", "Frozen 2 years before"):
         box = [c for k, c in boxes.items() if fragment in k][0]
         box.set_value(True).run()
     assert not at.exception, f"the app raised: {at.exception}"
@@ -864,8 +869,8 @@ def test_the_default_view_shows_two_mae_cards_and_the_expanded_view_four():
 
     # Switch the stale baselines on: the cards appear with them.
     boxes = {c.label: c for c in at.get("checkbox")}
-    one = [c for k, c in boxes.items() if "1-Year-Back" in k][0]
-    two = [c for k, c in boxes.items() if "2-Years-Back" in k][0]
+    one = [c for k, c in boxes.items() if "Frozen 1 year before" in k][0]
+    two = [c for k, c in boxes.items() if "Frozen 2 years before" in k][0]
     one.set_value(True).run()
     two.set_value(True).run()
     assert not at.exception, f"the app raised: {at.exception}"
@@ -882,3 +887,104 @@ def test_the_last_30d_fit_can_be_switched_off_too():
     assert len(lines) == 3
     assert [line[0] for line in lines] == [
         "actual", "1_year_back", "2_year_back"]
+
+
+def test_the_app_opens_on_the_first_historical_checkpoint():
+    """The comparison controls must be on screen immediately, so the
+    dropdown opens on Checkpoint 1 rather than on the live forecast."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    sel = _checkpoint_selector(at)
+    # The value is the option key; format_func only changes what is drawn.
+    assert sel.value == "checkpoint_1", sel.value
+    assert any("Checkpoint 1" in opt for opt in sel.options), sel.options
+
+    # And the three prediction checkboxes are therefore there on load.
+    labels = [c.label for c in at.get("checkbox")]
+    assert any("Last 30 days rolling" in lab for lab in labels), labels
+    assert any("Frozen 1 year before" in lab for lab in labels), labels
+    assert any("Frozen 2 years before" in lab for lab in labels), labels
+
+    # And the training callout is on screen without any interaction.
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Trained on" in body, "the training callout is not on screen"
+    assert "2017-08-02" in body
+
+
+def test_the_prediction_checkboxes_default_to_one_curve():
+    """The 30-day fit is on; the two stale baselines are off."""
+    at = _app_test()
+    at.run()
+    boxes = {c.label: c.value for c in at.get("checkbox")}
+    fresh = [v for k, v in boxes.items() if "Last 30 days rolling" in k]
+    one = [v for k, v in boxes.items() if "Frozen 1 year before" in k]
+    two = [v for k, v in boxes.items() if "Frozen 2 years before" in k]
+    assert fresh and fresh[0] is True, "the 30-day fit is off by default"
+    assert one and one[0] is False, "the 1-year-back baseline is on by default"
+    assert two and two[0] is False, "the 2-years-back baseline is on by default"
+
+
+def _prediction_boxes(at):
+    """The three prediction checkboxes, by fit."""
+    boxes = {c.label: c for c in at.get("checkbox")}
+    fresh = [c for k, c in boxes.items() if "Last 30 days rolling" in k][0]
+    one = [c for k, c in boxes.items() if "Frozen 1 year before" in k][0]
+    two = [c for k, c in boxes.items() if "Frozen 2 years before" in k][0]
+    return fresh, one, two
+
+
+def test_each_prediction_can_be_plotted_on_its_own():
+    """Any single prediction curve, against the actual measured power."""
+    cases = {
+        "Last 30 days rolling": "MAE — last 30-day fit",
+        "Frozen 1 year before": "MAE — frozen 1-year-back",
+        "Frozen 2 years before": "MAE — frozen 2-years-back",
+    }
+    for fragment, card in cases.items():
+        at = _app_test()
+        at.run()
+        fresh, one, two = _prediction_boxes(at)
+        for box in (fresh, one, two):
+            box.set_value(box.label.startswith(fragment)).run()
+        assert not at.exception, f"the app raised for {fragment}: {at.exception}"
+        body = "\n".join(m.value for m in at.markdown)
+        assert card in body, f"{fragment} did not produce {card}"
+        # The other two must NOT have cards.
+        for other_fragment, other_card in cases.items():
+            if other_fragment != fragment:
+                assert other_card not in body, (
+                    f"{other_card} is showing although only {fragment} is on"
+                )
+
+
+def test_all_three_predictions_can_be_plotted_together():
+    at = _app_test()
+    at.run()
+    fresh, one, two = _prediction_boxes(at)
+    for box in (one, two):
+        box.set_value(True).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    for card in ("MAE — last 30-day fit", "MAE — frozen 1-year-back",
+                 "MAE — frozen 2-years-back"):
+        assert card in body, f"{card} is missing"
+
+
+def test_switching_everything_off_still_plots_the_actual_output():
+    """With no prediction selected there is nothing to compare against, so
+    the dashboard says so instead of showing a bare line."""
+    at = _app_test()
+    at.run()
+    fresh, one, two = _prediction_boxes(at)
+    fresh.set_value(False).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    # st.info renders as an alert element, not as markdown.
+    infos = "\n".join(i.value for i in at.info)
+    assert "Select at least one prediction baseline" in infos, (
+        "there is no prompt when every prediction is switched off"
+    )
+    # And no MAE card, because no prediction is being scored.
+    body = "\n".join(m.value for m in at.markdown)
+    assert "MAE — last 30-day fit" not in body
+    assert "MAE — frozen 1-year-back" not in body

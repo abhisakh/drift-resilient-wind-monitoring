@@ -1258,6 +1258,15 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         with col:
             kpi(value, label, delta)
 
+    # With every prediction switched off there is nothing to compare the
+    # actual output against, so say so rather than showing a lone line.
+    if not (show_30d or show_1yr or show_2yr):
+        st.info(
+            "Select at least one prediction baseline above to compare it "
+            "against the actual measured power. The actual output is still "
+            "plotted below."
+        )
+
     # --- the chart: four lines --------------------------------------------
     # One x-range for BOTH charts, so a gust in the weather panel lines up
     # vertically with the power curve above it. Left to itself, Plotly
@@ -1360,8 +1369,14 @@ def tab_forecast() -> None:
     labels = {"__forecast__": "Live 7-day forecast — Open-Meteo (now)"}
     for key, cp in fc.CHECKPOINTS.items():
         labels[key] = f"{cp['label']} — {cp['note']}"
+    options = list(labels)
+    # The app opens on the first historical checkpoint, so the comparison
+    # controls are on screen immediately; the live forecast is one click away.
+    default_index = (options.index("checkpoint_1")
+                     if "checkpoint_1" in options else 0)
     choice = st.selectbox(
-        "Demo Checkpoint", list(labels),
+        "Demo Checkpoint", options,
+        index=default_index,
         format_func=lambda k: labels[k], key="forecast_checkpoint",
         help="Switch between the live forecast and curated historical "
              "windows. Each checkpoint is scored by a reference trained on "
@@ -1382,19 +1397,19 @@ def tab_forecast() -> None:
         t1, t2, t3 = st.columns(3)
         with t1:
             show_30d = st.checkbox(
-                "Show Last 30d Fit Prediction (kW)", value=True, key="show_30d",
+                "Last 30 days rolling", value=True, key="show_30d",
                 help="The reference fitted on the thirty days before the "
-                     "target week. On by default; switch it off to show only "
+                     "target week. On by default; switch it off to plot only "
                      "the actual output against the stale curves.")
         with t2:
             show_1yr = st.checkbox(
-                f"Show Frozen 1-Year-Back Baseline "
+                f"Frozen 1 year before "
                 f"({target_year - 1} curve + {target_year} weather)",
                 value=False, key="show_1yr",
                 help="Off by default, so the chart opens with two lines.")
         with t3:
             show_2yr = st.checkbox(
-                f"Show Frozen 2-Years-Back Baseline "
+                f"Frozen 2 years before "
                 f"({target_year - 2} curve + {target_year} weather)",
                 value=False, key="show_2yr",
                 help="Off by default, so the chart opens with two lines.")
