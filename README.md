@@ -391,13 +391,20 @@ clean-row count, and the three arms' alarm rates, and it prices the
 difference in dispatches and euros.
 
 It runs on arrival, so the chart, the cross-check and the cost are on
-screen when the tab opens rather than one button press away. The chart
-draws the actual bearing temperature, the model's weather-conditioned
-expected temperature and the cross-check residual, all visible on the
-first render — during the September overheat the residual leaves the band
-(11.4 K against a 6.6 K threshold) while the model's expected temperature
-stays below the actual. The peak card reads **86.64 °C** where the model
-expected 78.9 °C: that difference is wear, not weather.
+screen when the tab opens rather than one button press away. The peak card
+reads **86.64 °C** where the model expected 78.9 °C: that difference is
+wear, not weather.
+
+A toggle above the chart chooses the resolution: **Daily Temperature
+Prediction (1-Day Summary)** or **10-Minute Telemetry**. The day is the
+default, because the detector works on ten-minute rows but the question an
+O&M planner asks is a daily one. The daily view plots the actual daily
+bearing temperature against the model's weather-conditioned prediction, and
+the daily cross-check residual against the alarm threshold — so the
+September overheat reads as two or three days where the actual line
+leaves the predicted one behind and the residual crosses the threshold.
+`live.daily_temperature_summary()` does the aggregation; it is the same
+arithmetic on the same rows, not a second model.
 
 It is **hybrid**. With `data/raw/` present it reads the raw ENGIE SCADA and
 re-runs the detector live — that is the mode for a demo day. Without it (as on
@@ -520,7 +527,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-244 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+251 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

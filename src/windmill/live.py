@@ -1095,6 +1095,54 @@ def _monthly_frame(data_dir: Path, source: str, turbine: str) -> pd.DataFrame:
     return df.dropna(subset=["ts", "P_norm"]).reset_index(drop=True)
 
 
+
+#: The columns `daily_temperature_summary` produces. Kept here so the
+#: dashboard and the tests agree on the contract.
+DAILY_TEMPERATURE_COLUMNS = (
+    "daily_actual_temp_mean",
+    "daily_actual_temp_max",
+    "daily_predicted_temp_mean",
+    "daily_predicted_temp_max",
+    "daily_ambient_temp",
+    "daily_residual_mean",
+    "daily_residual_max",
+)
+
+
+def daily_temperature_summary(frame: pd.DataFrame) -> pd.DataFrame:
+    """One row per day, from the monthly cross-check's ten-minute rows.
+
+    The detector works on ten-minute telemetry, but the question an O&M
+    planner asks is a daily one: what was the bearing doing yesterday, and
+    how did that compare with what the weather said it should have been
+    doing? This is the same arithmetic, aggregated.
+
+    The residual is ``actual - predicted`` per sample and then aggregated,
+    so the daily maximum is the largest departure any sample in that day
+    made from the model's expectation -- the number to read against the
+    alarm threshold.
+    """
+    if frame is None or len(frame) == 0:
+        return pd.DataFrame(columns=("day", "rows") + DAILY_TEMPERATURE_COLUMNS)
+
+    df = frame.copy()
+    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    df = df.set_index("ts").sort_index()
+
+    out = df.resample("1D").agg(
+        daily_actual_temp_mean=("Gb2t_avg", "mean"),
+        daily_actual_temp_max=("Gb2t_avg", "max"),
+        daily_predicted_temp_mean=("predicted_weather", "mean"),
+        daily_predicted_temp_max=("predicted_weather", "max"),
+        daily_ambient_temp=("era5_temp_2m", "mean"),
+        daily_residual_mean=("residual_weather", "mean"),
+        daily_residual_max=("residual_weather", "max"),
+        rows=("Gb2t_avg", "count"),
+    )
+
+    return out.reset_index().rename(columns={"ts": "day"})
+
+
 def available_months(data_dir: Path, source: str = "sample",
                       turbine: str = "R80711") -> list[str]:
     """The months the monthly cross-check can be run on."""

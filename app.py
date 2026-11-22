@@ -419,6 +419,144 @@ def _monthly_cached(month: str, source: str, turbine: str, z_threshold: float):
         return None, str(exc)
 
 
+#: The two ways the monthly loop can be read. The day is what an O&M
+#: planner reads; the ten-minute row is what the detector sees.
+DAILY_VIEW = "Daily Temperature Prediction (1-Day Summary)"
+TELEMETRY_VIEW = "10-Minute Telemetry"
+
+
+def _monthly_telemetry_figure(frame, prov):
+    """The ten-minute view: every sample the detector scored."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        row_heights=[0.55, 0.45], vertical_spacing=0.07,
+                        subplot_titles=(
+                            f"{prov['target_month']} — weather, and the "
+                            "actual output against what was predicted",
+                            "Cross-check residual (actual − predicted)"))
+
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["Gb2t_avg"], name="actual gearbox bearing 2",
+        mode="lines", line=dict(width=1.8, color="#e05263"),
+        visible=True), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["predicted_weather"],
+        name="weather-conditioned prediction", mode="lines",
+        line=dict(width=1.6, dash="dash", color="#5fd39a"),
+        visible=True), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["predicted_static"],
+        name="naive static baseline", mode="lines",
+        line=dict(width=1.3, dash="dot", color="#9fb4ff"),
+        visible=True), row=1, col=1)
+    if "Ws_avg" in frame.columns and frame["Ws_avg"].notna().any():
+        fig.add_trace(go.Scatter(
+            x=frame["ts"], y=frame["Ws_avg"], name="wind speed (m/s)",
+            mode="lines", line=dict(width=1.0, color="#c9a227"),
+            visible=True, yaxis="y2"), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["era5_temp_2m"], name="ambient (°C)",
+        mode="lines", line=dict(width=1.0, color="#7f8ea3"),
+        visible=True, yaxis="y3"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["residual_weather"],
+        name="weather-conditioned residual", mode="lines",
+        line=dict(width=1.4, color="#5fd39a"),
+        visible=True), row=2, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["residual_static"],
+        name="naive static residual", mode="lines",
+        line=dict(width=1.0, dash="dot", color="#9fb4ff"),
+        visible=True), row=2, col=1)
+    fig.add_hrect(y0=-prov["threshold_k"], y1=prov["threshold_k"],
+                  fillcolor="#5fd39a", opacity=0.10, line_width=0,
+                  row=2, col=1)
+    fig.add_hline(y=prov["threshold_k"], line_dash="dash", line_color="#e05263",
+                  row=2, col=1,
+                  annotation_text=f"alarm threshold {prov['threshold_k']:.1f} K")
+    hot = frame[frame["overheating"]]
+    if len(hot):
+        fig.add_trace(go.Scatter(
+            x=hot["ts"], y=hot["residual_weather"],
+            name="above 80 °C", mode="markers",
+            marker=dict(size=4, color="#e05263", symbol="circle-open"),
+            visible=True), row=2, col=1)
+
+    fig.update_yaxes(title_text="°C", row=1, col=1)
+    fig.update_yaxes(title_text="wind (m/s)", row=1, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="residual (K)", row=2, col=1)
+    fig.update_xaxes(title_text="UTC", row=2, col=1)
+    # Eight traces in a right-hand legend would squeeze the plot to less
+    # than half the width, and the whole point of the figure is that the
+    # curves can be read against each other. The legend goes underneath.
+    fig.update_layout(
+        height=860, margin=dict(l=10, r=10, t=62, b=130), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="top", y=-0.14, x=0,
+                    font=dict(size=11)),
+        yaxis3=dict(overlaying="y", anchor="x", side="right", showgrid=False,
+                    title="ambient °C"),
+    )
+    return fig
+
+
+def _monthly_daily_figure(daily, prov):
+    """The daily view: one point per day, the way a planner reads it.
+
+    The same colours as the forecast tab -- the actual output is the quiet
+    neutral line, the model's expectation is the teal one -- so a reader
+    who has seen one chart knows what the other means.
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        row_heights=[0.55, 0.45], vertical_spacing=0.07,
+                        subplot_titles=(
+                            "Daily bearing temperature — actual against the "
+                            "model's prediction",
+                            "Daily cross-check residual (actual − predicted)"))
+
+    fig.add_trace(go.Scatter(
+        x=daily["day"], y=daily["daily_actual_temp_max"],
+        name="Actual daily bearing temp (°C)", mode="lines",
+        line=dict(width=2.2, color="#E5E7EB"), visible=True), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=daily["day"], y=daily["daily_predicted_temp_max"],
+        name="Model-predicted bearing temp (°C)", mode="lines",
+        line=dict(width=2.0, dash="dash", color="#00D4AA"),
+        visible=True), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=daily["day"], y=daily["daily_ambient_temp"],
+        name="Daily ambient temp (°C)", mode="lines",
+        line=dict(width=1.2, color="#7f8ea3"), visible=True), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=daily["day"], y=daily["daily_residual_max"],
+        name="Daily cross-check residual (max, K)", mode="lines",
+        line=dict(width=1.8, color="#00D4AA"), visible=True), row=2, col=1)
+    fig.add_trace(go.Scatter(
+        x=daily["day"], y=daily["daily_residual_mean"],
+        name="Daily cross-check residual (mean, K)", mode="lines",
+        line=dict(width=1.3, dash="dot", color="#5fd39a"),
+        visible=True), row=2, col=1)
+    fig.add_hline(y=prov["threshold_k"], line_dash="dash", line_color="#e05263",
+                  row=2, col=1,
+                  annotation_text=f"alarm threshold {prov['threshold_k']:.1f} K")
+
+    fig.update_yaxes(title_text="°C", row=1, col=1)
+    fig.update_yaxes(title_text="residual (K)", row=2, col=1)
+    fig.update_xaxes(title_text="day (UTC)", row=2, col=1)
+    fig.update_layout(
+        height=760, margin=dict(l=10, r=10, t=62, b=110), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="top", y=-0.16, x=0,
+                    font=dict(size=11)),
+    )
+    return fig
+
+
 def tab_monthly_loop(live: bool) -> dict | None:
     """The monthly operational loop: a fresh fit, then a cross-check.
 
@@ -543,79 +681,31 @@ def tab_monthly_loop(live: bool) -> dict | None:
     )
 
     # --- the two charts ----------------------------------------------------
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
     frame = result["frame"]
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        row_heights=[0.55, 0.45], vertical_spacing=0.07,
-                        subplot_titles=(
-                            f"{prov['target_month']} — weather, and the "
-                            "actual output against what was predicted",
-                            "Cross-check residual (actual − predicted)"))
 
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["Gb2t_avg"], name="actual gearbox bearing 2",
-        mode="lines", line=dict(width=1.8, color="#e05263"),
-        visible=True), row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["predicted_weather"],
-        name="weather-conditioned prediction", mode="lines",
-        line=dict(width=1.6, dash="dash", color="#5fd39a"),
-        visible=True), row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["predicted_static"],
-        name="naive static baseline", mode="lines",
-        line=dict(width=1.3, dash="dot", color="#9fb4ff"),
-        visible=True), row=1, col=1)
-    if "Ws_avg" in frame.columns and frame["Ws_avg"].notna().any():
-        fig.add_trace(go.Scatter(
-            x=frame["ts"], y=frame["Ws_avg"], name="wind speed (m/s)",
-            mode="lines", line=dict(width=1.0, color="#c9a227"),
-            visible=True, yaxis="y2"), row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["era5_temp_2m"], name="ambient (°C)",
-        mode="lines", line=dict(width=1.0, color="#7f8ea3"),
-        visible=True, yaxis="y3"), row=1, col=1)
-
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["residual_weather"],
-        name="weather-conditioned residual", mode="lines",
-        line=dict(width=1.4, color="#5fd39a"),
-        visible=True), row=2, col=1)
-    fig.add_trace(go.Scatter(
-        x=frame["ts"], y=frame["residual_static"],
-        name="naive static residual", mode="lines",
-        line=dict(width=1.0, dash="dot", color="#9fb4ff"),
-        visible=True), row=2, col=1)
-    fig.add_hrect(y0=-prov["threshold_k"], y1=prov["threshold_k"],
-                  fillcolor="#5fd39a", opacity=0.10, line_width=0,
-                  row=2, col=1)
-    fig.add_hline(y=prov["threshold_k"], line_dash="dash", line_color="#e05263",
-                  row=2, col=1,
-                  annotation_text=f"alarm threshold {prov['threshold_k']:.1f} K")
-    hot = frame[frame["overheating"]]
-    if len(hot):
-        fig.add_trace(go.Scatter(
-            x=hot["ts"], y=hot["residual_weather"],
-            name="above 80 °C", mode="markers",
-            marker=dict(size=4, color="#e05263", symbol="circle-open"),
-            visible=True), row=2, col=1)
-
-    fig.update_yaxes(title_text="°C", row=1, col=1)
-    fig.update_yaxes(title_text="wind (m/s)", row=1, col=1, secondary_y=True)
-    fig.update_yaxes(title_text="residual (K)", row=2, col=1)
-    fig.update_xaxes(title_text="UTC", row=2, col=1)
-    # Eight traces in a right-hand legend would squeeze the plot to less
-    # than half the width, and the whole point of the figure is that the
-    # curves can be read against each other. The legend goes underneath.
-    fig.update_layout(
-        height=860, margin=dict(l=10, r=10, t=62, b=130), hovermode="x unified",
-        legend=dict(orientation="h", yanchor="top", y=-0.14, x=0,
-                    font=dict(size=11)),
-        yaxis3=dict(overlaying="y", anchor="x", side="right", showgrid=False,
-                    title="ambient °C"),
+    # Day or ten minutes. The detector works on ten-minute rows; the
+    # question an O&M planner asks is a daily one, so the day is the
+    # default and the telemetry is one click away.
+    view = st.radio(
+        "Temperature granularity", (DAILY_VIEW, TELEMETRY_VIEW),
+        index=0, horizontal=True, key="monthly_granularity",
+        help="The daily summary is what a planner reads; the ten-minute "
+             "telemetry is what the detector scored.",
     )
+    if view == DAILY_VIEW:
+        fig = _monthly_daily_figure(
+            live_mod.daily_temperature_summary(frame), prov)
+        st.markdown(
+            "<div class='note'>One point per day. The residual is computed "
+            "on each ten-minute row and then aggregated, so the maximum is "
+            "the largest departure any single reading in that day made from "
+            "the model's expectation — the number to read against the alarm "
+            "threshold.</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        fig = _monthly_telemetry_figure(frame, prov)
+
     st.plotly_chart(fig, width="stretch")
 
     st.markdown(

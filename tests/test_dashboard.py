@@ -1064,6 +1064,10 @@ def test_the_monthly_chart_shows_the_model_curves():
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
 
+    # The ten-minute view.
+    _granularity(at).set_value("10-Minute Telemetry").run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
     traces = _monthly_chart_traces(at)
     assert traces, "the monthly loop chart is missing"
     for name in ("actual gearbox bearing 2",
@@ -1074,6 +1078,81 @@ def test_the_monthly_chart_shows_the_model_curves():
             f"{name} is hidden on the first render (visible={traces[name]!r})"
         )
         assert traces[name] != "legendonly", f"{name} is legend-only"
+
+
+def _granularity(at):
+    """The day/telemetry toggle on the monthly loop."""
+    radios = [r for r in at.radio if r.label == "Temperature granularity"]
+    assert radios, "there is no granularity toggle on the monthly loop"
+    return radios[0]
+
+
+def _traces_named(at, *names):
+    """The traces with those names, searched across every chart."""
+    import json
+    for el in at.get("plotly_chart"):
+        spec = json.loads(el.proto.spec)
+        found = {tr.get("name"): tr for tr in spec.get("data", [])}
+        if all(n in found for n in names):
+            return found
+    return {}
+
+
+def test_the_monthly_loop_offers_a_daily_view_by_default():
+    """The day is what an O&M planner reads, so it is the default."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    radio = _granularity(at)
+    assert list(radio.options) == [
+        "Daily Temperature Prediction (1-Day Summary)", "10-Minute Telemetry"
+    ], radio.options
+    assert radio.value == "Daily Temperature Prediction (1-Day Summary)", (
+        radio.value
+    )
+
+
+def test_the_daily_view_plots_the_model_against_the_actual():
+    """The three curves the daily view exists for, all visible on the
+    first render, in the colours the forecast tab uses."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    traces = _traces_named(at, "Actual daily bearing temp (°C)",
+                           "Model-predicted bearing temp (°C)",
+                           "Daily cross-check residual (max, K)")
+    assert traces, "the daily view is not on screen"
+
+    actual = traces["Actual daily bearing temp (°C)"]
+    predicted = traces["Model-predicted bearing temp (°C)"]
+    residual = traces["Daily cross-check residual (max, K)"]
+    for name, trace in (("actual", actual), ("predicted", predicted),
+                        ("residual", residual)):
+        assert trace.get("visible") is True, (
+            f"the {name} trace is hidden on the first render "
+            f"(visible={trace.get('visible')!r})"
+        )
+        assert trace.get("visible") != "legendonly"
+
+    assert actual["line"]["color"].lower() == "#e5e7eb", actual["line"]
+    assert actual["line"].get("dash") in (None, "solid"), actual["line"]
+    assert predicted["line"]["color"].lower() == "#00d4aa", predicted["line"]
+    assert predicted["line"].get("dash") == "dash", predicted["line"]
+
+
+def test_the_ten_minute_view_is_one_click_away():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    _granularity(at).set_value("10-Minute Telemetry").run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    traces = _traces_named(at, "actual gearbox bearing 2",
+                           "weather-conditioned prediction")
+    assert traces, "the ten-minute view is missing"
+    assert _traces_named(at, "Actual daily bearing temp (°C)") == {}, (
+        "the daily view is still on screen after switching to telemetry"
+    )
 
 
 def test_the_cross_check_residual_spikes_above_the_threshold():

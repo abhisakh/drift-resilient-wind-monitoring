@@ -434,3 +434,77 @@ def test_the_false_dispatch_saving_survives_every_threshold():
             f"dispatches: {prov['naive_false_dispatches']} vs "
             f"{prov['conditioned_false_dispatches']}"
         )
+
+
+# ------------------------------------------------ the daily aggregation
+def test_the_daily_summary_has_one_row_per_day():
+    """The daily view is what a planner reads: one row per day, with the
+    columns the dashboard plots."""
+    result = _monthly("2017-09")
+    daily = live.daily_temperature_summary(result["frame"])
+    assert len(daily) > 1, daily
+    days = list(daily["day"])
+    assert days == sorted(days), "the days are not in order"
+    for col in live.DAILY_TEMPERATURE_COLUMNS:
+        assert col in daily.columns, f"{col} is missing"
+    assert daily["rows"].sum() == len(result["frame"]), (
+        "the daily row counts do not add up to the ten-minute rows"
+    )
+
+
+def test_the_daily_summary_agrees_with_the_ten_minute_rows():
+    """The aggregation must be the same arithmetic, not a second model."""
+    result = _monthly("2017-09")
+    frame = result["frame"].copy()
+    frame["ts"] = pd.to_datetime(frame["ts"], utc=True)
+    daily = live.daily_temperature_summary(frame)
+
+    for idx in (0, 5, 13, len(daily) - 1):
+        day = daily["day"].iloc[idx]
+        same_day = frame[frame["ts"].dt.floor("1D") == day]
+        assert len(same_day) > 0, day
+        assert daily["daily_actual_temp_max"].iloc[idx] == pytest.approx(
+            same_day["Gb2t_avg"].max(), abs=1e-6)
+        assert daily["daily_actual_temp_mean"].iloc[idx] == pytest.approx(
+            same_day["Gb2t_avg"].mean(), abs=1e-6)
+        assert daily["daily_predicted_temp_max"].iloc[idx] == pytest.approx(
+            same_day["predicted_weather"].max(), abs=1e-6)
+        assert daily["daily_predicted_temp_mean"].iloc[idx] == pytest.approx(
+            same_day["predicted_weather"].mean(), abs=1e-6)
+        assert daily["daily_ambient_temp"].iloc[idx] == pytest.approx(
+            same_day["era5_temp_2m"].mean(), abs=1e-6)
+        assert daily["daily_residual_mean"].iloc[idx] == pytest.approx(
+            same_day["residual_weather"].mean(), abs=1e-6)
+        assert daily["daily_residual_max"].iloc[idx] == pytest.approx(
+            same_day["residual_weather"].max(), abs=1e-6)
+        assert daily["rows"].iloc[idx] == len(same_day)
+
+
+def test_the_daily_summary_shows_the_september_overheat():
+    """The fault has to be visible at day resolution -- that is the whole
+    point of offering a daily view."""
+    result = _monthly("2017-09")
+    daily = live.daily_temperature_summary(result["frame"])
+    threshold = result["provenance"]["threshold_k"]
+
+    worst = daily.loc[daily["daily_residual_max"].idxmax()]
+    assert worst["daily_residual_max"] > threshold, (
+        f"the worst day only reaches {worst['daily_residual_max']:.2f} K "
+        f"against a {threshold:.2f} K threshold"
+    )
+    assert worst["daily_actual_temp_max"] > worst["daily_predicted_temp_max"], (
+        "on the worst day the actual temperature did not exceed the "
+        "model's prediction"
+    )
+    # And it is not just noise: several days clear the threshold.
+    over = daily[daily["daily_residual_max"] > threshold]
+    assert len(over) >= 2, f"only {len(over)} day(s) cleared the threshold"
+
+
+def test_the_daily_summary_of_nothing_is_empty():
+    """An empty frame must give an empty summary with the same columns,
+    not an exception."""
+    daily = live.daily_temperature_summary(pd.DataFrame())
+    assert len(daily) == 0
+    for col in live.DAILY_TEMPERATURE_COLUMNS:
+        assert col in daily.columns, col
