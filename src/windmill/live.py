@@ -781,3 +781,325 @@ def build_sample_csv(dest: Path, data_dir: Path) -> Path:
 def sample_csv_path() -> Path:
     """Where the committed sample lives."""
     return Path(__file__).resolve().parents[2] / "assets" / "sample_turbine.csv"
+
+
+# ------------------------------------------------------- the monthly loop
+#: The channel the monthly cross-check scores: the gearbox bearing 2, the
+#: one the R80711 case study is about.
+CROSS_CHECK_CHANNEL = "Gb2t_avg"
+
+#: The thermal channels the monthly cross-check scores, when they are there.
+CROSS_CHECK_CHANNELS = ("Git_avg", "Gost_avg", "Gb2t_avg", "Gb1t_avg",
+                        "Db2t_avg", "Dst_avg", "Yt_avg", "Rbt_avg", "Rt_avg")
+
+#: The component temperature above which this class of machine is above its
+#: normal operating range. The project uses the same figure throughout (the
+#: snapshot's `rows_over_80c`, the README's peer comparison), so it is used
+#: here rather than a number invented for this view.
+OVERHEAT_C = 80.0
+
+#: A dispatch needs this many consecutive alarmed 10-minute samples before a
+#: technician is called out. Six is one hour, and it is the difference
+#: between "a reading" and "an alarm a control room would act on".
+DISPATCH_MIN_RUN = 6
+
+
+def dispatch_episodes(flags, min_run: int = DISPATCH_MIN_RUN) -> list[dict]:
+    """Group consecutive alarmed rows into discrete dispatch episodes.
+
+    A raw count of alarmed rows is not what a control room experiences: one
+    fault raises one phone call, not forty. So the alarmed rows are grouped
+    into runs, and only runs of at least `min_run` consecutive samples count
+    as a dispatch.
+    """
+    values = [bool(f) for f in flags]
+    episodes: list[dict] = []
+    start = None
+    for i, f in enumerate(values):
+        if f and start is None:
+            start = i
+        elif not f and start is not None:
+            if i - start >= min_run:
+                episodes.append({"start": start, "end": i - 1, "rows": i - start})
+            start = None
+    if start is not None and len(values) - start >= min_run:
+        episodes.append({"start": start, "end": len(values) - 1,
+                         "rows": len(values) - start})
+    return episodes
+
+
+def cost_impact(naive_episodes: int, conditioned_episodes: int,
+                cost_per_dispatch: float,
+                early_intervention_value: float = 185_000.0,
+                fault_detected: bool = False) -> dict:
+    """The operational and financial consequence of the two arms.
+
+    `early_intervention_value` is the difference between a planned repair and
+    a full gearbox replacement -- a planning assumption, not a measurement,
+    and the dashboard labels it as such.
+    """
+    avoided = max(0, int(naive_episodes) - int(conditioned_episodes))
+    saved = avoided * float(cost_per_dispatch)
+    return {
+        "naive_episodes": int(naive_episodes),
+        "conditioned_episodes": int(conditioned_episodes),
+        "avoided_dispatches": avoided,
+        "cost_per_dispatch": float(cost_per_dispatch),
+        "cost_saved": saved,
+        "fault_detected": bool(fault_detected),
+        "early_intervention_value": float(early_intervention_value) if fault_detected else 0.0,
+    }
+
+
+def _out_of_fold_residual(train: pd.DataFrame, channel: str, power_col: str,
+                           ambient_col: str | None) -> pd.Series:
+    """The absolute z of every training row, fitted out of fold.
+
+    The reference's own rows have smaller residuals than the rows it is
+    scored on, so a threshold taken from them is too strict. Fitting on one
+    half of the window and applying to the other removes that bias, and it
+    is what makes the trimming below honest.
+    """
+    half = len(train) // 2
+    out = pd.Series(np.nan, index=train.index, dtype="float64")
+    if half < 50:
+        return out
+    for fit_part, held in ((train.iloc[half:], train.iloc[:half]),
+                            (train.iloc[:half], train.iloc[half:])):
+        ref = multivariate.fit_channel_reference(fit_part, channel, power_col,
+                                                 ambient_col=ambient_col)
+        if ref is None:
+            continue
+        amb = (held[ambient_col].to_numpy(dtype="float64")
+               if ambient_col else np.zeros(len(held)))
+        _corr, z = ref.apply(held[power_col].to_numpy(dtype="float64"),
+                             amb, held[channel].to_numpy(dtype="float64"))
+        out.loc[held.index] = np.abs(z)
+    return out
+
+
+def monthly_cross_check(
+    target_month: str,
+    data_dir: Path,
+    source: str = "sample",
+    turbine: str = "R80711",
+    z_threshold: float = 4.0,
+    trim_k: float = 4.0,
+    min_episode: int = DISPATCH_MIN_RUN,
+) -> dict:
+    """Fit a fresh reference on the month before `target_month` and score it.
+
+    The reference is fitted on the thirty days immediately before the target
+    month and on nothing else: no carry-over from an older baseline, because
+    the whole point is to show what a monthly operational loop does. The
+    training rows are then TRIMMED -- the rows the reference itself calls
+    anomalous are dropped and the reference is refitted -- so a fault that
+    was already developing last month cannot quietly become the new normal.
+
+    Three arms are scored, all fitted on the same fresh window:
+
+      static   the channel's own median from the training month, with no
+               conditioning at all. This is what a fixed-threshold SCADA
+               alarm does, and it is the naive baseline.
+      load     conditioned on the operating point (normalised power) but not
+               on the weather.
+      weather  conditioned on the operating point AND on the ambient
+               temperature. This is the model's arm.
+
+    All three are judged against ONE threshold, taken from the weather arm's
+    own out-of-fold spread, so the arm with the larger residual scale is
+    not silently handed a stricter bar. Comparing alarm RATES between two
+    models whose z-scales differ would not mean anything.
+    """
+    t0 = time.perf_counter()
+    frame = _monthly_frame(data_dir, source, turbine)
+    if frame.empty:
+        raise LiveEngineError("no data for the monthly cross-check")
+
+    months = sorted(frame["month"].unique())
+    if target_month not in months:
+        raise LiveEngineError(
+            f"{target_month} is not available; the data covers {', '.join(months)}")
+    idx = months.index(target_month)
+    if idx == 0:
+        raise LiveEngineError(
+            f"{target_month} is the first month in the data, so there is no "
+            f"preceding month to train on")
+    train_month = months[idx - 1]
+
+    m_start = pd.Timestamp(target_month + "-01", tz="UTC")
+    m_end = (m_start + pd.offsets.MonthBegin(1))
+    train_start = m_start - pd.Timedelta(days=30)
+    train = frame[(frame["ts"] >= train_start) & (frame["ts"] < m_start)].copy()
+    test = frame[(frame["ts"] >= m_start) & (frame["ts"] < m_end)].copy()
+    if train.empty or test.empty:
+        raise LiveEngineError(f"no rows for {target_month} or {train_month}")
+
+    thermal = [c for c in CROSS_CHECK_CHANNELS if c in frame.columns]
+    if CROSS_CHECK_CHANNEL not in thermal:
+        raise LiveEngineError(f"no {CROSS_CHECK_CHANNEL} channel in the data")
+
+    # --- the fresh fit, with the trimming ---------------------------------
+    t_fit = time.perf_counter()
+    worst = pd.Series(0.0, index=train.index, dtype="float64")
+    for ch in thermal:
+        z = _out_of_fold_residual(train, ch, "P_norm", "era5_temp_2m")
+        worst = worst.combine(z.fillna(0.0), np.fmax)
+    keep = worst <= trim_k
+    clean = train[keep].reset_index(drop=True)
+    dropped = int((~keep).sum())
+
+    # --- the three arms, on ONE physical scale ----------------------------
+    # Every arm is judged by the same rule -- "more than z_threshold robust
+    # deviations above the expected value" -- and every arm's deviation is
+    # measured against the SAME per-load-bin spread, the one the weather arm
+    # fitted on the clean training rows.
+    #
+    # This matters. The arms have different residual scales: the static arm's
+    # residuals are larger because it does not condition on the operating
+    # point, and its spread is correspondingly larger. Comparing alarm RATES
+    # between two models whose z-scales differ would not mean anything, so
+    # the common scale is imposed deliberately.
+    ch = CROSS_CHECK_CHANNEL
+    values = test[ch].to_numpy(dtype="float64")
+    load = test["P_norm"].to_numpy(dtype="float64")
+    amb = test["era5_temp_2m"].to_numpy(dtype="float64")
+
+    static_ref = float(np.nanmedian(clean[ch].to_numpy(dtype="float64")))
+    load_ref = multivariate.fit_channel_reference(clean, ch, "P_norm",
+                                                  ambient_col=None)
+    weather_ref = multivariate.fit_channel_reference(clean, ch, "P_norm",
+                                                     ambient_col="era5_temp_2m")
+    if weather_ref is None:
+        raise LiveEngineError("could not fit the channel reference")
+
+    residual_static = values - static_ref
+    residual_load = (load_ref.apply(load, np.zeros(len(test)), values)[0]
+                     if load_ref is not None else residual_static)
+    residual_weather = weather_ref.apply(load, amb, values)[0]
+
+    bins = np.floor(load / multivariate.LOAD_BIN).astype("int64")
+    spread = np.array([weather_ref.spreads.get(int(b), np.nan) for b in bins],
+                      dtype="float64")
+    scale_arr = np.where(np.isfinite(spread) & (spread > 0), spread,
+                          weather_ref.fallback_spread)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        z_static = residual_static / scale_arr
+        z_load = residual_load / scale_arr
+        z_weather = residual_weather / scale_arr
+    scale = float(np.nanmedian(scale_arr))
+    threshold_k = z_threshold * scale
+
+    out = test.reset_index(drop=True).copy()
+    out["residual_static"] = residual_static
+    out["residual_load"] = residual_load
+    out["residual_weather"] = residual_weather
+    out["predicted_weather"] = values - residual_weather
+    out["predicted_static"] = values - residual_static
+    out["predicted_load"] = values - residual_load
+    out["z_static"] = z_static
+    out["z_load"] = z_load
+    out["z_weather"] = z_weather
+    out["alarm_static"] = z_static > z_threshold
+    out["alarm_load"] = z_load > z_threshold
+    out["alarm_weather"] = z_weather > z_threshold
+    out["overheating"] = out[ch] > OVERHEAT_C
+    fit_seconds = time.perf_counter() - t_fit
+
+    # --- dispatches, split into genuine and false -------------------------
+    # An episode that lands on the real fault is a TRUE dispatch and is worth
+    # something; an episode that does not is a wasted truck roll. Counting
+    # raw alarmed rows, or counting all episodes as if they were false,
+    # would misprice the model.
+    hot = out["overheating"].to_numpy()
+    naive_eps = dispatch_episodes(out["alarm_static"].to_numpy(), min_episode)
+    load_eps = dispatch_episodes(out["alarm_load"].to_numpy(), min_episode)
+    cond_eps = dispatch_episodes(out["alarm_weather"].to_numpy(), min_episode)
+    naive_false = [e for e in naive_eps if not hot[e["start"]:e["end"] + 1].any()]
+    load_false = [e for e in load_eps if not hot[e["start"]:e["end"] + 1].any()]
+    cond_false = [e for e in cond_eps if not hot[e["start"]:e["end"] + 1].any()]
+    naive_true = [e for e in naive_eps if hot[e["start"]:e["end"] + 1].any()]
+    cond_true = [e for e in cond_eps if hot[e["start"]:e["end"] + 1].any()]
+
+    flagged_hot = int((out["alarm_weather"].to_numpy() & hot).sum())
+    fault_detected = len(cond_true) > 0
+
+    cost = cost_impact(len(naive_false), len(cond_false), 2000.0,
+                       fault_detected=fault_detected)
+    cost["naive_true_dispatches"] = len(naive_true)
+    cost["conditioned_true_dispatches"] = len(cond_true)
+    cost["load_only_false_dispatches"] = len(load_false)
+
+    naive_alarm_pct = float(100.0 * out["alarm_static"].mean())
+    load_alarm_pct = float(100.0 * out["alarm_load"].mean())
+    cond_alarm_pct = float(100.0 * out["alarm_weather"].mean())
+
+    prov = _provenance(
+        rows=len(out),
+        seconds=time.time() - t0,
+        joined=[f"{'ENGIE SCADA' if source == 'engie' else 'committed sample CSV'}"
+                f" — {turbine}, {train_month} and {target_month}"],
+        source=f"monthly cross-check — {turbine}, {target_month}",
+        train_month=train_month,
+        target_month=target_month,
+        train_rows=int(len(train)),
+        clean_rows=int(len(clean)),
+        dropped_rows=dropped,
+        fit_seconds=round(fit_seconds, 3),
+        threshold_k=round(threshold_k, 3),
+        spread_k=round(scale, 3),
+        naive_alarm_pct=round(naive_alarm_pct, 3),
+        load_alarm_pct=round(load_alarm_pct, 3),
+        conditioned_alarm_pct=round(cond_alarm_pct, 3),
+        naive_episodes=len(naive_eps),
+        conditioned_episodes=len(cond_eps),
+        naive_false_dispatches=len(naive_false),
+        conditioned_false_dispatches=len(cond_false),
+        naive_true_dispatches=len(naive_true),
+        conditioned_true_dispatches=len(cond_true),
+        fault_rows=int(hot.sum()),
+        fault_rows_flagged=flagged_hot,
+    )
+    return {"frame": out, "provenance": prov, "episodes": {
+        "naive": naive_eps, "conditioned": cond_eps,
+        "naive_false": naive_false, "conditioned_false": cond_false,
+        "naive_true": naive_true, "conditioned_true": cond_true},
+        "cost": cost, "threshold": threshold_k, "scale": scale}
+
+
+def _monthly_frame(data_dir: Path, source: str, turbine: str) -> pd.DataFrame:
+    """The scored frame the monthly loop works on, with the columns it needs."""
+    if source == "engie":
+        path = _engie_csv(data_dir, turbine)
+        df = _read_engie(path)
+        era5 = loaders.load_era5(data_dir)
+        e = era5.copy()
+        e["ts"] = e["ts"].dt.floor("10min")
+        e = (e.set_index("ts")[["era5_temp_2m"]]
+             .resample("10min").ffill().reset_index())
+        df = df.merge(e, on="ts", how="left")
+        df["P_norm"] = _normalised_power(df, "P_avg", RATED_POWER_KW)
+    else:
+        df = pd.read_csv(sample_csv_path())
+        tcol = next(c for c in df.columns
+                    if "date" in c.lower() and "time" in c.lower())
+        df["ts"] = pd.to_datetime(df[tcol], format="mixed", utc=True,
+                                  errors="coerce")
+        df["P_norm"] = _normalised_power(df, "P_avg", RATED_POWER_KW)
+
+    df = df[df["ts"].notna()].sort_values("ts").reset_index(drop=True)
+    df["month"] = df["ts"].dt.strftime("%Y-%m")
+    if "era5_temp_2m" not in df.columns:
+        df["era5_temp_2m"] = np.nan
+    keep = [c for c in df.columns
+            if c in ("ts", "month", "P_norm", "era5_temp_2m", "Ws_avg",
+                     CROSS_CHECK_CHANNEL) or c in CROSS_CHECK_CHANNELS]
+    df = df[keep]
+    return df.dropna(subset=["ts", "P_norm"]).reset_index(drop=True)
+
+
+def available_months(data_dir: Path, source: str = "sample",
+                      turbine: str = "R80711") -> list[str]:
+    """The months the monthly cross-check can be run on."""
+    frame = _monthly_frame(data_dir, source, turbine)
+    return sorted(frame["month"].unique())

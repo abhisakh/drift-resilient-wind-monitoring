@@ -374,9 +374,21 @@ detector. They write nothing and are not part of the pipeline.
 make dashboard     # http://localhost:8501
 ```
 
-A four-tab Streamlit dashboard over the same artefacts: the 46.5x false-alarm
-result, the R80711 case study with a live threshold slider, the CARE benchmark
-and the AE audit, and the engineering forensics.
+A four-tab Streamlit dashboard, ordered the way a control room works:
+
+| tab | what it does |
+|---|---|
+| 🌤️ **Weather Forecast & Power Prediction** | a real 7-day hourly forecast from Open-Meteo, the turbine's own conditioned power curve applied to it, and what-if sliders for a wind or temperature shift. No model comparison on this tab. |
+| 🔍 **Daily Cross-Check: Weather vs. Hardware Wear** | the R80711 case study, then a **fresh monthly fit** scored against the target month, then the dispatch-episode and cost impact, then the live explorer. |
+| ⚖️ **Model & Benchmark Comparison** | the deterministic arm against the learned one, the false-alarm rate by year, the CARE benchmark, and the audit of the published autoencoder baseline. |
+| 🔧 **Engineering & Data Forensics** | the pipeline, the CI guarantees, and the upstream data bugs this project caught. |
+
+The monthly loop fits its reference on the thirty days before the target
+month and on nothing else, drops the training rows that reference itself
+calls anomalous, and refits — so a fault that was already developing last
+month cannot quietly become the new normal. It reports the fit time, the
+clean-row count, and the three arms' alarm rates, and it prices the
+difference in dispatches and euros.
 
 It is **hybrid**. With `data/raw/` present it reads the raw ENGIE SCADA and
 re-runs the detector live — that is the mode for a demo day. Without it (as on
@@ -390,7 +402,8 @@ copy of a headline number, so it cannot disagree with this README.
 
 ### The live explorer
 
-Tab 2 ends with a **Live Multi-Turbine & Weather-Conditioned Explorer**: the
+The cross-check tab ends with a **Live Multi-Turbine & Weather-Conditioned
+Explorer**: the
 same detector, run on the data *you* choose, with the provenance of every run
 on screen — rows processed, runtime in seconds, and which datasets were
 joined.
@@ -400,6 +413,9 @@ joined.
 | ENGIE + ERA5 | any of the four La Haute Borne turbines, joined to reanalysis weather, with the other three as the control group | `data/raw/` present |
 | CARE benchmark events | any labelled anomaly or normal-control dataset, with the ground-truth event window | `data/raw/` present |
 | **Upload a turbine CSV** | **any** 10-minute SCADA file, self-calibrated on its own history | **always** |
+
+The forecast on the first tab falls back to a deterministic profile derived
+from the committed sample when the network is not there, and says so.
 
 The upload path is the one that works everywhere, including on Streamlit
 Community Cloud, and the dashboard offers a **downloadable sample** — a real
@@ -432,7 +448,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-169 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+213 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

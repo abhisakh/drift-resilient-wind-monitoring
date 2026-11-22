@@ -243,3 +243,194 @@ def test_the_committed_sample_is_reproducible_from_the_raw_data():
             "the committed sample does not match what the pipeline produces -- "
             "run 'make snapshot' and commit the result"
         )
+
+
+# --------------------------------------------------- the monthly live loop
+def test_the_dispatch_episodes_group_consecutive_alarms():
+    """A fault raises one phone call, not forty.
+
+    The alarmed rows are grouped into runs, and only runs of at least six
+    consecutive 10-minute samples -- one hour -- count as a dispatch.
+    """
+    flags = [False] * 5 + [True] * 10 + [False] * 3 + [True] * 2
+    episodes = live.dispatch_episodes(flags, min_run=6)
+    assert len(episodes) == 1
+    assert episodes[0]["rows"] == 10
+    assert episodes[0]["start"] == 5
+    assert episodes[0]["end"] == 14
+
+
+def test_short_alarm_runs_are_not_dispatches():
+    """A blip is not a truck roll."""
+    flags = [True] * 5 + [False] * 2 + [True] * 20
+    episodes = live.dispatch_episodes(flags, min_run=6)
+    assert len(episodes) == 1
+    assert episodes[0]["rows"] == 20
+
+
+def test_no_alarms_is_no_dispatches():
+    assert live.dispatch_episodes([False] * 100, min_run=6) == []
+
+
+def test_the_minimum_run_length_is_respected():
+    flags = [True] * 5 + [False] + [True] * 5
+    assert live.dispatch_episodes(flags, min_run=6) == []
+    assert len(live.dispatch_episodes(flags, min_run=5)) == 2
+
+
+def test_the_cost_maths_is_exact():
+    cost = live.cost_impact(14, 3, 2000.0)
+    assert cost["avoided_dispatches"] == 11
+    assert cost["cost_saved"] == 11 * 2000.0
+    assert cost["naive_episodes"] == 14
+    assert cost["conditioned_episodes"] == 3
+
+
+def test_the_cost_never_claims_a_negative_saving():
+    """A model that alarms MORE must not show a negative saving."""
+    cost = live.cost_impact(3, 14, 2000.0)
+    assert cost["avoided_dispatches"] == 0
+    assert cost["cost_saved"] == 0
+
+
+def test_the_early_intervention_value_is_only_claimed_when_the_fault_is_caught():
+    missed = live.cost_impact(10, 1, 2000.0, fault_detected=False)
+    caught = live.cost_impact(10, 1, 2000.0, fault_detected=True)
+    assert missed["early_intervention_value"] == 0
+    assert caught["early_intervention_value"] == 185_000.0
+
+
+# ------------------------------------------------------- the monthly fit
+def _monthly(month="2017-09"):
+    return live.monthly_cross_check(month, ROOT / "data", source="sample")
+
+
+def test_the_monthly_cross_check_trains_on_the_month_before():
+    """A fresh fit: the reference is the thirty days before the target month
+    and nothing else. No carry-over from an older baseline."""
+    result = _monthly("2017-09")
+    prov = result["provenance"]
+    assert prov["target_month"] == "2017-09"
+    assert prov["train_month"] == "2017-08"
+    assert prov["train_rows"] > 1000
+
+
+def test_the_monthly_cross_check_reports_its_timing():
+    """The fit is measured, not asserted."""
+    result = _monthly("2017-09")
+    prov = result["provenance"]
+    assert prov["fit_seconds"] > 0
+    assert prov["fit_seconds"] < 60
+    assert prov["seconds"] >= prov["fit_seconds"]
+
+
+def test_the_monthly_cross_check_excludes_anomalous_training_rows():
+    """A fault that was already developing last month must not become the
+    new normal, so the rows the reference itself calls anomalous are dropped
+    and the reference refitted."""
+    result = _monthly("2017-09")
+    prov = result["provenance"]
+    assert prov["dropped_rows"] > 0, (
+        "nothing was excluded, so a contaminated training window would "
+        "silently become the reference"
+    )
+    assert prov["clean_rows"] < prov["train_rows"]
+    assert prov["clean_rows"] > 0
+
+
+def test_the_monthly_cross_check_removes_the_weather_false_alarms():
+    """The whole point: a reference that is not refreshed for the month's
+    conditions raises a flood of false dispatches, and the conditioned model
+    does not."""
+    result = _monthly("2017-09")
+    prov = result["provenance"]
+    assert prov["naive_alarm_pct"] > prov["conditioned_alarm_pct"]
+    assert prov["naive_false_dispatches"] > prov["conditioned_false_dispatches"]
+    assert result["cost"]["avoided_dispatches"] > 0
+    assert result["cost"]["cost_saved"] > 0
+
+
+def test_the_monthly_cross_check_judges_every_arm_on_one_scale():
+    """Two models whose residual scales differ cannot be compared on alarm
+    rate, so the common scale has to be imposed."""
+    result = _monthly("2017-09")
+    frame = result["frame"]
+    # Every arm is thresholded at the same multiple of the same spread.
+    for arm in ("static", "load", "weather"):
+        z = frame[f"z_{arm}"].to_numpy()
+        alarms = frame[f"alarm_{arm}"].to_numpy()
+        above = z > 4.0
+        assert (alarms == above).all(), arm
+    assert result["threshold"] == pytest.approx(
+        result["provenance"]["threshold_k"], rel=1e-3)
+
+
+def test_the_monthly_cross_check_splits_genuine_from_false_dispatches():
+    """An episode on the real fault is worth something; one that is not is a
+    wasted truck roll. They must not be counted as the same thing."""
+    result = _monthly("2017-09")
+    episodes = result["episodes"]
+    assert len(episodes["naive"]) == (
+        len(episodes["naive_false"]) + len(episodes["naive_true"]))
+    assert len(episodes["conditioned"]) == (
+        len(episodes["conditioned_false"]) + len(episodes["conditioned_true"]))
+    # And the false ones are the ones that do not touch an overheating row.
+    hot = result["frame"]["overheating"].to_numpy()
+    for e in episodes["naive_false"]:
+        assert not hot[e["start"]:e["end"] + 1].any()
+
+
+def test_the_monthly_cross_check_refuses_a_month_with_no_predecessor():
+    """There is nothing to train on for the first month in the data."""
+    months = live.available_months(ROOT / "data", "sample")
+    with pytest.raises(live.LiveEngineError):
+        live.monthly_cross_check(months[0], ROOT / "data", source="sample")
+
+
+def test_the_monthly_cross_check_refuses_a_month_that_is_not_there():
+    with pytest.raises(live.LiveEngineError):
+        live.monthly_cross_check("1999-01", ROOT / "data", source="sample")
+
+
+def test_every_available_month_after_the_first_can_be_cross_checked():
+    months = live.available_months(ROOT / "data", "sample")
+    assert len(months) >= 4, "the sample should cover several months"
+    for month in months[1:]:
+        result = live.monthly_cross_check(month, ROOT / "data", source="sample")
+        assert result["provenance"]["rows"] > 0
+
+
+def test_at_the_default_threshold_the_fault_is_still_caught():
+    """The default operating point must remove the false alarms AND keep the
+    genuine one.
+
+    This is the behaviour the dashboard's cost card depends on: if the
+    conditioned model simply went quiet, the saving would be worthless. At
+    the default 3-sigma threshold the R80711 overheat is still raised as a
+    genuine dispatch, while every false dispatch is avoided.
+    """
+    result = live.monthly_cross_check("2017-09", ROOT / "data", source="sample",
+                                      z_threshold=3.0)
+    prov = result["provenance"]
+    assert prov["conditioned_true_dispatches"] > 0, (
+        "the genuine fault was not raised as a dispatch at the default "
+        "threshold -- a model that never alarms is worthless"
+    )
+    assert prov["conditioned_false_dispatches"] == 0, (
+        "the conditioned model still raised false dispatches"
+    )
+    assert prov["naive_false_dispatches"] > 0
+    assert result["cost"]["avoided_dispatches"] > 0
+
+
+def test_the_false_dispatch_saving_survives_every_threshold():
+    """The saving is not an artefact of one threshold choice."""
+    for z in (2.0, 2.5, 3.0, 3.5, 4.0, 5.0):
+        result = live.monthly_cross_check("2017-09", ROOT / "data",
+                                          source="sample", z_threshold=z)
+        prov = result["provenance"]
+        assert prov["naive_false_dispatches"] > prov["conditioned_false_dispatches"], (
+            f"at z={z} the conditioned model did not reduce the false "
+            f"dispatches: {prov['naive_false_dispatches']} vs "
+            f"{prov['conditioned_false_dispatches']}"
+        )

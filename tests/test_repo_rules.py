@@ -361,3 +361,37 @@ def test_no_test_module_skips_at_import_time():
         "tests in that module and the README's test count changes with the "
         "environment:\n  " + "\n  ".join(offenders)
     )
+
+
+def test_the_dashboard_holds_no_domain_logic():
+    """app.py is a presentation layer. The maths lives in src/.
+
+    The dashboard grew a forecasting view, a monthly cross-check and a cost
+    model, and each of those could have been written inline -- which would
+    make the numbers untestable without a browser, and would put the
+    project's domain logic in the one file that is not covered by the
+    pipeline. So the operations that matter are named here and checked.
+    """
+    app = (ROOT / "app.py").read_text()
+    domain = [
+        "dispatch_episodes",
+        "cost_impact",
+        "monthly_cross_check",
+        "predict_power",
+        "air_density",
+        "power_curve_from_frame",
+        "fetch_forecast",
+        "sample_forecast",
+        "fit_channel_reference",
+        "detect_rolling",
+        "combine_scores",
+    ]
+    for name in domain:
+        assert f"def {name}(" not in app, (
+            f"app.py defines {name}() -- domain logic belongs in src/windmill/"
+        )
+    # And it must reach for the project's own modules rather than
+    # reimplementing them.
+    assert "from windmill import" in app or "from windmill." in app, (
+        "app.py does not import the project's modules"
+    )

@@ -213,8 +213,13 @@ def kpi(value: str, label: str, delta: str | None = None):
 
 
 # ---------------------------------------------------------------- tab 1
-def tab_executive(engie, care_score, multiv, lgbm):
-    st.subheader("The reference matters more than the model")
+def _model_comparison(engie, care_score, multiv, lgbm) -> None:
+    """The model comparison: the deterministic arm against the learned one.
+
+    This lives in the benchmark tab because it is a TECHNICAL study -- which
+    of two detectors is better, and on what. The operational story is on the
+    first two tabs.
+    """
     st.markdown(
         "A condition-monitoring baseline calibrated on one period reads slow drift as "
         "degradation. On healthy turbines at the ENGIE site, **every alarm is a false "
@@ -377,18 +382,318 @@ def tab_executive(engie, care_score, multiv, lgbm):
             )
 
 
+# ------------------------------------------- tab 2: the monthly live loop
+@st.cache_data(show_spinner=False)
+def _monthly_cached(month: str, source: str, turbine: str, z_threshold: float):
+    """The monthly cross-check, cached so the sliders are instant."""
+    _ensure_src()
+    from windmill import live
+
+    try:
+        return live.monthly_cross_check(month, ROOT / "data", source=source,
+                                        turbine=turbine, z_threshold=z_threshold), None
+    except Exception as exc:
+        return None, str(exc)
+
+
+def tab_monthly_loop(live: bool) -> dict | None:
+    """The monthly operational loop: a fresh fit, then a cross-check.
+
+    The reference is fitted on the thirty days before the target month and
+    on nothing else, and the rows that reference calls anomalous are dropped
+    and the reference refitted -- so a fault that was already developing last
+    month cannot quietly become the new normal.
+    """
+    from windmill import live as live_mod
+
+    st.markdown("#### Monthly Operational Loop — fresh 30-day fit, then a cross-check")
+
+    source = "sample"
+    turbine = "R80711"
+    months: list[str] = []
+    if live:
+        c0, c1 = st.columns([1.2, 1.0])
+        with c0:
+            turbine = st.selectbox("Turbine", live_mod.ENGIE_TURBINES,
+                                   key="monthly_turbine")
+        with c1:
+            source = st.selectbox("Data source", ("engie", "sample"),
+                                   format_func=lambda s: ("ENGIE SCADA (full release)"
+                                                         if s == "engie"
+                                                         else "committed sample CSV"),
+                                   key="monthly_source")
+    else:
+        st.caption("The 19 GB release is not present, so this runs on the "
+                   "committed sample CSV — real R80711 SCADA for "
+                   "August–November 2017.")
+
+    try:
+        with st.spinner("Reading the series…"):
+            months = live_mod.available_months(ROOT / "data", source, turbine)
+    except Exception as exc:
+        st.error(f"could not read the series: {exc}")
+        return None
+    if len(months) < 2:
+        st.warning("not enough months for a monthly cross-check")
+        return None
+
+    default = "2017-09" if "2017-09" in months else months[1]
+    c1, c2, c3 = st.columns([1.2, 1.0, 1.2])
+    with c1:
+        target = st.selectbox(
+            "Target month", months, index=months.index(default),
+            help="The month to score. The reference is fitted on the 30 days "
+                 "immediately before it.")
+    with c2:
+        z_threshold = st.slider("Alarm threshold (z)", 2.0, 8.0, 3.0, 0.5,
+                                 key="monthly_z",
+                                 help="How many robust deviations above the "
+                                      "expected value counts as an alarm. The "
+                                      "default is 3, the classical "
+                                      "statistical-process-control threshold "
+                                      "for a single channel; the "
+                                      "multivariate continuous alerting in "
+                                      "the benchmark tab uses 4.")
+    with c3:
+        st.metric("Months available", f"{len(months)}",
+                  f"{months[0]} → {months[-1]}")
+
+    if st.button("Run the monthly cross-check", type="primary",
+                 key="run_monthly"):
+        with st.spinner(f"Fitting a fresh reference on {target}…"):
+            result, error = _monthly_cached(target, source, turbine, z_threshold)
+        if error:
+            st.error(f"the cross-check failed: {error}")
+            return None
+        st.session_state["monthly_result"] = result
+    elif "monthly_result" in st.session_state:
+        result = st.session_state["monthly_result"]
+    else:
+        st.info("Press **Run the monthly cross-check** to fit the reference "
+                "live and score the month.")
+        return None
+
+    prov = result["provenance"]
+    # --- the live fit proof ------------------------------------------------
+    st.success(
+        f"**Trained live on {prov['train_month']}** "
+        f"({prov['clean_rows']:,} clean rows, from {prov['train_rows']:,}) "
+        f"in **{prov['fit_seconds']:.2f} s** — "
+        f"{prov['dropped_rows']:,} anomalous rows excluded, "
+        f"threshold {prov['threshold_k']:.2f} K"
+    )
+
+    k1, k2, k3 = st.columns(3)
+    with k1:
+        kpi(f"{prov['naive_alarm_pct']:.2f} %", "Naive static baseline alarms",
+            f"{prov['naive_episodes']} dispatches, "
+            f"{prov['naive_false_dispatches']} of them false")
+    with k2:
+        kpi(f"{prov['conditioned_alarm_pct']:.2f} %",
+            "Weather-conditioned model alarms",
+            f"{prov['conditioned_episodes']} dispatches, "
+            f"{prov['conditioned_false_dispatches']} of them false")
+    with k3:
+        kpi(f"{prov['fault_rows']:,}", "rows above 80 °C in the month",
+            f"{prov['fault_rows_flagged']:,} flagged by the model")
+
+    st.markdown(
+        "<div class='note'>All three arms — the static baseline, the "
+        "operating-point conditioning, and the full weather-conditioned "
+        "model — are judged by the <b>same rule on the same scale</b>: more "
+        f"than z &gt; {z_threshold:.1f} robust deviations above the expected "
+        "value. Comparing alarm rates between models whose residual scales "
+        "differ would not mean anything.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # --- the two charts ----------------------------------------------------
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    frame = result["frame"]
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        row_heights=[0.55, 0.45], vertical_spacing=0.07,
+                        subplot_titles=(
+                            f"{prov['target_month']} — weather, and the "
+                            "actual output against what was predicted",
+                            "Cross-check residual (actual − predicted)"))
+
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["Gb2t_avg"], name="actual gearbox bearing 2",
+        mode="lines", line=dict(width=1.8, color="#e05263")), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["predicted_weather"],
+        name="weather-conditioned prediction", mode="lines",
+        line=dict(width=1.6, dash="dash", color="#5fd39a")), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["predicted_static"],
+        name="naive static baseline", mode="lines",
+        line=dict(width=1.3, dash="dot", color="#9fb4ff")), row=1, col=1)
+    if "Ws_avg" in frame.columns and frame["Ws_avg"].notna().any():
+        fig.add_trace(go.Scatter(
+            x=frame["ts"], y=frame["Ws_avg"], name="wind speed (m/s)",
+            mode="lines", line=dict(width=1.0, color="#c9a227"),
+            yaxis="y2"), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["era5_temp_2m"], name="ambient (°C)",
+        mode="lines", line=dict(width=1.0, color="#7f8ea3"),
+        yaxis="y3"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["residual_weather"],
+        name="weather-conditioned residual", mode="lines",
+        line=dict(width=1.4, color="#5fd39a")), row=2, col=1)
+    fig.add_trace(go.Scatter(
+        x=frame["ts"], y=frame["residual_static"],
+        name="naive static residual", mode="lines",
+        line=dict(width=1.0, dash="dot", color="#9fb4ff")), row=2, col=1)
+    fig.add_hrect(y0=-prov["threshold_k"], y1=prov["threshold_k"],
+                  fillcolor="#5fd39a", opacity=0.10, line_width=0,
+                  row=2, col=1)
+    fig.add_hline(y=prov["threshold_k"], line_dash="dash", line_color="#e05263",
+                  row=2, col=1,
+                  annotation_text=f"alarm threshold {prov['threshold_k']:.1f} K")
+    hot = frame[frame["overheating"]]
+    if len(hot):
+        fig.add_trace(go.Scatter(
+            x=hot["ts"], y=hot["residual_weather"],
+            name="above 80 °C", mode="markers",
+            marker=dict(size=4, color="#e05263", symbol="circle-open")), row=2, col=1)
+
+    fig.update_yaxes(title_text="°C", row=1, col=1)
+    fig.update_yaxes(title_text="wind (m/s)", row=1, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="residual (K)", row=2, col=1)
+    fig.update_xaxes(title_text="UTC", row=2, col=1)
+    fig.update_layout(
+        height=760, margin=dict(l=10, r=10, t=62, b=10), hovermode="x unified",
+        yaxis3=dict(overlaying="y", anchor="x", side="right", showgrid=False,
+                    title="ambient °C"),
+    )
+    st.plotly_chart(fig, width="stretch")
+
+    st.markdown(
+        "<div class='note'>The bottom panel is the cross-check: the actual "
+        "temperature minus the predicted one. A weather shift moves both "
+        "together, so it stays inside the band. Mechanical wear moves the "
+        "actual value alone, so it sits above the band and does not come "
+        "back down.</div>",
+        unsafe_allow_html=True,
+    )
+    return result
+
+
+def tab_cost_impact(result: dict | None) -> None:
+    """The operational and financial consequence, in the units a manager
+    would recognise: truck rolls and euros, not rows and percentages."""
+    from windmill import live as live_mod
+
+    st.markdown("#### Operational & Financial Cost-Savings Impact")
+    if result is None:
+        st.info("Run the monthly cross-check above to see the cost impact.")
+        return
+
+    prov = result["provenance"]
+    episodes = result["episodes"]
+
+    c1, c2 = st.columns([1.2, 1.8])
+    with c1:
+        cost_per_dispatch = st.slider(
+            "Cost per unnecessary technician dispatch (€)", 500, 5000, 2000,
+            100,
+            help="A planning assumption, not a measurement. It is yours to "
+                 "set: the arithmetic below is exact, the price is not.")
+    with c2:
+        st.markdown(
+            "<div class='note'><b>Cost assumptions (configurable "
+            "estimates).</b> A planned bearing repair is taken at "
+            "<b>€15,000</b> against a full gearbox replacement at "
+            "<b>€200,000</b> — a difference of <b>€185,000</b> — so an "
+            "early warning that keeps the machine running is worth that "
+            "much, provided it is not drowned out by false alarms. The "
+            "dispatch cost is a slider; the repair figures are the "
+            "planning assumption.</div>",
+            unsafe_allow_html=True,
+        )
+
+    # The cost arithmetic lives in src/ (repo rule 2): the app only supplies
+    # the reader's assumption.
+    cost = live_mod.cost_impact(
+        len(episodes["naive_false"]), len(episodes["conditioned_false"]),
+        cost_per_dispatch,
+        fault_detected=prov["conditioned_true_dispatches"] > 0,
+    )
+    avoided = cost["avoided_dispatches"]
+    saved = cost["cost_saved"]
+
+    k1, k2, k3 = st.columns(3)
+    with k1:
+        kpi(f"{avoided}", "Avoided false dispatches",
+            f"{len(episodes['naive_false'])} static vs "
+            f"{len(episodes['conditioned_false'])} conditioned")
+    with k2:
+        kpi(f"€{saved:,.0f}", "False-alarm O&M cost saved",
+            f"{avoided} truck rolls × €{cost_per_dispatch:,.0f}")
+    with k3:
+        if cost["fault_detected"]:
+            kpi(f"€{cost['early_intervention_value']:,.0f}",
+                "Real fault protection value",
+                "the genuine fault alarm is still raised")
+        else:
+            kpi("€0", "Real fault protection value",
+                "the fault was not caught this month")
+
+    st.markdown(
+        "<div class='note'><b>Read this honestly.</b> The saving is real and "
+        "it is large: a reference that is not refreshed for the month's "
+        f"conditions raises {len(episodes['naive_false'])} false dispatches "
+        f"in this month, and the conditioned model raises "
+        f"{len(episodes['conditioned_false'])}. But a model that never "
+        "alarms is worthless, so the third card matters as much as the "
+        "first two — and it is the honest one. A fresh <b>monthly</b> "
+        "reference has a documented blind spot: once a developing fault has "
+        "been in the training window for a few weeks, the reference moves to "
+        "meet it. Drag the threshold down and the fault reappears; drag it "
+        "up and the model goes quiet. That trade-off is real and it is "
+        "why the R80711 overheat is caught by the <b>frozen</b> reference "
+        "above, where the drift has nowhere to hide — the project ships "
+        "both, and the cross-check on this tab is paired with the case "
+        "study above rather than replacing it."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
 # ------------------------------------------------- the live explorer
 # The engine itself lives in src/windmill/live.py (repo rule 2: domain logic
 # in src/, orchestration in the app). These wrappers only add caching, so
 # that re-running the explorer with the same inputs is instant.
 
-def _engine():
-    """Import the live engine, with the project's src/ on the path."""
+def _ensure_src() -> None:
+    """Put the project's src/ on the import path.
+
+    The dashboard imports the project's own modules -- the live engine, the
+    forecast module -- and they are not installed, they are in the repo. So
+    the path is set once, here, rather than repeated at every import site.
+    """
     import sys
-    if str(ROOT / "src") not in sys.path:
-        sys.path.insert(0, str(ROOT / "src"))
+    src = str(ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+
+
+def _engine():
+    """Import the live engine."""
+    _ensure_src()
     from windmill import live
     return live
+
+
+def _forecast_module():
+    """Import the forecasting module."""
+    _ensure_src()
+    from windmill import forecast
+    return forecast
 
 
 @st.cache_data(show_spinner=False)
@@ -745,6 +1050,194 @@ def tab_explorer(live: bool) -> None:
         _render_live_result(result, z_threshold)
 
 
+# ---------------------------------------------------------------- tab 1
+@st.cache_data(ttl=3600, show_spinner=False)
+def _forecast_cached(lat: float, lon: float, days: int = 7):
+    """The 7-day hourly forecast, cached for an hour.
+
+    The cache matters twice over: it keeps the dashboard from calling the
+    API on every rerun, and it means the what-if sliders are instant. If the
+    network is not there -- in CI, or on a laptop offline -- the call falls
+    back to a deterministic profile derived from the committed sample, and
+    the caller is told which one it got.
+    """
+    fc = _forecast_module()
+    sample = _engine().sample_csv_path()
+
+    try:
+        frame = fc.fetch_forecast(lat, lon, days=days)
+        return frame, "live — Open-Meteo forecast API"
+    except Exception:
+        try:
+            frame = fc.sample_forecast(sample, days=days)
+            return frame, ("offline fallback — the sample's own hourly "
+                           "climatology, NOT a forecast")
+        except Exception as exc:
+            return None, f"unavailable: {exc}"
+
+
+@st.cache_data(show_spinner=False)
+def _power_curve_cached():
+    """The turbine's own power curve, from the committed sample CSV."""
+    fc = _forecast_module()
+    try:
+        return fc.sample_power_curve(_engine().sample_csv_path())
+    except Exception as exc:
+        return exc
+
+
+def tab_forecast() -> None:
+    """Weather Forecast & Power Prediction -- the operational opening.
+
+    The order matters: a control room asks "what will the wind do, what
+    should we produce, and is the machine producing it?" before it asks
+    which model scored best. So the forecast comes first and the benchmark
+    comparisons come later, in their own tab.
+    """
+    fc = _forecast_module()
+
+    st.subheader("Weather Forecast & Power Prediction")
+    st.markdown(
+        "The operational question, answered from the forecast: given this "
+        "week's weather, **how much power should this turbine be producing**, "
+        "and therefore how much power is it actually producing? The power "
+        "curve is the machine's own, measured from its SCADA -- not a "
+        "catalogue curve -- so the prediction is what *this* turbine does "
+        "in *this* wind."
+    )
+
+    # --- the site ----------------------------------------------------------
+    c1, c2, c3, c4 = st.columns([1.3, 1.0, 1.0, 1.0])
+    with c1:
+        site_label = st.selectbox(
+            "Site", ["ENGIE La Haute Borne (Meuse, France)", "Custom"],
+            help="The wind farm the project measures on. The custom option "
+                 "takes any latitude and longitude.")
+    custom = site_label == "Custom"
+    with c2:
+        lat = st.number_input("Latitude", value=fc.SITE["lat"], format="%.4f",
+                               disabled=not custom)
+    with c3:
+        lon = st.number_input("Longitude", value=fc.SITE["lon"], format="%.4f",
+                               disabled=not custom)
+    with c4:
+        st.caption(f"**{'La Haute Borne' if not custom else 'Custom site'}**  \n"
+                   f"`{lat:.4f}, {lon:.4f}`\n\n"
+                   f"The forecast and the power curve are the site's own.")
+
+    # --- the what-if -------------------------------------------------------
+    w1, w2 = st.columns(2)
+    with w1:
+        wind_shift = st.slider(
+            "Wind speed shift (m/s)", -3.0, 3.0, 0.0, 0.1,
+            help="What if the wind were stronger or weaker than the "
+                 "forecast? The predicted power moves with it.")
+    with w2:
+        temp_shift = st.slider(
+            "Temperature shift (°C)", -10.0, 10.0, 0.0, 0.5,
+            help="What if the air were colder or warmer? Colder air is "
+                 "denser, and denser air carries more energy at the same "
+                 "wind speed.")
+
+    # --- the forecast ------------------------------------------------------
+    with st.spinner("Fetching the 7-day hourly forecast…"):
+        frame, source = _forecast_cached(float(lat), float(lon))
+    curve = _power_curve_cached()
+
+    if frame is None:
+        st.error(f"The forecast is unavailable: {source}")
+        return
+    if isinstance(curve, Exception):
+        st.error(f"The power curve could not be built from the sample: {curve}")
+        return
+    if curve is None:
+        st.error("The power curve is missing.")
+        return
+
+    st.caption(f"Forecast source: **{source}** · "
+               f"{len(frame)} hourly rows · "
+               f"wind {frame['wind_speed_100m'].min():.1f}–"
+               f"{frame['wind_speed_100m'].max():.1f} m/s · "
+               f"air {frame['temperature_2m'].min():.1f}–"
+               f"{frame['temperature_2m'].max():.1f} °C")
+
+    with st.spinner("Applying the power curve…"):
+        pred = fc.forecast_frame(frame, curve, wind_shift=wind_shift,
+                                 temp_shift=temp_shift)
+
+    mean_kw = float(pred["predicted_power_kw"].mean())
+    mean_kw_base = float(fc.forecast_frame(frame, curve)["predicted_power_kw"].mean())
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        kpi(f"{mean_kw:,.0f} kW", "predicted power",
+            "mean over the 7-day horizon")
+    with k2:
+        kpi(f"{mean_kw - mean_kw_base:+,.0f} kW", "what-if effect",
+            f"wind {wind_shift:+.1f} m/s, air {temp_shift:+.1f} °C")
+    with k3:
+        kpi(f"{float(pred['air_density'].mean()):.3f} kg/m³", "mean air density",
+            f"{float(pred['density_ratio'].mean()):.3f} of the reference")
+    with k4:
+        kpi(f"{float(pred['predicted_power_kw'].max()):,.0f} kW", "peak predicted",
+            f"curve from {len(curve)} measured bins")
+
+    # --- chart 1: the forecast ---------------------------------------------
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=1, cols=1)
+    fig.add_trace(go.Scatter(
+        x=pred["ts"], y=pred["wind_speed_100m"], name="wind speed at 100 m (m/s)",
+        mode="lines", line=dict(width=1.8, color="#5fd39a")), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=pred["ts"], y=pred["air_density"], name="air density (kg/m³)",
+        mode="lines", line=dict(width=1.8, color="#9fb4ff"),
+        yaxis="y2"), row=1, col=1)
+    fig.update_layout(
+        title="Forecast: wind speed and the air density it implies",
+        xaxis_title="UTC", height=380, margin=dict(l=10, r=10, t=54, b=10),
+        hovermode="x unified",
+        yaxis=dict(title="wind speed (m/s)"),
+        yaxis2=dict(title="air density (kg/m³)", overlaying="y", side="right",
+                    showgrid=False),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
+                    x=0),
+    )
+    st.plotly_chart(fig, width="stretch")
+
+    # --- chart 2: the predicted power -------------------------------------
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=pred["ts"], y=pred["predicted_power_kw"],
+        name="predicted healthy power (kW)", mode="lines",
+        line=dict(width=2.0, color="#5fd39a"), fill="tozeroy",
+        fillcolor="rgba(95,211,154,0.10)"))
+    fig2.add_trace(go.Scatter(
+        x=pred["ts"], y=pred["predicted_power_kw"].rolling(6, center=True).mean(),
+        name="6-hour mean", mode="lines",
+        line=dict(width=1.0, dash="dot", color="#9fb4ff")))
+    fig2.update_layout(
+        title=("Predicted healthy power generation — move the sliders and "
+               "the curve moves"),
+        xaxis_title="UTC", yaxis_title="power (kW)", height=380,
+        margin=dict(l=10, r=10, t=54, b=10), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
+                    x=0),
+    )
+    st.plotly_chart(fig2, width="stretch")
+
+    st.markdown(
+        "<div class='note'>The prediction is the turbine's own conditioned "
+        "power curve applied to the forecast air, with the standard "
+        "air-density correction (power scales with the cube of the density "
+        "ratio). <b>It is a prediction of what a healthy machine would do</b> "
+        "— which is exactly what the cross-check on the next tab measures the "
+        "real machine against.</div>",
+        unsafe_allow_html=True,
+    )
+
+
 # ---------------------------------------------------------------- tab 2
 def _snapshot_frame(snap) -> pd.DataFrame:
     df = pd.DataFrame(snap["series"])
@@ -752,8 +1245,15 @@ def _snapshot_frame(snap) -> pd.DataFrame:
     return df
 
 
-def tab_monitor(snap, live):
-    st.subheader("R80711 — a thermal abnormality found in unlabelled data")
+def tab_case_study(snap, live):
+    """The R80711 case study: the fault the cross-check is measured against.
+
+    It is the project's strongest single piece of evidence -- an abnormality
+    found in unlabelled data, with the three sibling turbines as the control
+    group -- so it leads the cross-check tab rather than sitting in a
+    benchmark table.
+    """
+    st.markdown("#### The case study: R80711, September 2017")
     st.markdown(
         "In September 2017 one gearbox bearing on R80711 runs hot while its "
         "three siblings — same site, same weather, same channel — stay inside "
@@ -874,12 +1374,48 @@ def tab_monitor(snap, live):
             "it can score any turbine CSV you give it."
         )
 
-    # --- the live explorer -------------------------------------------------
+
+
+def tab_crosscheck(snap, live) -> None:
+    """Daily Cross-Check: Weather vs. Hardware Wear.
+
+    The operational loop, in the order a control room works in: here is the
+    fault we are looking for, here is a fresh fit scored against this
+    month, here is what that saves, and here is the explorer to try it on
+    your own data.
+    """
+    st.subheader("Daily Cross-Check: Weather vs. Hardware Wear")
+    st.markdown(
+        "The question a condition-monitoring system actually has to answer, "
+        "every month: **is this machine deteriorating, or did the weather "
+        "change?** The monthly loop below fits a fresh reference on the "
+        "month before, scores the target month against it, and separates the "
+        "two — with the cost of getting it wrong in euros."
+    )
+    tab_case_study(snap, live)
+    result = tab_monthly_loop(live)
+    tab_cost_impact(result)
     tab_explorer(live)
 
 
 # ---------------------------------------------------------------- tab 3
-def tab_benchmark(care_score, multiv, lgbm, ae_audit, audit, thermal):
+def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
+    """Model & Benchmark Comparison -- the isolated technical study.
+
+    Everything that compares one detector with another is here: the
+    deterministic arm against the learned one, the false-alarm rates by year,
+    the CARE benchmark, and the audit of the published autoencoder baseline.
+    """
+    st.subheader("Model & Benchmark Comparison")
+    st.markdown(
+        "Everything that compares one detector with another, in one place: "
+        "the deterministic arm against the learned one, the false-alarm rate "
+        "by year, the CARE benchmark score, and an audit of what the "
+        "published autoencoder baseline of 0.66 actually is. The operational "
+        "story is on the first two tabs."
+    )
+    _model_comparison(engie, care_score, multiv, lgbm)
+    st.markdown("---")
     st.subheader("The CARE benchmark — and what the published 0.66 really is")
 
     # --- sub-scores across arms -------------------------------------------
@@ -1111,17 +1647,17 @@ def main():
             unsafe_allow_html=True)
 
     t1, t2, t3, t4 = st.tabs([
-        "📊 Executive story",
-        "🌡️ Live turbine monitor — R80711",
-        "🎯 CARE benchmark & AE audit",
-        "🔧 Engineering & data forensics",
+        "🌤️ Weather Forecast & Power Prediction",
+        "🔍 Daily Cross-Check: Weather vs. Hardware Wear",
+        "⚖️ Model & Benchmark Comparison",
+        "🔧 Engineering & Data Forensics",
     ])
     with t1:
-        tab_executive(engie, care_score, multiv, lgbm)
+        tab_forecast()
     with t2:
-        tab_monitor(snap, live)
+        tab_crosscheck(snap, live)
     with t3:
-        tab_benchmark(care_score, multiv, lgbm, ae_audit, audit, thermal)
+        tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
     with t4:
         tab_forensics()
 

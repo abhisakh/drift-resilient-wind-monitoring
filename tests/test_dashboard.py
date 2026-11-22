@@ -487,3 +487,117 @@ def test_the_watermark_is_a_valid_inline_svg():
     # A turbine: three blades, a hub and a tower.
     assert svg.count("<path") >= 4, svg
     assert "<circle" in svg
+
+
+# ---------------------------------------------- the four-tab layout
+def _tab_labels(at):
+    return [t.label for t in at.tabs]
+
+
+def test_the_four_tabs_are_the_operational_story():
+    """Forecast, then cross-check, then the technical study, then the
+    forensics. The operational story comes first."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    labels = _tab_labels(at)
+    assert len(labels) == 4, labels
+    assert "Weather Forecast" in labels[0], labels
+    assert "Cross-Check" in labels[1], labels
+    assert "Benchmark Comparison" in labels[2], labels
+    assert "Forensics" in labels[3], labels
+
+
+def test_the_forecast_tab_carries_no_benchmark_comparison():
+    """The first tab tells the operational story. A model comparison table
+    on it would answer a question nobody has asked yet.
+
+    Checked on the SOURCE, because the rendered tree contains every tab at
+    once and so cannot show what one tab does or does not contain.
+    """
+    import ast
+    import inspect
+
+    mod = _import_app()
+    src = inspect.getsource(mod.tab_forecast)
+    for banned in ("lightgbm", "autoencoder", "care_score", "multivariate",
+                   "engie_multivariate", "ae_audit"):
+        assert banned not in src.lower(), (
+            f"the forecast tab mentions {banned} -- the benchmark comparison "
+            f"belongs in its own tab"
+        )
+    # And it must not define domain logic of its own -- no nested helper
+    # functions, which is where an inline calculation would hide.
+    tree = ast.parse(src)
+    nested = [n.name for n in ast.walk(tree)
+              if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+              and n.name != "tab_forecast"]
+    assert not nested, f"the forecast tab defines its own functions: {nested}"
+
+
+def test_the_forecast_tab_renders_the_prediction():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "predicted power" in body.lower(), (
+        "the forecast tab did not render a predicted power figure"
+    )
+    sliders = [s.label for s in at.slider]
+    assert any("Wind speed shift" in s for s in sliders), sliders
+    assert any("Temperature shift" in s for s in sliders), sliders
+    assert len(at.get("plotly_chart")) >= 4, "the forecast charts are missing"
+
+
+def test_the_cross_check_tab_has_the_monthly_loop_and_the_costs():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Monthly Operational Loop" in body, "the monthly loop is missing"
+    assert "Cost-Savings Impact" in body, "the cost section is missing"
+    assert "Target month" in [s.label for s in at.selectbox], (
+        "the monthly loop has no month selector"
+    )
+
+
+def test_the_cost_assumptions_are_adjustable():
+    """The dispatch cost is the reader's to set; the arithmetic is exact.
+
+    The cost bar only appears once the monthly loop has run, because there
+    is nothing to price before then.
+    """
+    at = _app_test()
+    at.run()
+    run = [b for b in at.button if "monthly cross-check" in b.label.lower()]
+    assert run, "there is no button to run the monthly cross-check"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    cost_slider = [s for s in at.slider if "dispatch" in s.label.lower()]
+    assert cost_slider, "the cost assumptions bar is missing"
+    assert cost_slider[0].value == 2000
+    assert cost_slider[0].min == 500
+    assert cost_slider[0].max == 5000
+
+    # And the saving must follow the assumption.
+    before = "\n".join(m.value for m in at.markdown)
+    cost_slider[0].set_value(5000).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    after = "\n".join(m.value for m in at.markdown)
+    assert before != after, (
+        "changing the dispatch cost did not change the reported saving"
+    )
+
+
+def test_the_benchmark_tab_holds_the_model_comparison():
+    """The bar chart, the per-year table and the line chart all moved into
+    the third tab, together with the CARE audit."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Per year" in body, "the per-year table is missing"
+    assert "CARE benchmark" in body or "autoencoder" in body.lower(), (
+        "the CARE/AE audit is missing from the benchmark tab"
+    )
