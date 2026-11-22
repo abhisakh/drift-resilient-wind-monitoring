@@ -15,8 +15,10 @@
    * Flagged a sustained gearbox bearing overheat peaking at **86.64 °C** against sibling control turbines.
 3. **Honest, Leak-Free Benchmark Audit (`CARE`, 95 Events)**
    * Reproduced published Autoencoder claims across **95** events (**0.5028** deterministic CARE score vs. **0.5809** reproduced AE), balancing normal-operation accuracy (**95.1%** vs. **77.9%**).
-4. **Production-Grade Reproducibility**
-   * Backed by **130** automated unit/architectural tests, CI documentation sync, and deterministic seeds.
+4. **An Evaluation Suite That Measures Every Claim, Including the Ones That Fail**
+   * Eight tests over the four ENGIE turbines and the CARE events, with the train/test split enforced in code and every arm calibrated to the same 1 % false-alarm rate on its own out-of-fold training residuals. **Two results do not support the project and are reported as they are**: the learned arm is the more accurate temperature *predictor* (median MAE 2.02 K against the deployed model's 2.10 K), and the weather ablation does **not** measurably cut the prediction error on the bearing channel — the operating point does, the weather does not.
+5. **Production-Grade Reproducibility**
+   * Backed by **271** automated unit/architectural tests, CI documentation sync, and deterministic seeds.
 
 ---
 
@@ -307,6 +309,86 @@ The same two arms on ENGIE, where every alarm is a false alarm:
 | deterministic (rolling ref) | 0.34 | 0.95 | 0.57 | 0.61 |
 | learned (rolling ref) | 2.56 | 5.73 | 3.94 | 3.17 |
 
+### The evaluation suite: every claim, measured
+
+Eight tests, one protocol. The split is enforced in code (a window's
+training rows end strictly before its test rows begin) and every arm's
+alarm threshold is calibrated on its OWN out-of-fold training residuals
+at the same 1 % rate, so the arms are compared at equal false-alarm
+rates rather than at one shared number on one scale.
+
+**A.1 — the weekly backtest.** 997 test weeks across the four ENGIE turbines; each predicted by a reference fitted on the thirty days immediately before it. The error is the median over weeks of the MAE, in kelvin.
+
+| arm | MAE (K) | MAE p90 | RMSE (K) | bias (K) | false-alarm rate |
+|---|---|---|---|---|---|
+| constant median (no operating point) | 4.699 | 7.034 | 6.4307 | -2.1101 | 0.0 |
+| load-conditioned (the operating point) | 2.088 | 3.2926 | 3.2623 | -0.6143 | 0.0015 |
+| load + ambient (**the deployed model**) | 2.1023 | 3.3011 | 3.2819 | -0.5514 | 0.0014 |
+| load + ambient + wind | 2.0912 | 3.275 | 3.2452 | -0.518 | 0.0021 |
+| LightGBM (the learned arm) | 2.019 | 3.1266 | 2.9869 | 0.14 | 0.0065 |
+
+**What this says, stated both ways.** Conditioning on the operating point is worth everything: the paired median difference against a constant median is **-2.493 K**, better in **100 %** of weeks. The learned arm is the more accurate PREDICTOR: its median MAE is 2.019 K against the deployed model's 2.1023 K, and the deployed model is better in only **37 %** of weeks. But at the matched threshold the deployed model's false-alarm rate is **0.0014** against the learned arm's **0.0065**: its calibration holds across weeks and the learned arm's does not. The reference matters more than the model -- but it is not the better predictor.
+
+**A.2 — the weather ablation.** The paired median difference from adding the ambient temperature is **0.0069 K** (better in 37 % of weeks), and from adding wind speed on top of that is **-0.0118 K** (better in 69 % of weeks). **On this channel the weather inputs do not measurably cut the prediction error.** The operating point does; the weather does not. That is a negative result for the ablation as posed, and it is reported as one.
+
+**A.3 — the forecast chain.** Forecast wind and temperature → the turbine's own power curve → predicted power → the load- and ambient-conditioned reference → expected temperature, with ERA5 plus injected forecast error standing in for a real forecast.
+
+| forecast | chain MAE (K) | amplification |
+|---|---|---|
+| perfect | 2.2913 | 1.0 |
+| good (+-0.5 m/s, +-1.0 K) | 2.71 | 1.169 |
+| typical (+-1.0 m/s, +-1.5 K) | 3.6491 | 1.5 |
+| poor (+-2.0 m/s, +-2.5 K) | 5.1071 | 1.976 |
+
+The chain's error is already the reference's own error plus the power curve's; the forecast error multiplies it. At a typical forecast the chain's error stays well inside the alarm band, so a forecast does NOT blow the band up -- but the chain is a worse predictor than conditioning on the measured power.
+
+**B.4 — the age of the reference.** The same detector, the same rule, the same weeks, with only the reference's age changed. Every arm is calibrated to 1 % of its own training window.
+
+| reference age | false-alarm rate | ratio vs 30 days |
+|---|---|---|
+| 30 days | 0.012727 | 1.0 |
+| 90 days | 0.023412 | 1.84 |
+| 180 days | 0.022442 | 1.76 |
+| 365 days | 0.027933 | 2.19 |
+| 730 days | 0.056831 | 4.47 |
+
+The ratio grows with the age of the reference, which is the project's headline claim measured rather than asserted: 1.8× at three months, 2.2× at a year, 4.5× at two years, on the same windows and the same rule.
+
+**B.5 — the cleaning test.** A +3 K ramp is injected into the last ten days of the training window, and the reference is fitted with and without trimming.
+
+* how far the reference moved toward the fault: 1.9832 K untrimmed, 2.0491 K trimmed;
+* how much the fault still stands out on the faulted rows: 0.6771 K untrimmed, 0.7157 K trimmed.
+
+**Trimming does not stop the reference absorbing the ramp** at this ramp size: the median residual per load bin is a robust statistic, and a ramp over a third of the window moves it whether or not the ramped rows are dropped. Trimming protects against a fault that is large relative to the spread; it does not protect against one that is a slow bias.
+
+**C.6 — fault injection.** A ramp injected into a healthy test window, scored at the matched 1 % threshold. A simulation: it says what the detector would do if the machine did this, and nothing about whether the machine ever does.
+
+| arm | ramp | detection rate | median days to first alarm |
+|---|---|---|---|
+| lightgbm | 2 K | 1.0 | 1.278 |
+| lightgbm | 4 K | 1.0 | 0.923 |
+| lightgbm | 8 K | 1.0 | 0.667 |
+| load+ambient | 2 K | 0.825 | 2.076 |
+| load+ambient | 4 K | 0.9 | 1.469 |
+| load+ambient | 8 K | 1.0 | 0.927 |
+
+**C.7 — the R80711 lead time.** The September 2017 anomaly, unlabelled, with the reference re-estimated every day.
+
+* the temperature first crosses 80 °C on **2017-09-08**;
+* it first diverges from its three siblings by 5 K on **2017-09-01**;
+* at the matched 1 % rate the arms first alarm on **{'constant': '2017-09-08', 'load': '2017-09-08', 'load+ambient': '2017-09-08', 'load+ambient+wind': '2017-09-08', 'lightgbm': '2017-09-02'}**;
+* at a 5 % rate, **{'constant': '2017-09-05', 'load': '2017-09-02', 'load+ambient': '2017-09-02', 'load+ambient+wind': '2017-09-02', 'lightgbm': '2017-09-02'}**.
+
+**At 1 % the detector gives no lead over the 80 °C crossing; at 5 % it gives six days.** The lead time is bought with false alarms, and the price is measurable.
+
+**C.8 — the CARE thermal subset.** The events whose fault windows contain rows in normal operation are the ones where the score is even defined.
+
+| set | anomaly events | coverage | earliness |
+|---|---|---|---|
+| all anomaly events | 45 | 0.1513 | 0.0795 |
+| thermal-observable | 34 | 0.2003 | 0.0951 |
+
+Coverage improves by **0.049** and earliness by **0.0156** once the non-thermal faults are excluded — which is the argument for a thermal detector being the right instrument for this benchmark.
 <!-- RESULTS:END -->
 
 ## Layout
@@ -361,9 +443,20 @@ The individual steps, if you want to run one on its own:
 .venv/bin/python scripts/pipeline/08c_engie_multivariate.py # ENGIE: frozen vs rolling
 .venv/bin/python scripts/pipeline/07_lightgbm_nbm.py     # learned-model arm
 .venv/bin/python scripts/pipeline/12_ae_audit.py         # AE-comparability audit
+.venv/bin/python scripts/pipeline/15_backtest.py          # the evaluation suite (8 tests)
 .venv/bin/python scripts/pipeline/09_report.py           # regenerate this README
 .venv/bin/python scripts/pipeline/10_summary.py          # one table across all arms
 ```
+
+`make backtest` runs the evaluation suite: the weekly backtest and the
+weather ablation, the forecast chain, the matched-threshold comparison
+and the age of the reference, the cleaning test, fault injection, the
+R80711 lead time, and the CARE thermal subset. It needs the raw release
+(it reads the four ENGIE turbines), it takes about ninety seconds, and it
+writes `results/backtest.json` — the source of the evaluation section
+above. The train/test split is enforced in code by `Window`, which refuses
+to be constructed with an overlap, and every arm's threshold is calibrated
+on its own out-of-fold training residuals at the same 1 % rate.
 
 `scripts/diagnostics/` holds the one-off probes used while designing the
 detector. They write nothing and are not part of the pipeline.
@@ -552,7 +645,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-252 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+271 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

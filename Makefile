@@ -23,7 +23,8 @@ SCRIPTS := scripts/pipeline
 
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
-        compare thermal-signal dashboard snapshot diagnostics lint clean clean-results
+        compare thermal-signal dashboard snapshot diagnostics lint clean clean-results \
+        backtest
 
 help: ## list the available targets
 	@echo ""
@@ -81,6 +82,9 @@ compare: ## score both arms on the SAME CARE subset (like-for-like vs the AE)
 
 thermal-signal: ## how much thermal signal is inside a fault window at all
 	$(PY) $(SCRIPTS)/14_thermal_signal.py
+
+backtest: ## run the evaluation suite: every claim, measured (results/backtest.json)
+	$(PY) $(SCRIPTS)/15_backtest.py
 
 demo: ## watch the detector work on real SCADA
 	$(PY) $(SCRIPTS)/11_demo.py
