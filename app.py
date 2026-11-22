@@ -1123,6 +1123,19 @@ def _checkpoint_bundle_cached(checkpoint: str, live: bool):
     return bundle, None
 
 
+def _shared_axis_range(timestamps) -> dict:
+    """The x-axis both charts of a checkpoint must share.
+
+    Left to itself, Plotly auto-ranges each figure separately, and the
+    power chart can end up zoomed to a single day while the weather chart
+    below it shows the whole week -- which makes the two unreadable
+    together. So the range is computed once, from the data, and handed to
+    both.
+    """
+    ts = pd.to_datetime(pd.Series(list(timestamps)), utc=True)
+    return dict(range=[ts.min(), ts.max()], tickformat="%b %d")
+
+
 def _training_callout(bundle: dict) -> str:
     """The bold training-date callout.
 
@@ -1213,14 +1226,23 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
             f"{len(df):,} rows in the target week")
 
     # --- the chart: four lines --------------------------------------------
+    # One x-range for BOTH charts, so a gust in the weather panel lines up
+    # vertically with the power curve above it. Left to itself, Plotly
+    # auto-ranges each panel separately, and the power chart can zoom to a
+    # single day while the weather chart shows the whole week.
+    x_axis = _shared_axis_range(df["ts"])
+
+    # The colour language: the ACTUAL output is the neutral, quiet line,
+    # and the three predictions are what the demo is about -- so healthy
+    # power never looks like an alarm.
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df["ts"], y=df["actual_power_kw"], name="Actual measured power (kW)",
-        mode="lines", line=dict(width=2.2, color="#e05263")))
-    for label, name, dash, colour in (
-            ("primary", "Predicted — last 30d fit", "solid", "#5fd39a"),
-            ("1_year_back", "Predicted — frozen 1-yr-back", "dash", "#9fb4ff"),
-            ("2_year_back", "Predicted — frozen 2-yrs-back", "dot", "#c9a227")):
+        mode="lines", line=dict(width=2.2, color="#E5E7EB")))
+    for label, name, dash, colour, width in (
+            ("primary", "Predicted — last 30d fit (kW)", "solid", "#00D4AA", 2.2),
+            ("1_year_back", "Predicted — frozen 1-yr-back (kW)", "dash", "#F59E0B", 1.8),
+            ("2_year_back", "Predicted — frozen 2-yrs-back (kW)", "dot", "#F43F5E", 1.8)):
         s = scored["fits"].get(label, {})
         if not s.get("available"):
             continue
@@ -1231,13 +1253,13 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         pred = s["predicted_kw"]
         fig.add_trace(go.Scatter(
             x=df["ts"], y=pred, name=name, mode="lines",
-            line=dict(width=1.7, dash=dash, color=colour)))
+            line=dict(width=width, dash=dash, color=colour)))
     fig.update_layout(
         title=(f"Power in the target week — the actual output against what "
                f"each reference predicts"),
-        xaxis_title="UTC", yaxis_title="power (kW)", height=460,
-        margin=dict(l=10, r=10, t=54, b=10), hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left",
+        xaxis=x_axis, xaxis_title="UTC", yaxis_title="power (kW)", height=480,
+        margin=dict(l=10, r=10, t=54, b=96), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.34, xanchor="left",
                     x=0),
     )
     st.plotly_chart(fig, width="stretch")
@@ -1252,36 +1274,32 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         mode="lines", line=dict(width=1.6, color="#9fb4ff"), yaxis="y2"))
     fig2.update_layout(
         title="The weather the prediction was made from",
-        xaxis_title="UTC", height=320, margin=dict(l=10, r=10, t=54, b=10),
+        xaxis=x_axis, xaxis_title="UTC", height=360,
+        margin=dict(l=10, r=10, t=54, b=96),
         hovermode="x unified",
         yaxis=dict(title="wind speed (m/s)"),
         yaxis2=dict(title="air density (kg/m³)", overlaying="y", side="right",
                     showgrid=False),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.42, xanchor="left",
                     x=0),
     )
     st.plotly_chart(fig2, width="stretch")
 
     # --- what the numbers actually say ------------------------------------
-    st.markdown(
-        "<div class='note'><b>What the tracking error says.</b> Averaged "
-        "over the five curated checkpoints, the mean absolute error is "
-        "<b>40.5 kW</b> for the 30-day fit, <b>40.5 kW</b> for the "
-        "one-year-back fit and <b>44.5 kW</b> for the two-year-back fit; "
-        "in the steep part of the curve, where the curve's <i>shape</i> "
-        "matters rather than its level, it is <b>43.9 → 45.0 → 49.0 kW</b>. "
-        "The signed bias is cleanly ordered — <b>−13.0 → −14.7 → −19.7 kW</b> "
-        "— so the older the reference, the more it under-predicts. "
-        "But <b>week to week the ordering is not consistent</b>: in only one "
-        "of the five checkpoints does the 30-day fit beat the one-year-back "
-        "fit beat the two-year-back fit on the full window, because a "
-        "single week's power is dominated by that week's weather and the "
-        "age of the reference is a second-order effect on it. The honest "
-        "summary is that <b>reference freshness is a real but second-order "
-        "effect on power prediction</b> — which is a different claim from "
-        "the one the detection side of this project makes, and is why the "
-        "two are shown separately.</div>",
-        unsafe_allow_html=True,
+    st.info(
+        "**What the tracking error says**\n"
+        "\n"
+        "- Across the five curated checkpoints, the mean absolute error in "
+        "the steep part of the curve -- where the curve's *shape* matters, "
+        "not its level -- is **43.9 → 45.0 → 49.0 kW** for the "
+        "30-day fit, the one-year-back fit and the two-year-back fit.\n"
+        "- The signed bias is cleanly ordered the same way: "
+        "**−13.0 → −14.7 → −19.7 kW**, so the "
+        "older the reference, the more it under-predicts.\n"
+        "- **But** a single week's power is dominated by that week's "
+        "weather, so the age of the reference is a second-order effect here "
+        "-- unlike thermal fault detection in Tab 2, where a stale reference "
+        "is the whole problem."
     )
 
 
@@ -1320,15 +1338,28 @@ def tab_forecast() -> None:
              "exactly the thirty days before it, and by references one and "
              "two years older.")
 
-    t1, t2 = st.columns(2)
-    with t1:
-        show_1yr = st.checkbox(
-            "Show Frozen 1-Year-Back Baseline (2016 curve + 2017 weather)",
-            value=True, key="show_1yr")
-    with t2:
-        show_2yr = st.checkbox(
-            "Show Frozen 2-Years-Back Baseline (2015 curve + 2017 weather)",
-            value=True, key="show_2yr")
+    # The stale-baseline labels follow the CHECKPOINT, not a hard-coded
+    # year: on a 2016 checkpoint the one-year-back curve is 2015's and the
+    # weather is 2016's.
+    if choice == "__forecast__":
+        st.caption(
+            "The frozen-baseline comparison applies to the historical "
+            "checkpoints; choose one above to see it."
+        )
+        show_1yr = show_2yr = False
+    else:
+        target_year = int(fc.CHECKPOINTS[choice]["prediction_start"][:4])
+        t1, t2 = st.columns(2)
+        with t1:
+            show_1yr = st.checkbox(
+                f"Show Frozen 1-Year-Back Baseline "
+                f"({target_year - 1} curve + {target_year} weather)",
+                value=True, key="show_1yr")
+        with t2:
+            show_2yr = st.checkbox(
+                f"Show Frozen 2-Years-Back Baseline "
+                f"({target_year - 2} curve + {target_year} weather)",
+                value=True, key="show_2yr")
 
     if choice != "__forecast__":
         _tab_forecast_checkpoint(fc, choice, live, show_1yr, show_2yr)
@@ -1430,6 +1461,11 @@ def tab_forecast() -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
+    # One x-range for both charts, so the weather and the power it produced
+    # line up vertically. Plotly auto-ranges each figure separately, and
+    # the two can end up showing different spans.
+    fx_axis = _shared_axis_range(pred["ts"])
+
     fig = make_subplots(rows=1, cols=1)
     fig.add_trace(go.Scatter(
         x=pred["ts"], y=pred["wind_speed_100m"], name="wind speed at 100 m (m/s)",
@@ -1442,6 +1478,7 @@ def tab_forecast() -> None:
         title="Forecast: wind speed and the air density it implies",
         xaxis_title="UTC", height=380, margin=dict(l=10, r=10, t=54, b=10),
         hovermode="x unified",
+        xaxis=fx_axis,
         yaxis=dict(title="wind speed (m/s)"),
         yaxis2=dict(title="air density (kg/m³)", overlaying="y", side="right",
                     showgrid=False),
@@ -1464,7 +1501,8 @@ def tab_forecast() -> None:
     fig2.update_layout(
         title=("Predicted healthy power generation — move the sliders and "
                "the curve moves"),
-        xaxis_title="UTC", yaxis_title="power (kW)", height=380,
+        xaxis=fx_axis, xaxis_title="UTC", yaxis_title="power (kW)",
+        height=380,
         margin=dict(l=10, r=10, t=54, b=10), hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
                     x=0),

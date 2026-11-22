@@ -659,8 +659,14 @@ def test_the_checkpoint_selector_lists_every_curated_window():
 
 
 def test_the_stale_baseline_toggles_are_present_and_default_on():
+    """The toggles belong to the checkpoint, so a checkpoint has to be
+    selected before they exist."""
     at = _app_test()
     at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
     boxes = {c.label: c.value for c in at.get("checkbox")}
     one = [k for k in boxes if "1-Year-Back" in k]
     two = [k for k in boxes if "2-Years-Back" in k]
@@ -668,6 +674,78 @@ def test_the_stale_baseline_toggles_are_present_and_default_on():
     assert two, f"the 2-years-back toggle is missing: {list(boxes)}"
     assert boxes[one[0]] is True, "the 1-year-back baseline is off by default"
     assert boxes[two[0]] is True, "the 2-years-back baseline is off by default"
+
+
+def test_the_stale_baseline_labels_follow_the_checkpoint():
+    """On a 2016 checkpoint the one-year-back curve is 2015's and the
+    weather is 2016's. A hard-coded year would be a lie."""
+    at = _app_test()
+    at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 4 — 2016-09-01 → 2016-09-07 — a year earlier, against "
+        "the 2015 and 2014 curves"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    labels = [c.label for c in at.get("checkbox")]
+    assert any("2015 curve + 2016 weather" in lab for lab in labels), labels
+    assert any("2014 curve + 2016 weather" in lab for lab in labels), labels
+    # And the 2017 wording must be gone.
+    assert not any("2016 curve + 2017 weather" in lab for lab in labels), labels
+
+
+def test_both_checkpoint_charts_share_one_x_axis():
+    """The power chart and the weather chart below it must cover the same
+    span, or a gust does not line up with the power it produced.
+
+    Plotly auto-ranges each figure separately, and the power chart can
+    zoom to a single day while the weather chart shows the whole week.
+    """
+    mod = _import_app()
+    import pandas as pd
+
+    week = pd.date_range("2017-09-01", periods=7 * 24, freq="h", tz="UTC")
+    axis = mod._shared_axis_range(week)
+    assert axis["tickformat"] == "%b %d"
+    assert axis["range"][0] == week[0]
+    assert axis["range"][1] == week[-1]
+    # The range must cover the whole week, not one day of it.
+    span = (axis["range"][1] - axis["range"][0]).days
+    assert span >= 6, span
+
+    # And both charts must be handed that same axis object.
+    src = (ROOT / "app.py").read_text()
+    assert "x_axis = _shared_axis_range(df[\"ts\"])" in src
+    assert src.count("xaxis=x_axis") >= 2, (
+        "the power chart and the weather chart must both use x_axis"
+    )
+    assert "xaxis=fx_axis" in src
+
+
+def test_the_four_power_lines_have_the_intended_colours():
+    """The actual output is the quiet neutral line; the three predictions
+    are what the demo is about. Healthy power must not look like an alarm."""
+    src = (ROOT / "app.py").read_text()
+    for colour in ("#E5E7EB", "#00D4AA", "#F59E0B", "#F43F5E"):
+        assert colour in src, f"the line colour {colour} is missing"
+    assert 'name="Actual measured power (kW)"' in src
+    assert 'dash="dash"' in src
+    assert 'dash="dot"' in src
+
+
+def test_the_tracking_error_summary_is_a_scannable_box():
+    """The dense paragraph became three bullets, so the key numbers have to
+    be findable."""
+    at = _app_test()
+    at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    infos = [i.value for i in at.info]
+    joined = "\n".join(infos)
+    assert "43.9" in joined and "49.0" in joined, joined[:400]
+    assert "19.7" in joined, joined[:400]
+    assert joined.count("- ") >= 2, "the summary is not a list of bullets"
 
 
 def test_switching_to_a_checkpoint_shows_the_training_dates():
