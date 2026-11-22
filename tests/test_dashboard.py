@@ -171,6 +171,12 @@ def test_switching_the_reference_changes_the_alarm_count():
     """
     from streamlit.testing.v1 import AppTest
 
+    # The ENGIE explorer needs the 19 GB release, which CI does not have.
+    # The mechanism is covered everywhere by the upload-path test below.
+    mod = _import_app()
+    if not mod.live_available():
+        pytest.skip("the raw ENGIE release is not present")
+
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=300)
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
@@ -1085,4 +1091,50 @@ def test_the_cross_check_residual_spikes_above_the_threshold():
     assert "Weather-conditioned model alarms" in body
     assert "Real fault protection value" in body, (
         "the genuine-fault protection is not reported"
+    )
+
+
+def test_the_reference_switch_works_without_the_raw_release():
+    """The same control, on the path that works everywhere.
+
+    The dramatic magnitude needs the full ENGIE release; the mechanism --
+    switching the reference changes the number of alarms -- has to hold on
+    the upload path too, because that is the path a reviewer on Streamlit
+    Community Cloud can actually run.
+    """
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=300)
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    _source_radio(at).set_value("Upload a turbine CSV").run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    sample = ROOT / "assets" / "sample_turbine.csv"
+    at.get("file_uploader")[0].upload("sample_turbine.csv", sample.read_bytes(),
+                                      "text/csv")
+    at.run()
+    run = [b for b in at.button if "run the explorer" in b.label.lower()]
+    assert run, "there is no button to run the explorer"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    radios = [r for r in at.radio if r.label == "Reference"]
+    assert radios, "the live monitor has no reference selector"
+    assert set(radios[0].options) == {"rolling 30-day", "frozen 2014"}, (
+        radios[0].options
+    )
+    radios[0].set_value("rolling 30-day").run()
+    rolling = _alarm_count(at)
+    radios[0].set_value("frozen 2014").run()
+    frozen = _alarm_count(at)
+
+    assert rolling is not None and frozen is not None, "no alarm count found"
+    assert rolling != frozen, (
+        f"switching the reference changed nothing: rolling={rolling} "
+        f"frozen={frozen}"
+    )
+    assert frozen > rolling, (
+        f"the frozen reference should not alarm less than the rolling one, "
+        f"got rolling={rolling} frozen={frozen}"
     )
