@@ -85,8 +85,10 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     )
 
     # The cloud mode must still DRAW, not just render text: the whole point
-    # of the snapshot is that the charts work without the 19 GB.
-    assert len(at.dataframe) >= 3, "the cloud mode rendered no tables"
+    # of the snapshot is that the charts work without the 19 GB. The tables
+    # are st.table rather than st.dataframe, because a dataframe is drawn on
+    # a canvas and its text cannot be sized from CSS.
+    assert len(at.table) >= 3, "the cloud mode rendered no tables"
     assert len(at.get("plotly_chart")) >= 3, "the cloud mode rendered no charts"
 
     # And the numbers must be the project's, read from the artefacts.
@@ -1216,4 +1218,39 @@ def test_the_reference_switch_works_without_the_raw_release():
     assert frozen > rolling, (
         f"the frozen reference should not alarm less than the rolling one, "
         f"got rolling={rolling} frozen={frozen}"
+    )
+
+
+def test_the_typography_is_sized_for_reading():
+    """The reviewer could not read the dashboard, so the sizes are stated
+    in one table and the CSS is built from it.
+
+    This is a guard on the intent, not on the exact pixels: the point is
+    that the reading text is large, and that every size in the table has a
+    CSS rule that uses it.
+    """
+    mod = _import_app()
+    sizes = mod.FONT_SIZES
+    assert sizes["body"] >= 30, sizes
+    assert sizes["note"] >= 26, sizes
+    assert sizes["callout"] >= 28, sizes
+    assert sizes["alert"] >= 26, sizes
+    assert sizes["kpi_value"] >= 40, sizes
+    assert sizes["kpi_label"] >= 22, sizes
+    assert sizes["kpi_delta"] >= 20, sizes
+    assert sizes["table"] >= 18, sizes
+    assert sizes["slider"] >= 18, sizes
+
+    src = (ROOT / "app.py").read_text()
+    for key in sizes:
+        assert f"__{key}__" in src, f"{key} has no CSS rule"
+
+    # And the chart text is set on the figure, not on the page: Plotly
+    # lays a chart out for the font it is given, so a CSS override would
+    # leave the layout computed for a smaller font.
+    assert mod.CHART_FONT_PX >= 16, mod.CHART_FONT_PX
+    assert "font=dict(size=CHART_FONT_PX)" in src
+    assert ".js-plotly-plot text" not in src, (
+        "the chart text is being overridden from CSS, which breaks the "
+        "chart's own layout"
     )

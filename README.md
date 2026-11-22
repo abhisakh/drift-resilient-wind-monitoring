@@ -416,6 +416,26 @@ sidebar says which engine is running.
 Every figure it shows is read from `results/*.json`; the dashboard carries no
 copy of a headline number, so it cannot disagree with this README.
 
+### Typography
+
+Every font size on the dashboard is stated in one table in `app.py`
+(`FONT_SIZES`), and the CSS is built from it — so raising the whole
+dashboard's text is a one-line change, not a hunt through a stylesheet.
+The reading text is roughly double what Streamlit ships with: prose at
+34 px, notes and alerts at 28 px, KPI labels at 24 px, and the reference
+tables at 20 px.
+
+Two things that follow from that, and are deliberate:
+
+* **The chart text is set on the figure, not on the page.** Plotly lays a
+  chart out for the font it is given, so overriding it from CSS afterwards
+  would leave the layout computed for a smaller font and the legends would
+  run over each other. `CHART_FONT_PX` and `CHART_LEGEND_FONT_PX` do it
+  properly.
+* **The reference tables are `st.table`, not `st.dataframe`.** A dataframe
+  is drawn on a canvas, where CSS cannot reach, so its text cannot be
+  sized at all. They are fixed reference tables, so nothing is lost.
+
 ### The live explorer
 
 The cross-check tab ends with a **Live Multi-Turbine & Weather-Conditioned
@@ -527,7 +547,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-251 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+252 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

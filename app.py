@@ -153,50 +153,196 @@ def _watermark_uri() -> str:
             + base64.b64encode(_TURBINE_SVG.encode("utf-8")).decode("ascii"))
 
 
+#: Every font size on the dashboard, in one place.
+#:
+#: The reviewer asked for text that could be read across a room, so these
+#: are roughly double the sizes the readability boost was written at.
+#: `FONT_SCALE` is one knob on top of them: raise it to push everything
+#: further without hunting through the CSS.
+FONT_SCALE = 1.0
+
+FONT_SIZES = {
+    "body": 34,        # prose in the tabs and the sidebar
+    "caption": 26,     # small explanatory lines under a widget
+    "tab": 20,         # the four tab headers
+    "sidebar": 22,     # the narrow sidebar column
+    "check": 26,       # checkbox and radio labels
+    "widget": 30,      # widget labels: dropdowns, sliders, checkboxes
+    "button": 28,      # button captions
+    "selectbox": 26,   # the value shown inside a dropdown
+    "slider": 20,      # the value above a slider's thumb
+    "table": 20,       # the reference tables
+    "alert": 28,       # st.info / st.success / st.warning / st.error
+    "metric_value": 44,
+    "metric_label": 24,
+    "metric_delta": 22,
+    "kpi_value": 46,   # the big number on a KPI card
+    "kpi_label": 24,
+    "kpi_delta": 22,
+    "note": 28,        # the boxed explanatory notes
+    "callout": 30,     # the training-window callout
+    "brand": 26,       # the sidebar title
+    "badge": 18,       # the LIVE / CLOUD badges
+    "h2": 40,
+    "h3": 34,
+    "h4": 30,
+}
+
+
 def _style():
     css = """
         <style>
-        /* Global readability boost with explicit px for widescreen & Loom recordings */
+        /* ------------------------------------------------------------------
+           Typography. Every rule here is explicit px rather than rem, so
+           the sizes below are the sizes that render -- Streamlit's own
+           rem-based defaults are simply overruled.
+           ------------------------------------------------------------------ */
+
+        /* Prose: the paragraphs in the tabs. */
         .stApp [data-testid="stMarkdownContainer"] p,
         .stApp [data-testid="stMarkdownContainer"] li {
-            font-size: 18px !important;
+            font-size: __body__px !important;
             line-height: 1.55 !important;
         }
+
+        /* The sidebar is a 300px column, so its prose is a size smaller --
+           at the body size it wrapped into four lines a sentence. */
+        .stApp [data-testid="stSidebar"] p,
+        .stApp [data-testid="stSidebar"] li {
+            font-size: __sidebar__px !important;
+            line-height: 1.5 !important;
+        }
+
+        /* Captions: the small lines that explain a control. */
         .stApp [data-testid="stCaptionContainer"],
         .stApp [data-testid="stCaptionContainer"] p {
-            font-size: 15px !important;
+            font-size: __caption__px !important;
             line-height: 1.45 !important;
             color: #cbd5e1 !important;
         }
-        /* Larger tab headers, widget labels, and checkboxes */
-        .stApp button[data-baseweb="tab"] p {
-            font-size: 18px !important;
+
+        /* Headings. */
+        .stApp [data-testid="stMarkdownContainer"] h1 { font-size: __h2__px !important; }
+        .stApp [data-testid="stMarkdownContainer"] h2 { font-size: __h2__px !important; }
+        .stApp [data-testid="stMarkdownContainer"] h3 { font-size: __h3__px !important; }
+        .stApp [data-testid="stMarkdownContainer"] h4 { font-size: __h4__px !important; }
+
+        /* The four tab headers. Streamlit renders these as
+           div[data-testid="stTab"], not as buttons. The labels are long
+           and there are four of them in one row, so this size is the one
+           that keeps the whole bar on the screen. */
+        .stApp [data-testid="stTab"] p {
+            font-size: __tab__px !important;
             font-weight: 600 !important;
+            white-space: normal !important;
         }
+
+        /* Widget labels: dropdowns, sliders, checkboxes, radio buttons. */
+        .stApp [data-testid="stWidgetLabel"],
         .stApp [data-testid="stWidgetLabel"] p,
-        .stApp [data-testid="stCheckbox"] label p {
-            font-size: 17px !important;
+        .stApp [data-testid="stWidgetLabel"] span {
+            font-size: __widget__px !important;
         }
+
+        /* Checkbox and radio labels sit in narrow columns and are long
+           ("Frozen 2 years before (2015 curve + 2017 weather)"). They wrap
+           rather than being cut off with an ellipsis. */
+        .stApp [data-testid="stCheckbox"] label p,
+        .stApp [data-testid="stRadio"] label p {
+            font-size: __check__px !important;
+            white-space: normal !important;
+        }
+
+        /* The value shown inside a dropdown. It is an <input>, which CSS
+           can still size. */
+        .stApp [data-testid="stSelectbox"] input,
+        .stApp [data-testid="stSelectbox"] div[role="combobox"] {
+            font-size: __selectbox__px !important;
+        }
+
+        /* A slider's read-out floats above its thumb on an offset
+           Streamlit computed for a 14px font, so it has to be sized and
+           placed together or it lands on the track. */
+        .stApp [data-testid="stSliderThumbValue"],
+        .stApp [data-testid="stSliderThumbValue"] p {
+            font-size: __slider__px !important;
+        }
+        .stApp [data-testid="stSliderThumbValue"] {
+            top: -20px !important;
+        }
+        .stApp [data-testid="stSlider"] [data-testid="stTickBarMin"],
+        .stApp [data-testid="stSlider"] [data-testid="stTickBarMax"] {
+            font-size: __slider__px !important;
+        }
+
+        /* Buttons. The tab rule above is more specific and wins for tabs. */
+        .stApp [data-testid="stButton"] button p,
+        .stApp [data-testid="stButton"] button span {
+            font-size: __button__px !important;
+        }
+
+        /* The alerts: st.info, st.success, st.warning, st.error. */
+        .stApp [data-testid="stAlert"],
+        .stApp [data-testid="stAlert"] div,
+        .stApp [data-testid="stAlert"] p {
+            font-size: __alert__px !important;
+            line-height: 1.5 !important;
+        }
+
+        /* st.metric. */
+        .stApp [data-testid="stMetricValue"] { font-size: __metric_value__px !important; }
+        .stApp [data-testid="stMetricLabel"] { font-size: __metric_label__px !important; }
+        .stApp [data-testid="stMetricDelta"] { font-size: __metric_delta__px !important; }
+
+        /* The reference tables. Streamlit draws a dataframe on a canvas,
+           where CSS cannot reach, so these are st.table -- real HTML. */
+        .stApp [data-testid="stTable"] table,
+        .stApp [data-testid="stTable"] th,
+        .stApp [data-testid="stTable"] td {
+            font-size: __table__px !important;
+        }
+        .stApp [data-testid="stTable"] th {
+            text-align: right !important;
+        }
+        /* A table wider than its column scrolls, rather than running over
+           the text beside it. */
+        .stApp [data-testid="stTable"] {
+            overflow-x: auto !important;
+        }
+        .stApp [data-testid="stTable"] table {
+            width: max-content !important;
+            min-width: 100% !important;
+        }
+        .stApp [data-testid="stTable"] th {
+            white-space: normal !important;
+        }
+
+        /* The text inside the charts is sized on the FIGURE, not here:
+           Plotly lays a chart out for the font it is given, so overriding
+           it from CSS afterwards would leave the layout computed for a
+           smaller font and the legends would run over each other. */
 
         /* Custom components */
         .badge {padding: 8px 16px; border-radius: 8px; font-weight: 700;
-                letter-spacing: .04em; font-size: 15px !important; display: inline-block;}
+                letter-spacing: .04em; font-size: __badge__px !important; display: inline-block;}
         .live {background:#0f3d2e; color:#5fd39a; border:1px solid #1d6b4e;}
         .cloud {background:#2b2f4a; color:#9fb4ff; border:1px solid #455089;}
         .kpi {padding: 14px 18px; border:1px solid var(--border);
               border-radius: 8px; margin-bottom: 8px;}
-        .kpi .v {font-size: 32px !important; font-weight: 700; line-height: 1.2;}
-        .kpi .l {font-size: 14px !important; font-weight: 600; color: #cbd5e1;
+        .kpi .v {font-size: __kpi_value__px !important; font-weight: 700; line-height: 1.2;}
+        .kpi .l {font-size: __kpi_label__px !important; font-weight: 600; color: #cbd5e1;
                  text-transform: uppercase; letter-spacing: .05em; margin-top: 4px;}
+        /* The delta carries an inline font-size, so this has to win. */
+        .kpi div[style*="font-size"] { font-size: __kpi_delta__px !important; }
         .note {border-left: 3px solid var(--border); padding: 8px 14px; color: #cbd5e1;
-               font-size: 16px !important; line-height: 1.5;}
+               font-size: __note__px !important; line-height: 1.5;}
 
         .callout {border-left: 4px solid var(--accent, #5fd39a);
                   padding: 14px 18px; margin: 12px 0 18px 0;
                   background: rgba(95,211,154,0.08);
-                  border-radius: 6px; font-size: 18px !important; line-height: 1.55;}
+                  border-radius: 6px; font-size: __callout__px !important; line-height: 1.55;}
         .brand {display: flex; align-items: center; gap: 10px;
-                font-size: 22px !important; font-weight: 700; line-height: 1.25;
+                font-size: __brand__px !important; font-weight: 700; line-height: 1.25;
                 margin: 14px 0 6px 0; color: var(--foreground);}
         .brand-icon {flex: 0 0 auto; width: 28px; height: 28px; color: var(--foreground);}
 
@@ -222,8 +368,41 @@ def _style():
         }
         </style>
     """
-    st.markdown(css.replace("__WATERMARK__", _watermark_uri()),
-                unsafe_allow_html=True)
+    for key, value in FONT_SIZES.items():
+        css = css.replace(f"__{key}__", str(round(value * FONT_SCALE)))
+    css = css.replace("__WATERMARK__", _watermark_uri())
+    st.markdown(css, unsafe_allow_html=True)
+
+
+#: The size of the text inside a chart. Plotly lays a chart out for the
+#: font it is given, so this has to be set on the figure: overriding it
+#: from CSS afterwards would leave the layout computed for a smaller font,
+#: and the legends would run over each other.
+CHART_FONT_PX = 18
+
+#: A chart legend is a secondary element. Its entry names are long, and a
+#: horizontal legend cannot wrap, so it is a size smaller than the chart.
+CHART_LEGEND_FONT_PX = 15
+
+
+def _chart(fig, **kwargs):
+    """Render a Plotly figure with the dashboard's chart typography.
+
+    The sizes have to be set on the figure, and on the axes as well as the
+    layout: Streamlit applies its own theme to the figure at render time,
+    and that theme sets an explicit tick font, which would otherwise win.
+    """
+    fig.update_layout(
+        font=dict(size=CHART_FONT_PX),
+        title=dict(font=dict(size=CHART_FONT_PX + 2)),
+        legend=dict(font=dict(size=CHART_LEGEND_FONT_PX)),
+    )
+    fig.update_xaxes(tickfont=dict(size=CHART_FONT_PX),
+                     title_font=dict(size=CHART_FONT_PX))
+    fig.update_yaxes(tickfont=dict(size=CHART_FONT_PX),
+                     title_font=dict(size=CHART_FONT_PX))
+    fig.update_annotations(font=dict(size=CHART_FONT_PX))
+    st.plotly_chart(fig, **kwargs)
 
 
 def kpi(value: str, label: str, delta: str | None = None):
@@ -315,36 +494,44 @@ def _model_comparison(engie, care_score, multiv, lgbm) -> None:
         title="Mean false-alarm rate on healthy turbines",
         xaxis_title="false alarms (% of 10-minute samples)",
         xaxis_range=[0, xmax * 1.18],
-        yaxis_title=None, barmode="group", height=340,
-        legend=dict(title="detector", orientation="h", yanchor="top",
-                    y=-0.18, xanchor="left", x=0),
-        margin=dict(l=10, r=10, t=56, b=70),
+        yaxis_title=None, barmode="group", height=380,
+        # The legend goes down the right-hand side. A horizontal legend
+        # cannot wrap, and at a readable font size its entries ran into the
+        # axis title and into each other.
+        legend=dict(title="detector", orientation="v", yanchor="top", y=1,
+                    xanchor="left", x=1.02),
+        margin=dict(l=130, r=250, t=56, b=70),
     )
+    # The artefact stores the year as an integer INSIDE each entry; the
+    # JSON object key is a string, and Plotly coerces a numeric-looking
+    # string column to float -- which is how the axis ended up showing
+    # "2,013.5" instead of "2013".
+    per_year_df = pd.DataFrame([
+        {"year": v["year"], "detector": r["detector"],
+         "reference": r["reference"], "rate %": v["rate_pct"]}
+        for r in rows
+        for v in r["per_year"].values()
+    ])
+
     left, right = st.columns([3, 2])
     with left:
-        st.plotly_chart(fig, width="stretch")
+        _chart(fig, width="stretch")
     with right:
-        st.markdown("#### Per year")
-        # The artefact stores the year as an integer INSIDE each entry; the
-        # JSON object key is a string, and Plotly coerces a numeric-looking
-        # string column to float -- which is how the axis ended up showing
-        # "2,013.5" instead of "2013".
-        per_year_df = pd.DataFrame([
-            {"year": v["year"], "detector": r["detector"],
-             "reference": r["reference"], "rate %": v["rate_pct"]}
-            for r in rows
-            for v in r["per_year"].values()
-        ])
-        st.dataframe(
-            per_year_df.pivot_table(index="year", columns=["detector", "reference"],
-                                    values="rate %").round(3),
-            width="stretch")
         st.markdown(
             "<div class='note'>Both detectors improve when the reference is "
             "re-estimated. The deterministic one improves further, because its "
             "reference is a direct statistic of the operating point rather than "
             "a fitted model that must itself be refreshed.</div>",
             unsafe_allow_html=True)
+
+    # The per-year table has five numeric columns under a two-row header.
+    # It needs the full width of the page, and st.table rather than
+    # st.dataframe: a dataframe is drawn on a canvas, where CSS cannot
+    # reach, and this is a fixed reference table nobody needs to sort.
+    st.markdown("#### Per year")
+    st.table(
+        per_year_df.pivot_table(index="year", columns=["detector", "reference"],
+                                values="rate %").round(3))
 
     # --- the same thing as a line: year by year ---------------------------
     # The bar chart shows the means; this shows WHY the means differ. A frozen
@@ -363,16 +550,18 @@ def _model_comparison(engie, care_score, multiv, lgbm) -> None:
     fig2.update_layout(
         title="False-alarm rate by year — the frozen reference swings, the rolling one does not",
         xaxis_title="year", yaxis_title="false alarms (% of 10-minute samples)",
-        height=400, margin=dict(l=10, r=10, t=56, b=80),
-        legend=dict(title="detector — reference", orientation="h",
-                    yanchor="top", y=-0.18, xanchor="left", x=0),
+        height=440, margin=dict(l=70, r=340, t=56, b=70),
+        # Four entries whose names are long: down the side, where they have
+        # room, rather than under the plot, where they would overlap.
+        legend=dict(title="detector — reference", orientation="v",
+                    yanchor="top", y=1, xanchor="left", x=1.02),
         xaxis=dict(tickformat="d", dtick=1),
     )
     st.markdown(
         "<div class='note'>2014 has no scored samples in this artefact and is "
         "absent from the table above; the lines span it.</div>",
         unsafe_allow_html=True)
-    st.plotly_chart(fig2, width="stretch")
+    _chart(fig2, width="stretch")
 
     # --- the honest headline ----------------------------------------------
     st.markdown("#### What this project does and does not claim")
@@ -706,7 +895,7 @@ def tab_monthly_loop(live: bool) -> dict | None:
     else:
         fig = _monthly_telemetry_figure(frame, prov)
 
-    st.plotly_chart(fig, width="stretch")
+    _chart(fig, width="stretch")
 
     st.markdown(
         "<div class='note'>The bottom panel is the cross-check: the actual "
@@ -979,7 +1168,7 @@ def _render_live_result(result: dict, z_threshold: float) -> None:
     fig.update_xaxes(title_text="UTC", row=zrow, col=1)
     fig.update_layout(height=560, margin=dict(l=10, r=10, t=60, b=10),
                       hovermode="x unified")
-    st.plotly_chart(fig, width="stretch")
+    _chart(fig, width="stretch")
 
     # --- the numbers ------------------------------------------------------
     k1, k2, k3, k4 = st.columns(4)
@@ -1467,7 +1656,7 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         legend=dict(orientation="h", yanchor="bottom", y=-0.34, xanchor="left",
                     x=0),
     )
-    st.plotly_chart(fig, width="stretch")
+    _chart(fig, width="stretch")
 
     # --- the wind and the air --------------------------------------------
     fig2 = go.Figure()
@@ -1488,7 +1677,7 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
         legend=dict(orientation="h", yanchor="bottom", y=-0.42, xanchor="left",
                     x=0),
     )
-    st.plotly_chart(fig2, width="stretch")
+    _chart(fig2, width="stretch")
 
     # --- what the numbers actually say ------------------------------------
     st.info(
@@ -1704,7 +1893,7 @@ def tab_forecast() -> None:
         legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
                     x=0),
     )
-    st.plotly_chart(fig, width="stretch")
+    _chart(fig, width="stretch")
 
     # --- chart 2: the predicted power -------------------------------------
     fig2 = go.Figure()
@@ -1726,7 +1915,7 @@ def tab_forecast() -> None:
         legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left",
                     x=0),
     )
-    st.plotly_chart(fig2, width="stretch")
+    _chart(fig2, width="stretch")
 
     st.markdown(
         "<div class='note'>The prediction is the turbine's own conditioned "
@@ -1818,12 +2007,12 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
                           margin=dict(l=10, r=10, t=60, b=10))
         left, right = st.columns([3, 2])
         with left:
-            st.plotly_chart(fig, width="stretch")
+            _chart(fig, width="stretch")
         with right:
             rows = [{"arm": n, "CARE": sc, **{k: (subs or {}).get(k) for k in
                       ("coverage", "accuracy", "reliability", "earliness")}}
                     for n, subs, sc in arms]
-            st.dataframe(pd.DataFrame(rows).round(4), width="stretch")
+            st.table(pd.DataFrame(rows).round(4))
             if ae_audit:
                 st.markdown(
                     f"<div class='note'><b>The published AE figure is "
@@ -1855,8 +2044,7 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
         } for farm, v in pf.items()]
         c1, c2 = st.columns([3, 2])
         with c1:
-            st.dataframe(pd.DataFrame(rows), width="stretch",
-                         hide_index=True)
+            st.table(pd.DataFrame(rows), hide_index=True)
         with c2:
             st.metric(f"{audit.get('all_anomaly_events_zero_scorable')} / "
                       f"{audit.get('n_anomaly_events')}",
