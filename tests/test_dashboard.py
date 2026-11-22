@@ -672,8 +672,10 @@ def test_the_stale_baseline_toggles_are_present_and_default_on():
     two = [k for k in boxes if "2-Years-Back" in k]
     assert one, f"the 1-year-back toggle is missing: {list(boxes)}"
     assert two, f"the 2-years-back toggle is missing: {list(boxes)}"
-    assert boxes[one[0]] is True, "the 1-year-back baseline is off by default"
-    assert boxes[two[0]] is True, "the 2-years-back baseline is off by default"
+    # The chart opens clean, so the stale baselines are OFF by default and
+    # the presenter switches them on when they want the comparison.
+    assert boxes[one[0]] is False, "the 1-year-back baseline is on by default"
+    assert boxes[two[0]] is False, "the 2-years-back baseline is on by default"
 
 
 def test_the_stale_baseline_labels_follow_the_checkpoint():
@@ -724,12 +726,16 @@ def test_both_checkpoint_charts_share_one_x_axis():
 def test_the_four_power_lines_have_the_intended_colours():
     """The actual output is the quiet neutral line; the three predictions
     are what the demo is about. Healthy power must not look like an alarm."""
-    src = (ROOT / "app.py").read_text()
-    for colour in ("#E5E7EB", "#00D4AA", "#F59E0B", "#F43F5E"):
-        assert colour in src, f"the line colour {colour} is missing"
-    assert 'name="Actual measured power (kW)"' in src
-    assert 'dash="dash"' in src
-    assert 'dash="dot"' in src
+    mod = _import_app()
+    lines = {line[0]: line for line in mod._power_lines(True, True, True)}
+    assert lines["actual"][1] == "Actual measured power (kW)"
+    assert lines["actual"][3] == "#E5E7EB"
+    assert lines["primary"][1] == "Predicted — last 30d fit (kW)"
+    assert lines["primary"][3] == "#00D4AA"
+    assert lines["1_year_back"][2] == "dash"
+    assert lines["1_year_back"][3] == "#F59E0B"
+    assert lines["2_year_back"][2] == "dot"
+    assert lines["2_year_back"][3] == "#F43F5E"
 
 
 def test_the_tracking_error_summary_is_a_scannable_box():
@@ -766,12 +772,20 @@ def test_switching_to_a_checkpoint_shows_the_training_dates():
 
 
 def test_the_checkpoint_view_reports_the_tracking_error_of_every_fit():
+    """All three MAEs, once the presenter switches the stale baselines on."""
     at = _app_test()
     at.run()
     _checkpoint_selector(at).set_value(
         "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
     ).run()
     assert not at.exception, f"the app raised: {at.exception}"
+
+    boxes = {c.label: c for c in at.get("checkbox")}
+    for label_fragment in ("1-Year-Back", "2-Years-Back"):
+        box = [c for k, c in boxes.items() if label_fragment in k][0]
+        box.set_value(True).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
     body = "\n".join(m.value for m in at.markdown)
     for label in ("last 30-day fit", "frozen 1-year-back", "frozen 2-years-back"):
         assert label in body, f"the {label} MAE is missing"
@@ -797,4 +811,74 @@ def test_the_checkpoint_view_works_in_cloud_mode(tmp_path):
     body = "\n".join(m.value for m in at.markdown)
     assert "Trained on" in body, "the cloud checkpoint has no training callout"
     assert "2017-08-02" in body
-    assert "frozen 1-year-back" in body, "the cloud checkpoint has no MAEs"
+    assert "last 30-day fit" in body, "the cloud checkpoint has no MAEs"
+
+    # The stale baselines are on demand in the cloud too.
+    boxes = {c.label: c for c in at.get("checkbox")}
+    for fragment in ("1-Year-Back", "2-Years-Back"):
+        box = [c for k, c in boxes.items() if fragment in k][0]
+        box.set_value(True).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "frozen 1-year-back" in body, "the cloud checkpoint has no stale MAEs"
+    assert "frozen 2-years-back" in body
+
+
+def test_the_chart_opens_with_two_lines_and_grows_to_four():
+    """The default view is Actual + Last 30d Fit; the stale curves are on
+    demand."""
+    mod = _import_app()
+
+    clean = mod._power_lines(True, False, False)
+    assert len(clean) == 2, clean
+    assert clean[0][0] == "actual"
+    assert clean[1][0] == "primary"
+
+    full = mod._power_lines(True, True, True)
+    assert len(full) == 4, full
+    assert [line[0] for line in full] == [
+        "actual", "primary", "1_year_back", "2_year_back"]
+
+    # And each toggle adds exactly one line.
+    assert len(mod._power_lines(True, True, False)) == 3
+    assert len(mod._power_lines(True, False, True)) == 3
+    assert len(mod._power_lines(False, False, False)) == 1
+
+
+def test_the_default_view_shows_two_mae_cards_and_the_expanded_view_four():
+    """Each card follows its toggle, so the KPI row grows with the chart."""
+    at = _app_test()
+    at.run()
+    _checkpoint_selector(at).set_value(
+        "Checkpoint 1 — 2017-09-01 → 2017-09-07 — late summer transition"
+    ).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    body = "\n".join(m.value for m in at.markdown)
+    assert "MAE — last 30-day fit" in body
+    assert "actual mean power" in body
+    assert "MAE — frozen 1-year-back" not in body, (
+        "the stale-baseline card is showing with its toggle off"
+    )
+    assert "MAE — frozen 2-years-back" not in body
+
+    # Switch the stale baselines on: the cards appear with them.
+    boxes = {c.label: c for c in at.get("checkbox")}
+    one = [c for k, c in boxes.items() if "1-Year-Back" in k][0]
+    two = [c for k, c in boxes.items() if "2-Years-Back" in k][0]
+    one.set_value(True).run()
+    two.set_value(True).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "MAE — frozen 1-year-back" in body
+    assert "MAE — frozen 2-years-back" in body
+
+
+def test_the_last_30d_fit_can_be_switched_off_too():
+    """A presenter may want only the actual output against the stale
+    curves -- that is the picture that shows the stale ones are worse."""
+    mod = _import_app()
+    lines = mod._power_lines(False, True, True)
+    assert len(lines) == 3
+    assert [line[0] for line in lines] == [
+        "actual", "1_year_back", "2_year_back"]

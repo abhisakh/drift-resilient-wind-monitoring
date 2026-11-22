@@ -1149,9 +1149,34 @@ def _training_callout(bundle: dict) -> str:
             f"{fit.get('seconds', 0.0):.2f} s)")
 
 
+def _power_lines(show_30d: bool, show_1yr: bool,
+                 show_2yr: bool) -> list[tuple[str, str, str, str, float]]:
+    """Which of the four lines the power chart draws.
+
+    The actual output is always drawn -- it is the thing being predicted.
+    The three predictions are each behind a toggle, and the chart opens
+    with the fresh one only, so a presenter can add the stale curves when
+    they want to show the divergence.
+
+    Returned as (fit key, label, dash, colour, width).
+    """
+    lines = [("actual", "Actual measured power (kW)", "solid", "#E5E7EB", 2.2)]
+    if show_30d:
+        lines.append(("primary", "Predicted — last 30d fit (kW)", "solid",
+                      "#00D4AA", 2.2))
+    if show_1yr:
+        lines.append(("1_year_back", "Predicted — frozen 1-yr-back (kW)",
+                      "dash", "#F59E0B", 1.8))
+    if show_2yr:
+        lines.append(("2_year_back", "Predicted — frozen 2-yrs-back (kW)",
+                      "dot", "#F43F5E", 1.8))
+    return lines
+
+
 def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
-                             show_1yr: bool = True,
-                             show_2yr: bool = True) -> None:
+                             show_30d: bool = True,
+                             show_1yr: bool = False,
+                             show_2yr: bool = False) -> None:
     """One historical checkpoint: the multi-year staleness comparison.
 
     The primary model is always trained on exactly the thirty days
@@ -1201,29 +1226,37 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
             return None
         return float(sum(p - a for p, a in zip(pred, actual)) / len(pred))
 
-    primary_mae = _mae("primary")
-    mae_1yr = _mae("1_year_back")
-    mae_2yr = _mae("2_year_back")
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        kpi(f"{primary_mae:,.1f} kW" if primary_mae is not None else "—",
+    # Each card follows its toggle: the card is the number for that line,
+    # so a line that is not drawn has no card either. The row therefore
+    # opens with two cards and grows to four.
+    cards: list[tuple[str, str, str]] = []
+    if show_30d:
+        cards.append((
+            f"{_mae('primary'):,.1f} kW" if _mae("primary") is not None else "—",
             "MAE — last 30-day fit",
             f"trained {fits['primary']['window_start']} → "
-            f"{fits['primary']['window_end']}")
-    with k2:
-        kpi(f"{mae_1yr:,.1f} kW" if mae_1yr is not None else "—",
+            f"{fits['primary']['window_end']}"))
+    if show_1yr:
+        cards.append((
+            f"{_mae('1_year_back'):,.1f} kW"
+            if _mae("1_year_back") is not None else "—",
             "MAE — frozen 1-year-back",
             f"trained {fits['1_year_back']['window_start']} → "
-            f"{fits['1_year_back']['window_end']}")
-    with k3:
-        kpi(f"{mae_2yr:,.1f} kW" if mae_2yr is not None else "—",
+            f"{fits['1_year_back']['window_end']}"))
+    if show_2yr:
+        cards.append((
+            f"{_mae('2_year_back'):,.1f} kW"
+            if _mae("2_year_back") is not None else "—",
             "MAE — frozen 2-years-back",
             f"trained {fits['2_year_back']['window_start']} → "
-            f"{fits['2_year_back']['window_end']}")
-    with k4:
-        kpi(f"{df['actual_power_kw'].mean():,.0f} kW", "actual mean power",
-            f"{len(df):,} rows in the target week")
+            f"{fits['2_year_back']['window_end']}"))
+    cards.append((f"{df['actual_power_kw'].mean():,.0f} kW",
+                  "actual mean power",
+                  f"{len(df):,} rows in the target week"))
+
+    for col, (value, label, delta) in zip(st.columns(len(cards)), cards):
+        with col:
+            kpi(value, label, delta)
 
     # --- the chart: four lines --------------------------------------------
     # One x-range for BOTH charts, so a gust in the weather panel lines up
@@ -1233,26 +1266,23 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
     x_axis = _shared_axis_range(df["ts"])
 
     # The colour language: the ACTUAL output is the neutral, quiet line,
-    # and the three predictions are what the demo is about -- so healthy
-    # power never looks like an alarm.
+    # and the predictions are what the demo is about -- so healthy power
+    # never looks like an alarm. The chart opens with two lines: the actual
+    # output and the fresh 30-day prediction. The stale curves are one
+    # click away.
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df["ts"], y=df["actual_power_kw"], name="Actual measured power (kW)",
-        mode="lines", line=dict(width=2.2, color="#E5E7EB")))
-    for label, name, dash, colour, width in (
-            ("primary", "Predicted — last 30d fit (kW)", "solid", "#00D4AA", 2.2),
-            ("1_year_back", "Predicted — frozen 1-yr-back (kW)", "dash", "#F59E0B", 1.8),
-            ("2_year_back", "Predicted — frozen 2-yrs-back (kW)", "dot", "#F43F5E", 1.8)):
-        s = scored["fits"].get(label, {})
+    for key, name, dash, colour, width in _power_lines(
+            show_30d, show_1yr, show_2yr):
+        if key == "actual":
+            fig.add_trace(go.Scatter(
+                x=df["ts"], y=df["actual_power_kw"], name=name, mode="lines",
+                line=dict(width=width, dash=dash, color=colour)))
+            continue
+        s = scored["fits"].get(key, {})
         if not s.get("available"):
             continue
-        if label == "1_year_back" and not show_1yr:
-            continue
-        if label == "2_year_back" and not show_2yr:
-            continue
-        pred = s["predicted_kw"]
         fig.add_trace(go.Scatter(
-            x=df["ts"], y=pred, name=name, mode="lines",
+            x=df["ts"], y=s["predicted_kw"], name=name, mode="lines",
             line=dict(width=width, dash=dash, color=colour)))
     fig.update_layout(
         title=(f"Power in the target week — the actual output against what "
@@ -1346,23 +1376,31 @@ def tab_forecast() -> None:
             "The frozen-baseline comparison applies to the historical "
             "checkpoints; choose one above to see it."
         )
-        show_1yr = show_2yr = False
+        show_30d = show_1yr = show_2yr = False
     else:
         target_year = int(fc.CHECKPOINTS[choice]["prediction_start"][:4])
-        t1, t2 = st.columns(2)
+        t1, t2, t3 = st.columns(3)
         with t1:
+            show_30d = st.checkbox(
+                "Show Last 30d Fit Prediction (kW)", value=True, key="show_30d",
+                help="The reference fitted on the thirty days before the "
+                     "target week. On by default; switch it off to show only "
+                     "the actual output against the stale curves.")
+        with t2:
             show_1yr = st.checkbox(
                 f"Show Frozen 1-Year-Back Baseline "
                 f"({target_year - 1} curve + {target_year} weather)",
-                value=True, key="show_1yr")
-        with t2:
+                value=False, key="show_1yr",
+                help="Off by default, so the chart opens with two lines.")
+        with t3:
             show_2yr = st.checkbox(
                 f"Show Frozen 2-Years-Back Baseline "
                 f"({target_year - 2} curve + {target_year} weather)",
-                value=True, key="show_2yr")
+                value=False, key="show_2yr",
+                help="Off by default, so the chart opens with two lines.")
 
     if choice != "__forecast__":
-        _tab_forecast_checkpoint(fc, choice, live, show_1yr, show_2yr)
+        _tab_forecast_checkpoint(fc, choice, live, show_30d, show_1yr, show_2yr)
         return
 
     # --- the site ----------------------------------------------------------
