@@ -164,7 +164,7 @@ FONT_SCALE = 1.0
 FONT_SIZES = {
     "body": 34,        # prose in the tabs and the sidebar
     "caption": 26,     # small explanatory lines under a widget
-    "tab": 20,         # the four tab headers
+    "tab": 26,         # the four tab headers
     "sidebar": 22,     # the narrow sidebar column
     "check": 26,       # checkbox and radio labels
     "widget": 30,      # widget labels: dropdowns, sliders, checkboxes
@@ -229,12 +229,24 @@ def _style():
 
         /* The four tab headers. Streamlit renders these as
            div[data-testid="stTab"], not as buttons. The labels are long
-           and there are four of them in one row, so this size is the one
-           that keeps the whole bar on the screen. */
+           and there are four of them in one row, so they wrap onto two
+           lines -- and the tab list is a fixed height that would cut the
+           second line off, so it is given room for them. */
         .stApp [data-testid="stTab"] p {
             font-size: __tab__px !important;
             font-weight: 600 !important;
             white-space: normal !important;
+            line-height: 1.25 !important;
+            padding-bottom: 6px !important;
+        }
+        .stApp [data-testid="stTabs"] [role="tablist"] {
+            height: auto !important;
+            min-height: 96px !important;
+            align-items: flex-start !important;
+        }
+        .stApp [data-testid="stTab"] {
+            height: auto !important;
+            align-items: flex-start !important;
         }
 
         /* Widget labels: dropdowns, sliders, checkboxes, radio buttons. */
@@ -860,12 +872,10 @@ def tab_monthly_loop(live: bool) -> dict | None:
             f"{prov['fault_rows_flagged']:,} flagged by the model")
 
     st.markdown(
-        "<div class='note'>All three arms — the static baseline, the "
-        "operating-point conditioning, and the full weather-conditioned "
-        "model — are judged by the <b>same rule on the same scale</b>: more "
-        f"than z &gt; {z_threshold:.1f} robust deviations above the expected "
-        "value. Comparing alarm rates between models whose residual scales "
-        "differ would not mean anything.</div>",
+        "<div class='note'>All three arms are judged by the <b>same rule "
+        f"on the same scale</b> (z &gt; {z_threshold:.1f}) — comparing "
+        "alarm rates across models with different residual scales would mean "
+        "nothing.</div>",
         unsafe_allow_html=True,
     )
 
@@ -885,24 +895,22 @@ def tab_monthly_loop(live: bool) -> dict | None:
         fig = _monthly_daily_figure(
             live_mod.daily_temperature_summary(frame), prov)
         st.markdown(
-            "<div class='note'>One point per day. The residual is computed "
-            "on each ten-minute row and then aggregated, so the maximum is "
-            "the largest departure any single reading in that day made from "
-            "the model's expectation — the number to read against the alarm "
-            "threshold.</div>",
-            unsafe_allow_html=True,
-        )
+                "<div class='note'>One point per day. The residual is "
+                "computed per ten-minute row and then aggregated, so the "
+                "daily maximum is that day's largest departure from the "
+                "model's expectation.</div>",
+                unsafe_allow_html=True,
+            )
     else:
         fig = _monthly_telemetry_figure(frame, prov)
 
     _chart(fig, width="stretch")
 
     st.markdown(
-        "<div class='note'>The bottom panel is the cross-check: the actual "
-        "temperature minus the predicted one. A weather shift moves both "
-        "together, so it stays inside the band. Mechanical wear moves the "
-        "actual value alone, so it sits above the band and does not come "
-        "back down.</div>",
+        "<div class='note'>The bottom panel is the cross-check: actual "
+        "minus predicted. A weather shift moves both together and stays "
+        "inside the band; mechanical wear moves the actual alone, sits "
+        "above the band, and does not come back down.</div>",
         unsafe_allow_html=True,
     )
     return result
@@ -930,16 +938,13 @@ def tab_cost_impact(result: dict | None) -> None:
                  "set: the arithmetic below is exact, the price is not.")
     with c2:
         st.markdown(
-            "<div class='note'><b>Cost assumptions (configurable "
-            "estimates).</b> A planned bearing repair is taken at "
-            "<b>€15,000</b> against a full gearbox replacement at "
-            "<b>€200,000</b> — a difference of <b>€185,000</b> — so an "
-            "early warning that keeps the machine running is worth that "
-            "much, provided it is not drowned out by false alarms. The "
-            "dispatch cost is a slider; the repair figures are the "
-            "planning assumption.</div>",
-            unsafe_allow_html=True,
-        )
+                "<div class='note'><b>Cost assumptions.</b> A planned "
+                "bearing repair is taken at <b>€15,000</b> against a full "
+                "gearbox replacement at <b>€200,000</b>. The dispatch cost "
+                "is a slider; the repair figures are the planning "
+                "assumption.</div>",
+                unsafe_allow_html=True,
+            )
 
     # The cost arithmetic lives in src/ (repo rule 2): the app only supplies
     # the reader's assumption.
@@ -969,22 +974,16 @@ def tab_cost_impact(result: dict | None) -> None:
                 "the fault was not caught this month")
 
     st.markdown(
-        "<div class='note'><b>Read this honestly.</b> The saving is real and "
-        "it is large: a reference that is not refreshed for the month's "
-        f"conditions raises {len(episodes['naive_false'])} false dispatches "
-        f"in this month, and the conditioned model raises "
-        f"{len(episodes['conditioned_false'])}. But a model that never "
-        "alarms is worthless, so the third card matters as much as the "
-        "first two — and it is the honest one. A fresh <b>monthly</b> "
-        "reference has a documented blind spot: once a developing fault has "
-        "been in the training window for a few weeks, the reference moves to "
-        "meet it. Drag the threshold down and the fault reappears; drag it "
-        "up and the model goes quiet. That trade-off is real and it is "
-        "why the R80711 overheat is caught by the <b>frozen</b> reference "
-        "above, where the drift has nowhere to hide — the project ships "
-        "both, and the cross-check on this tab is paired with the case "
-        "study above rather than replacing it."
-        "</div>",
+        "<div class='note'><b>Read this honestly.</b> A reference that is "
+        "not refreshed for the month's conditions raises "
+        f"{len(episodes['naive_false'])} false dispatches; the conditioned "
+        f"model raises {len(episodes['conditioned_false'])}. But a model "
+        "that never alarms is worthless, so the third card matters as much "
+        "as the first two. A fresh <b>monthly</b> reference has a "
+        "documented blind spot: once a developing fault has been in the "
+        "training window for a few weeks, the reference moves to meet it. "
+        "That is why the R80711 overheat is caught by the <b>frozen</b> "
+        "reference — the project ships both.</div>",
         unsafe_allow_html=True,
     )
 
@@ -1206,10 +1205,8 @@ def tab_explorer(live: bool) -> None:
     """
     st.markdown("#### Live Multi-Turbine & Weather-Conditioned Explorer")
     st.markdown(
-        "<div class='note'>The same detector that produced the results above, "
-        "run live on the data you choose. Every run reports what it read, how "
-        "many rows it processed and how long it took -- so you can check the "
-        "working rather than take it on trust.</div>",
+        "<div class='note'>The same detector, run live on the data you "
+        "choose — with the provenance of every run on screen.</div>",
         unsafe_allow_html=True,
     )
 
@@ -1259,11 +1256,11 @@ def tab_explorer(live: bool) -> None:
                         st.error(f"the live engine failed: {exc}")
             if turbine == "R80711":
                 st.markdown(
-                    "<div class='note'>R80711 is the case study: its gearbox "
-                    "bearing 2 runs hot from September 2017 while its three "
-                    "siblings do not. The other three turbines are the "
-                    "control group — they are healthy throughout, so every "
-                    "alarm on them is a false alarm.</div>",
+                    "<div class='note'>R80711 is the case study: its "
+                    "gearbox bearing 2 runs hot from September 2017 while its "
+                    "three siblings do not. The others are the control group "
+                    "— healthy throughout, so every alarm on them is a "
+                    "false alarm.</div>",
                     unsafe_allow_html=True,
                 )
 
@@ -1683,17 +1680,15 @@ def _tab_forecast_checkpoint(fc, checkpoint: str, live: bool,
     st.info(
         "**What the tracking error says**\n"
         "\n"
-        "- Across the five curated checkpoints, the mean absolute error in "
-        "the steep part of the curve -- where the curve's *shape* matters, "
-        "not its level -- is **43.9 → 45.0 → 49.0 kW** for the "
-        "30-day fit, the one-year-back fit and the two-year-back fit.\n"
-        "- The signed bias is cleanly ordered the same way: "
-        "**−13.0 → −14.7 → −19.7 kW**, so the "
-        "older the reference, the more it under-predicts.\n"
+        "- Steep-region MAE (where the curve's *shape* matters, not its "
+        "level): **43.9 → 45.0 → 49.0 kW** for the 30-day, "
+        "one-year-back and two-year-back fits.\n"
+        "- Signed bias, ordered the same way: **−13.0 → −14.7 → "
+        "−19.7 kW**. The older the reference, the more it "
+        "under-predicts.\n"
         "- **But** a single week's power is dominated by that week's "
-        "weather, so the age of the reference is a second-order effect here "
-        "-- unlike thermal fault detection in Tab 2, where a stale reference "
-        "is the whole problem."
+        "weather, so reference age is second-order here — unlike Tab 2, "
+        "where a stale reference is the whole problem."
     )
 
 
@@ -1710,12 +1705,9 @@ def tab_forecast() -> None:
 
     st.subheader("Weather Forecast & Power Prediction")
     st.markdown(
-        "The operational question, answered from the forecast: given this "
-        "week's weather, **how much power should this turbine be producing**, "
-        "and therefore how much power is it actually producing? The power "
-        "curve is the machine's own, measured from its SCADA -- not a "
-        "catalogue curve -- so the prediction is what *this* turbine does "
-        "in *this* wind."
+        "Given this week's weather, **how much power should this turbine "
+        "be producing** — and how much is it actually producing? The power "
+        "curve is the machine's own, measured from its SCADA."
     )
 
     # --- the demo checkpoint selector, and the stale-baseline toggles -------
@@ -1917,15 +1909,7 @@ def tab_forecast() -> None:
     )
     _chart(fig2, width="stretch")
 
-    st.markdown(
-        "<div class='note'>The prediction is the turbine's own conditioned "
-        "power curve applied to the forecast air, with the standard "
-        "air-density correction (power scales with the cube of the density "
-        "ratio). <b>It is a prediction of what a healthy machine would do</b> "
-        "— which is exactly what the cross-check on the next tab measures the "
-        "real machine against.</div>",
-        unsafe_allow_html=True,
-    )
+    
 
 
 # ---------------------------------------------------------------- tab 2
@@ -1939,11 +1923,10 @@ def tab_crosscheck(live) -> None:
     """
     st.subheader("Daily Cross-Check: Weather vs. Hardware Wear")
     st.markdown(
-        "The question a condition-monitoring system actually has to answer, "
-        "every month: **is this machine deteriorating, or did the weather "
-        "change?** The monthly loop below fits a fresh reference on the "
-        "month before, scores the target month against it, and separates the "
-        "two — with the cost of getting it wrong in euros."
+        "Every month the same question: **is this machine deteriorating, "
+        "or did the weather change?** The loop below fits a fresh reference "
+        "on the month before, scores the target month against it, and "
+        "prices the difference."
     )
     result = tab_monthly_loop(live)
     tab_cost_impact(result)
@@ -1959,13 +1942,7 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
     the CARE benchmark, and the audit of the published autoencoder baseline.
     """
     st.subheader("Model & Benchmark Comparison")
-    st.markdown(
-        "Everything that compares one detector with another, in one place: "
-        "the deterministic arm against the learned one, the false-alarm rate "
-        "by year, the CARE benchmark score, and an audit of what the "
-        "published autoencoder baseline of 0.66 actually is. The operational "
-        "story is on the first two tabs."
-    )
+    
     _model_comparison(engie, care_score, multiv, lgbm)
     st.markdown("---")
     st.subheader("The CARE benchmark — and what the published 0.66 really is")
@@ -2050,12 +2027,13 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
                       f"{audit.get('n_anomaly_events')}",
                       "anomaly events with no scorable rows")
             st.markdown(
-                "<div class='note'>The CARE score only credits rows in normal "
-                "operation. Wind Farm A's fault occupies ~95 % of its event "
-                "windows, so no detector can earn credit for detecting them. "
-                "That is a property of the published labels, not of any "
+                "<div class='note'>The CARE score only credits rows in "
+                "normal operation. Wind Farm A's fault occupies ~95 % of its "
+                "event windows, so no detector can earn credit for detecting "
+                "them — a property of the published labels, not of any "
                 "detector.</div>",
-                unsafe_allow_html=True)
+                unsafe_allow_html=True,
+            )
 
     # --- the scope limit ---------------------------------------------------
     if thermal:
@@ -2071,48 +2049,44 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
                 "a coin flip — most CARE faults are not thermal")
         st.markdown(
             "<div class='note'>CARE's faults are mostly hydraulic, pitch, "
-            "converter and safety-chain failures. A thermal detector cannot see "
-            "them, and no threshold recovers a signal the channels do not carry. "
-            "That is a scope limit, not a badly chosen threshold — and it is "
-            "why the published autoencoder, which sees the full sensor vector, "
-            "reaches a higher Coverage and Earliness.</div>",
-            unsafe_allow_html=True)
+            "converter and safety-chain failures. A thermal detector cannot "
+            "see them, and no threshold recovers a signal the channels do "
+            "not carry — a scope limit, not a badly chosen threshold.</div>",
+            unsafe_allow_html=True,
+        )
 
 
 # ---------------------------------------------------------------- tab 4
 def tab_forensics():
     st.subheader("Engineering and data forensics")
     st.markdown(
-        "The numbers above are only worth as much as the process that produced "
-        "them. This is what that process is."
+        "The numbers are only worth as much as the process behind them."
     )
 
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("#### 🧪 Single source of truth")
         st.markdown(
-            "Every number in the README and in this dashboard is **generated** "
-            "from `results/*.json`. The report generator owns the README's "
-            "Results section; CI re-runs it and fails if the committed file is "
-            "not reproduced byte for byte. A number that drifts from its "
-            "artefact breaks the build."
+            "Every number in the README and in this dashboard is "
+            "**generated** from `results/*.json`. CI re-runs the generator "
+            "and fails if the committed file is not reproduced byte for "
+            "byte."
         )
     with c2:
         st.markdown("#### 🧭 A pipeline, not a pile of scripts")
         st.markdown(
-            "`scripts/pipeline/` produces the artefacts; `scripts/diagnostics/` "
-            "are probes that write nothing. The Makefile holds the execution "
-            "order, so it never has to be remembered. Logic lives in "
-            "`src/windmill/`; scripts only orchestrate."
+            "`scripts/pipeline/` produces the artefacts; "
+            "`scripts/diagnostics/` are probes that write nothing. The "
+            "Makefile holds the execution order; logic lives in "
+            "`src/windmill/`."
         )
     with c3:
         st.markdown("#### 🤖 CI as a determinism guard")
         st.markdown(
-            "CI installs the pinned dependencies on Python 3.11, syntax-checks "
-            "the tree, runs the tests, **re-runs the documentation generator** "
-            "and fails if the working tree changed. That last step is a "
-            "pipeline smoke test as well as a drift check — it is what caught "
-            "three scripts that could no longer run."
+            "CI installs the pinned dependencies on Python 3.11, "
+            "syntax-checks the tree, runs the tests, **re-runs the "
+            "documentation generator** and fails if the working tree "
+            "changed."
         )
 
     st.markdown("")
@@ -2147,10 +2121,10 @@ def tab_forensics():
     st.markdown("#### Reproduce it")
     st.code("""make setup && make data && make pipeline && make test""", language="bash")
     st.markdown(
-        "<div class='note'>~19 GB of public data, no credentials, no API key. "
-        "Every dataset's SHA-256 is recorded so a reviewer can verify they "
-        "fetched identical bytes.</div>",
-        unsafe_allow_html=True)
+        "<div class='note'>~19 GB of public data, no credentials, no API "
+        "key. Every dataset's SHA-256 is recorded.</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------- main
@@ -2192,8 +2166,8 @@ def main():
             "- ERA5 reanalysis via open-meteo (no key)")
         st.markdown("---")
         st.markdown(
-            "<div class='note'>Scored on the CARE benchmark with the benchmark "
-            "authors' own implementation, cross-checked event by event.</div>",
+            "<div class='note'>Scored on CARE with the benchmark authors' own "
+            "implementation.</div>",
             unsafe_allow_html=True)
 
     t1, t2, t3, t4 = st.tabs([

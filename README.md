@@ -422,8 +422,13 @@ Every font size on the dashboard is stated in one table in `app.py`
 (`FONT_SIZES`), and the CSS is built from it — so raising the whole
 dashboard's text is a one-line change, not a hunt through a stylesheet.
 The reading text is roughly double what Streamlit ships with: prose at
-34 px, notes and alerts at 28 px, KPI labels at 24 px, and the reference
-tables at 20 px.
+34 px, notes and alerts at 28 px, KPI labels at 24 px, the tab headers
+at 26 px, and the reference tables at 20 px.
+
+The writing is deliberately thin: about a quarter of the prose that was
+there has been cut, because a paragraph that restates the heading or the
+chart is a paragraph the reader has to read past. What is left states a
+number, a caveat, or an interpretation the chart cannot show on its own.
 
 Two things that follow from that, and are deliberate:
 
