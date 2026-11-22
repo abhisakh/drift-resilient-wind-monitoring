@@ -601,3 +601,40 @@ def test_the_benchmark_tab_holds_the_model_comparison():
     assert "CARE benchmark" in body or "autoencoder" in body.lower(), (
         "the CARE/AE audit is missing from the benchmark tab"
     )
+
+
+def test_the_monthly_loop_runs_in_cloud_mode(tmp_path):
+    """THE CLOUD TEST FOR THE MONTHLY LOOP.
+
+    The monthly cross-check is the operational centrepiece, and it has to
+    work on Streamlit Community Cloud, where there is no data/raw/. It runs
+    on the committed sample CSV, so it must work without the 19 GB -- and
+    the point of the test is that it is exercised in a copy of the
+    repository with no data/ at all, because a developer always has the
+    data and would never find out.
+    """
+    from streamlit.testing.v1 import AppTest
+
+    cloud = _cloud_copy(tmp_path)
+    at = AppTest.from_file(str(cloud / "app.py"), default_timeout=300)
+    at.run()
+    assert not at.exception, f"the app raised in cloud mode: {at.exception}"
+
+    months = [s for s in at.selectbox if s.label == "Target month"]
+    assert months, "the monthly loop has no month selector in cloud mode"
+    assert "2017-09" in list(months[0].options)
+
+    run = [b for b in at.button if "monthly cross-check" in b.label.lower()]
+    assert run, "there is no button to run the monthly cross-check"
+    run[0].click().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    banners = [s.value for s in at.success]
+    assert banners, "the monthly loop produced no live-fit proof"
+    assert "Trained live on" in banners[-1], banners[-1]
+    assert "clean rows" in banners[-1], banners[-1]
+    assert "s" in banners[-1], f"no runtime in the proof: {banners[-1]}"
+
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Avoided false dispatches" in body, "the cost cards are missing"
+    assert "Cost saved" in body or "cost saved" in body.lower()
