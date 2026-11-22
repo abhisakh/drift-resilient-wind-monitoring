@@ -379,7 +379,7 @@ A four-tab Streamlit dashboard, ordered the way a control room works:
 | tab | what it does |
 |---|---|
 | 🌤️ **Weather Forecast & Power Prediction** | a real 7-day hourly forecast from Open-Meteo, the turbine's own conditioned power curve applied to it, and what-if sliders for a wind or temperature shift. Plus a **demo checkpoint** selector: curated historical weeks scored by a reference trained on exactly the thirty days before them, and by the same rule applied one and two years earlier. No model comparison on this tab. |
-| 🔍 **Daily Cross-Check: Weather vs. Hardware Wear** | the R80711 case study, then a **fresh monthly fit** scored against the target month, then the dispatch-episode and cost impact, then the live explorer. |
+| 🔍 **Daily Cross-Check: Weather vs. Hardware Wear** | opens on the **fresh monthly fit** — fitted, scored against the target month and priced on arrival, with no button press — then the dispatch-episode and cost impact, then the live explorer. |
 | ⚖️ **Model & Benchmark Comparison** | the deterministic arm against the learned one, the false-alarm rate by year, the CARE benchmark, and the audit of the published autoencoder baseline. |
 | 🔧 **Engineering & Data Forensics** | the pipeline, the CI guarantees, and the upstream data bugs this project caught. |
 
@@ -389,6 +389,15 @@ calls anomalous, and refits — so a fault that was already developing last
 month cannot quietly become the new normal. It reports the fit time, the
 clean-row count, and the three arms' alarm rates, and it prices the
 difference in dispatches and euros.
+
+It runs on arrival, so the chart, the cross-check and the cost are on
+screen when the tab opens rather than one button press away. The chart
+draws the actual bearing temperature, the model's weather-conditioned
+expected temperature and the cross-check residual, all visible on the
+first render — during the September overheat the residual leaves the band
+(11.4 K against a 6.6 K threshold) while the model's expected temperature
+stays below the actual. The peak card reads **86.64 °C** where the model
+expected 78.9 °C: that difference is wear, not weather.
 
 It is **hybrid**. With `data/raw/` present it reads the raw ENGIE SCADA and
 re-runs the detector live — that is the mode for a demo day. Without it (as on
@@ -406,7 +415,10 @@ The cross-check tab ends with a **Live Multi-Turbine & Weather-Conditioned
 Explorer**: the
 same detector, run on the data *you* choose, with the provenance of every run
 on screen — rows processed, runtime in seconds, and which datasets were
-joined.
+joined. It carries the **reference switch** — *rolling 30-day* against
+*frozen 2014* on the same window, same detector, same threshold — because
+that comparison is the project's central result and it should be one click
+away rather than a claim in the README.
 
 | source | what it runs on | available when |
 |---|---|---|
@@ -508,7 +520,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-239 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+243 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

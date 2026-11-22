@@ -171,12 +171,22 @@ def test_switching_the_reference_changes_the_alarm_count():
     """
     from streamlit.testing.v1 import AppTest
 
-    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=180)
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=300)
     at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    # The switch lives with the live monitor now, so the run has to happen
+    # first -- the control drives that run, it does not replace it.
+    run = [b for b in at.button if "run the explorer" in b.label.lower()]
+    assert run, "there is no button to run the explorer"
+    run[0].click().run()
     assert not at.exception, f"the app raised: {at.exception}"
 
     radios = [r for r in at.radio if r.label == "Reference"]
     assert radios, "the monitor has no reference selector"
+    assert set(radios[0].options) == {"rolling 30-day", "frozen 2014"}, (
+        radios[0].options
+    )
     radios[0].set_value("rolling 30-day").run()
     rolling = _alarm_count(at)
     radios[0].set_value("frozen 2014").run()
@@ -988,3 +998,91 @@ def test_switching_everything_off_still_plots_the_actual_output():
     body = "\n".join(m.value for m in at.markdown)
     assert "MAE — last 30-day fit" not in body
     assert "MAE — frozen 1-year-back" not in body
+
+
+def _monthly_chart_traces(at):
+    """The monthly loop chart's traces and their `visible` flag.
+
+    `visible` is read raw, so an unset flag comes back as None and the
+    test below insists on an explicit True.
+    """
+    import json
+    for el in at.get("plotly_chart"):
+        spec = json.loads(el.proto.spec)
+        names = [tr.get("name") for tr in spec.get("data", [])]
+        if "weather-conditioned residual" in names:
+            return {tr.get("name"): tr.get("visible")
+                    for tr in spec.get("data", [])}
+    return {}
+
+
+def test_the_cross_check_tab_opens_with_the_monthly_loop():
+    """The static R80711 snapshot is gone: the tab opens on the loop."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "R80711, September 2017" not in body, (
+        "the static case-study block is still at the top of the tab"
+    )
+    assert "Monthly Operational Loop" in body, "the monthly loop is missing"
+
+    # And the block is gone from the source, not merely hidden.
+    src = (ROOT / "app.py").read_text()
+    assert "tab_case_study" not in src, "the static block is still in app.py"
+    assert "The case study: R80711, September 2017" not in src
+
+
+def test_the_monthly_loop_runs_on_arrival():
+    """A reviewer opens the tab and the cross-check is already there --
+    no button press between them."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    banners = [s.value for s in at.success]
+    assert banners, "the monthly loop did not run on arrival"
+    assert "Trained live on" in banners[-1], banners[-1]
+
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Monthly Operational Loop" in body
+    assert "Avoided false dispatches" in body, "the cost cards are missing"
+    assert "€14,000" in body, "the cost saving is not on screen on arrival"
+
+
+def test_the_monthly_chart_shows_the_model_curves():
+    """The actual temperature, the model's expected temperature and the
+    cross-check residual must all be VISIBLE on the first render -- a
+    reviewer should not have to click a legend entry to see the model."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+
+    traces = _monthly_chart_traces(at)
+    assert traces, "the monthly loop chart is missing"
+    for name in ("actual gearbox bearing 2",
+                 "weather-conditioned prediction",
+                 "weather-conditioned residual"):
+        assert name in traces, f"{name} is not on the chart"
+        assert traces[name] is True, (
+            f"{name} is hidden on the first render (visible={traces[name]!r})"
+        )
+        assert traces[name] != "legendonly", f"{name} is legend-only"
+
+
+def test_the_cross_check_residual_spikes_above_the_threshold():
+    """The whole point of the bottom panel: during the September overheat
+    the residual leaves the band, and the model still raises the alarm."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "rows above 80 °C in the month" in body, (
+        "the overheating rows are not reported"
+    )
+    # The conditioned arm alarms far less than the naive one, and the
+    # genuine fault is still caught.
+    assert "Weather-conditioned model alarms" in body
+    assert "Real fault protection value" in body, (
+        "the genuine-fault protection is not reported"
+    )

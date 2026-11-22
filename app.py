@@ -156,33 +156,51 @@ def _watermark_uri() -> str:
 def _style():
     css = """
         <style>
-        .badge {padding: .45rem .9rem; border-radius: .5rem; font-weight: 700;
-                letter-spacing: .04em; font-size: .82rem; display: inline-block;}
+        /* Global readability boost with explicit px for widescreen & Loom recordings */
+        .stApp [data-testid="stMarkdownContainer"] p,
+        .stApp [data-testid="stMarkdownContainer"] li {
+            font-size: 18px !important;
+            line-height: 1.55 !important;
+        }
+        .stApp [data-testid="stCaptionContainer"],
+        .stApp [data-testid="stCaptionContainer"] p {
+            font-size: 15px !important;
+            line-height: 1.45 !important;
+            color: #cbd5e1 !important;
+        }
+        /* Larger tab headers, widget labels, and checkboxes */
+        .stApp button[data-baseweb="tab"] p {
+            font-size: 18px !important;
+            font-weight: 600 !important;
+        }
+        .stApp [data-testid="stWidgetLabel"] p,
+        .stApp [data-testid="stCheckbox"] label p {
+            font-size: 17px !important;
+        }
+
+        /* Custom components */
+        .badge {padding: 8px 16px; border-radius: 8px; font-weight: 700;
+                letter-spacing: .04em; font-size: 15px !important; display: inline-block;}
         .live {background:#0f3d2e; color:#5fd39a; border:1px solid #1d6b4e;}
         .cloud {background:#2b2f4a; color:#9fb4ff; border:1px solid #455089;}
-        .kpi {padding:.7rem .9rem; border:1px solid var(--border);
-              border-radius:.5rem; margin-bottom:.4rem;}
-        .kpi .v {font-size:1.55rem; font-weight:700; line-height:1.15;}
-        .kpi .l {font-size:.76rem; color:var(--muted-foreground); text-transform:uppercase;
-                 letter-spacing:.06em;}
-        .note {border-left:3px solid var(--border); padding:.35rem .8rem; color:var(--muted-foreground);
-               font-size:.9rem;}
+        .kpi {padding: 14px 18px; border:1px solid var(--border);
+              border-radius: 8px; margin-bottom: 8px;}
+        .kpi .v {font-size: 32px !important; font-weight: 700; line-height: 1.2;}
+        .kpi .l {font-size: 14px !important; font-weight: 600; color: #cbd5e1;
+                 text-transform: uppercase; letter-spacing: .05em; margin-top: 4px;}
+        .note {border-left: 3px solid var(--border); padding: 8px 14px; color: #cbd5e1;
+               font-size: 16px !important; line-height: 1.5;}
 
-        /* The brand mark beside the sidebar title. */
-        .callout {border-left:4px solid var(--accent, #5fd39a);
-                  padding:.7rem 1rem; margin:.6rem 0 1rem 0;
-                  background:rgba(95,211,154,0.07);
-                  border-radius:.35rem; font-size:1.02rem; line-height:1.5;}
-        .brand {display:flex; align-items:center; gap:.55rem;
-                font-size:1.17rem; font-weight:700; line-height:1.25;
-                margin:.9rem 0 .35rem 0; color:var(--foreground);}
-        .brand-icon {flex:0 0 auto; width:26px; height:26px; color:var(--foreground);}
+        .callout {border-left: 4px solid var(--accent, #5fd39a);
+                  padding: 14px 18px; margin: 12px 0 18px 0;
+                  background: rgba(95,211,154,0.08);
+                  border-radius: 6px; font-size: 18px !important; line-height: 1.55;}
+        .brand {display: flex; align-items: center; gap: 10px;
+                font-size: 22px !important; font-weight: 700; line-height: 1.25;
+                margin: 14px 0 6px 0; color: var(--foreground);}
+        .brand-icon {flex: 0 0 auto; width: 28px; height: 28px; color: var(--foreground);}
 
-        /* A wind turbine as a watermark in the bottom-right of the main
-           canvas. It is drawn as a pseudo-element on the body rather than as
-           a div so it cannot affect the layout or be clipped by a
-           container, and it is behind the content: pointer-events are off,
-           the opacity is 6 %, and the content sits above it. */
+        /* Wind turbine watermark in bottom-right corner */
         body::after {
             content: "";
             position: fixed;
@@ -198,7 +216,6 @@ def _style():
             pointer-events: none;
             z-index: 0;
         }
-        /* Keep the app's own content above the watermark. */
         section.main, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
             position: relative;
             z-index: 1;
@@ -464,20 +481,23 @@ def tab_monthly_loop(live: bool) -> dict | None:
         st.metric("Months available", f"{len(months)}",
                   f"{months[0]} → {months[-1]}")
 
-    if st.button("Run the monthly cross-check", type="primary",
-                 key="run_monthly"):
+    # The loop runs on arrival. The chart, the cross-check and the cost
+    # should be on screen when a reviewer opens the tab, not one button
+    # press away -- and the fit is cached, so it costs nothing to repeat.
+    # The button re-runs it, and changing any parameter re-runs it too.
+    signature = (target, source, turbine, z_threshold)
+    stale = st.session_state.get("monthly_signature") != signature
+    if st.button("Re-run the monthly cross-check", type="primary",
+                 key="run_monthly") or stale:
         with st.spinner(f"Fitting a fresh reference on {target}…"):
             result, error = _monthly_cached(target, source, turbine, z_threshold)
         if error:
             st.error(f"the cross-check failed: {error}")
             return None
         st.session_state["monthly_result"] = result
-    elif "monthly_result" in st.session_state:
-        result = st.session_state["monthly_result"]
+        st.session_state["monthly_signature"] = signature
     else:
-        st.info("Press **Run the monthly cross-check** to fit the reference "
-                "live and score the month.")
-        return None
+        result = st.session_state["monthly_result"]
 
     prov = result["provenance"]
     # --- the live fit proof ------------------------------------------------
@@ -489,7 +509,13 @@ def tab_monthly_loop(live: bool) -> dict | None:
         f"threshold {prov['threshold_k']:.2f} K"
     )
 
-    k1, k2, k3 = st.columns(3)
+    # The peak temperature, against what the model expected that day. This
+    # is the case study in one number: 86.64 °C where the weather
+    # conditioned model expected 78.9 °C is wear, not weather.
+    peak_c = float(result["frame"]["Gb2t_avg"].max())
+    peak_expected = float(result["frame"]["predicted_weather"].max())
+
+    k1, k2, k3, k4 = st.columns(4)
     with k1:
         kpi(f"{prov['naive_alarm_pct']:.2f} %", "Naive static baseline alarms",
             f"{prov['naive_episodes']} dispatches, "
@@ -500,6 +526,9 @@ def tab_monthly_loop(live: bool) -> dict | None:
             f"{prov['conditioned_episodes']} dispatches, "
             f"{prov['conditioned_false_dispatches']} of them false")
     with k3:
+        kpi(f"{peak_c:.2f} °C", "peak bearing temperature",
+            f"the model expected {peak_expected:.1f} °C")
+    with k4:
         kpi(f"{prov['fault_rows']:,}", "rows above 80 °C in the month",
             f"{prov['fault_rows_flagged']:,} flagged by the model")
 
@@ -527,33 +556,38 @@ def tab_monthly_loop(live: bool) -> dict | None:
 
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["Gb2t_avg"], name="actual gearbox bearing 2",
-        mode="lines", line=dict(width=1.8, color="#e05263")), row=1, col=1)
+        mode="lines", line=dict(width=1.8, color="#e05263"),
+        visible=True), row=1, col=1)
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["predicted_weather"],
         name="weather-conditioned prediction", mode="lines",
-        line=dict(width=1.6, dash="dash", color="#5fd39a")), row=1, col=1)
+        line=dict(width=1.6, dash="dash", color="#5fd39a"),
+        visible=True), row=1, col=1)
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["predicted_static"],
         name="naive static baseline", mode="lines",
-        line=dict(width=1.3, dash="dot", color="#9fb4ff")), row=1, col=1)
+        line=dict(width=1.3, dash="dot", color="#9fb4ff"),
+        visible=True), row=1, col=1)
     if "Ws_avg" in frame.columns and frame["Ws_avg"].notna().any():
         fig.add_trace(go.Scatter(
             x=frame["ts"], y=frame["Ws_avg"], name="wind speed (m/s)",
             mode="lines", line=dict(width=1.0, color="#c9a227"),
-            yaxis="y2"), row=1, col=1)
+            visible=True, yaxis="y2"), row=1, col=1)
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["era5_temp_2m"], name="ambient (°C)",
         mode="lines", line=dict(width=1.0, color="#7f8ea3"),
-        yaxis="y3"), row=1, col=1)
+        visible=True, yaxis="y3"), row=1, col=1)
 
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["residual_weather"],
         name="weather-conditioned residual", mode="lines",
-        line=dict(width=1.4, color="#5fd39a")), row=2, col=1)
+        line=dict(width=1.4, color="#5fd39a"),
+        visible=True), row=2, col=1)
     fig.add_trace(go.Scatter(
         x=frame["ts"], y=frame["residual_static"],
         name="naive static residual", mode="lines",
-        line=dict(width=1.0, dash="dot", color="#9fb4ff")), row=2, col=1)
+        line=dict(width=1.0, dash="dot", color="#9fb4ff"),
+        visible=True), row=2, col=1)
     fig.add_hrect(y0=-prov["threshold_k"], y1=prov["threshold_k"],
                   fillcolor="#5fd39a", opacity=0.10, line_width=0,
                   row=2, col=1)
@@ -565,14 +599,20 @@ def tab_monthly_loop(live: bool) -> dict | None:
         fig.add_trace(go.Scatter(
             x=hot["ts"], y=hot["residual_weather"],
             name="above 80 °C", mode="markers",
-            marker=dict(size=4, color="#e05263", symbol="circle-open")), row=2, col=1)
+            marker=dict(size=4, color="#e05263", symbol="circle-open"),
+            visible=True), row=2, col=1)
 
     fig.update_yaxes(title_text="°C", row=1, col=1)
     fig.update_yaxes(title_text="wind (m/s)", row=1, col=1, secondary_y=True)
     fig.update_yaxes(title_text="residual (K)", row=2, col=1)
     fig.update_xaxes(title_text="UTC", row=2, col=1)
+    # Eight traces in a right-hand legend would squeeze the plot to less
+    # than half the width, and the whole point of the figure is that the
+    # curves can be read against each other. The legend goes underneath.
     fig.update_layout(
-        height=760, margin=dict(l=10, r=10, t=62, b=10), hovermode="x unified",
+        height=860, margin=dict(l=10, r=10, t=62, b=130), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="top", y=-0.14, x=0,
+                    font=dict(size=11)),
         yaxis3=dict(overlaying="y", anchor="x", side="right", showgrid=False,
                     title="ambient °C"),
     )
@@ -797,8 +837,33 @@ def _render_live_result(result: dict, z_threshold: float) -> None:
                 x=frame.get("ts"), y=frame[col],
                 name=col.replace("_", " "), mode="lines",
                 line=style), row=zrow, col=1)
-    shown = "z_rolling" if ("z_rolling" in frame.columns
-                            and frame["z_rolling"].notna().any()) else "z_frozen"
+
+    # Which reference the alarms are measured against. Both z-scores are
+    # already in the frame, so this is the detector's own decision rule
+    # applied to the same window -- not a pre-baked annotation. The rolling
+    # reference is the default, because it is the one that operates.
+    has_rolling = ("z_rolling" in frame.columns
+                   and frame["z_rolling"].notna().any())
+    has_frozen = ("z_frozen" in frame.columns
+                  and frame["z_frozen"].notna().any())
+    choices = []
+    if has_rolling:
+        choices.append("rolling 30-day")
+    if has_frozen:
+        choices.append("frozen 2014")
+    if choices:
+        reference = st.radio(
+            "Reference", choices, index=0, key="live_reference",
+            help="A frozen reference applied to later data reads the "
+                 "turbine's own drift as overheating. The rolling reference "
+                 "is the one that operates.",
+        )
+    else:
+        reference = "the run's own reference"
+    shown = {"rolling 30-day": "z_rolling",
+             "frozen 2014": "z_frozen"}.get(reference, "z_frozen")
+    if shown not in frame.columns:
+        shown = "z_frozen" if "z_frozen" in frame.columns else "z_rolling"
     if shown in frame.columns:
         alarm = frame[shown] > z_threshold
         fig.add_trace(go.Scatter(
@@ -835,7 +900,11 @@ def _render_live_result(result: dict, z_threshold: float) -> None:
         kpi(str(len(prov.get("channels") or [])), "thermal channels",
             prov.get("reference", "")[:48])
     with k3:
-        kpi(f"{prov.get('alarms', 0):,}", "alarms",
+        if shown in frame.columns:
+            n_alarm = int((frame[shown] > z_threshold).fillna(False).sum())
+        else:
+            n_alarm = int(prov.get("alarms", 0))
+        kpi(f"{n_alarm:,}", f"alarms ({reference} reference)",
             f"z > {prov.get('z_threshold', z_threshold):.1f}")
     with k4:
         rate = (100.0 * prov.get("alarms", 0) / max(1, prov.get("rows", 1)))
@@ -1050,6 +1119,13 @@ def tab_explorer(live: bool) -> None:
                                                         z_threshold, ref_frac)
                         except Exception as exc:
                             st.error(f"the live engine failed: {exc}")
+
+    # The result is kept, so changing the reference below re-renders the
+    # same run instead of emptying the chart.
+    if result is None:
+        result = st.session_state.get("explorer_result")
+    else:
+        st.session_state["explorer_result"] = result
 
     if result is not None:
         _provenance_banner(result["provenance"])
@@ -1574,144 +1650,7 @@ def tab_forecast() -> None:
 
 
 # ---------------------------------------------------------------- tab 2
-def _snapshot_frame(snap) -> pd.DataFrame:
-    df = pd.DataFrame(snap["series"])
-    df["t"] = pd.to_datetime(snap["t"], unit="s", utc=True)
-    return df
-
-
-def tab_case_study(snap, live):
-    """The R80711 case study: the fault the cross-check is measured against.
-
-    It is the project's strongest single piece of evidence -- an abnormality
-    found in unlabelled data, with the three sibling turbines as the control
-    group -- so it leads the cross-check tab rather than sitting in a
-    benchmark table.
-    """
-    st.markdown("#### The case study: R80711, September 2017")
-    st.markdown(
-        "In September 2017 one gearbox bearing on R80711 runs hot while its "
-        "three siblings — same site, same weather, same channel — stay inside "
-        "their range. **This is not a labelled fault.** The ENGIE release "
-        "carries no fault label for it, and the one documented gearbox event "
-        "(R80721, 2015) is absent from the released cleaned CSVs. It is an "
-        "abnormality discovered in unlabelled data, with the peers as the "
-        "control group."
-    )
-
-    if not snap:
-        st.error("results/demo_r80711.json is missing — run "
-                 "`python scripts/pipeline/11_demo.py --export`.")
-        return
-
-    df = _snapshot_frame(snap)
-    meta = snap["meta"]
-    target = meta["target_turbine"]
-    peers = meta["peer_turbines"]
-
-    # --- controls ---------------------------------------------------------
-    c1, c2, c3, c4 = st.columns([1.1, 1.1, 1.1, 2.7])
-    with c1:
-        threshold = st.slider("Alarm threshold (z)", 0.5, 12.0, 4.0, 0.1,
-                              help="The most deviant thermal channel must exceed "
-                                   "this many robust deviations to alarm.")
-    with c2:
-        reference = st.radio(
-            "Reference", ("rolling 30-day", "frozen 2014"), index=0,
-            help="Which reference the score is measured against. A frozen 2014 "
-                 "reference applied to 2017 data is the failure mode this "
-                 "project is about: the turbine's own drift reads as "
-                 "overheating on every channel at once.",
-            disabled="zmax_rolling" not in df.columns,
-        )
-    with c3:
-        show_peers = st.checkbox("Show peer control group", value=True)
-    with c4:
-        st.markdown(
-            "<div class='note'>Drag the threshold: the alarms are recomputed "
-            "from the stored z-score, so this is the detector's own decision "
-            "rule, not a pre-baked annotation.</div>",
-            unsafe_allow_html=True)
-
-    z_col = "zmax_rolling" if reference == "rolling 30-day" else "zmax"
-    alarms = df[z_col] > threshold
-    n_alarm = int(alarms.fillna(False).sum())
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        kpi(f"{_fmt(snap['kpis']['r80711_max_c'], 2)} °C", "R80711 peak bearing temp",
-            "peers peak at " + _fmt(snap["kpis"]["peer_max_c"], 2) + " °C")
-    with k2:
-        kpi(f"{snap['kpis']['rows_over_80c']}", "R80711 samples over 80 °C",
-            f"peers: {snap['kpis']['peer_rows_over_80c']}")
-    with k3:
-        kpi(f"{_fmt(snap['kpis']['ambient_mean_c'], 1)} °C", "ERA5 ambient",
-            "too cold to explain the bearing")
-    with k4:
-        kpi(f"{n_alarm:,}", f"alarms ({reference} reference)",
-            f"{100*n_alarm/max(1,len(df)):.1f} % of samples")
-
-    # --- the time series --------------------------------------------------
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        row_heights=[0.6, 0.4], vertical_spacing=0.06,
-                        subplot_titles=("Gearbox bearing 2 temperature (°C)",
-                                        "Detector z-score and alarms"))
-
-    fig.add_trace(go.Scatter(x=df["t"], y=df[target], name=f"{target} (target)",
-                              mode="lines", line=dict(width=1.6)), row=1, col=1)
-    if show_peers:
-        for p in peers:
-            fig.add_trace(go.Scatter(x=df["t"], y=df[p], name=f"{p} (control)",
-                                      mode="lines", line=dict(width=1.0),
-                                      opacity=0.75), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df["t"], y=df["peer_median"], name="peer median",
-                                  mode="lines", line=dict(width=2.0, dash="dash"),
-                                  opacity=0.9), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df["t"], y=df[z_col], name=f"max-z ({reference} reference)",
-                              mode="lines", line=dict(width=1.2)), row=2, col=1)
-    fig.add_trace(go.Scatter(
-        x=df["t"], y=df[z_col].where(alarms), name=f"alarm (z > {threshold:.1f})",
-        mode="markers", marker=dict(size=4, color="#e05263")), row=2, col=1)
-    fig.add_hline(y=threshold, line_dash="dash", line_color="#e05263",
-                  row=2, col=1, annotation_text=f"threshold {threshold:.1f}")
-
-    fig.update_yaxes(title_text="°C", row=1, col=1)
-    fig.update_yaxes(title_text="robust deviations", row=2, col=1)
-    fig.update_xaxes(title_text="UTC", row=2, col=1)
-    fig.update_layout(height=620, margin=dict(l=10, r=10, t=60, b=10),
-                      hovermode="x unified")
-    st.plotly_chart(fig, width="stretch")
-
-    # --- the reference comparison ------------------------------------------
-    fr = snap["kpis"].get("false_alarm_pct_frozen_reference")
-    rl = snap["kpis"].get("false_alarm_pct_rolling_reference")
-    if fr is not None and rl is not None:
-        st.markdown(
-            f"<div class='note'>Same window, same detector, same threshold "
-            f"(z &gt; 4), <b>only the reference differs</b>: a frozen 2014 "
-            f"reference alarms on <b>{_fmt(fr, 2)} %</b> of samples, a rolling "
-            f"30-day reference on <b>{_fmt(rl, 2)} %</b>. That is the whole "
-            f"project in one line — the reference matters more than the model, "
-            f"and a stale reference turns slow drift into a flood of alarms.</div>",
-            unsafe_allow_html=True)
-
-    # --- snapshot mode -----------------------------------------------------
-    if not live:
-        st.info(
-            "**Snapshot mode.** The raw 19 GB release is not present, so the "
-            "series above is read from `results/demo_r80711.json` — exported "
-            "by `scripts/pipeline/11_demo.py` from the same detector and the "
-            "same frozen 2014 reference. The explorer below still runs live: "
-            "it can score any turbine CSV you give it."
-        )
-
-
-
-def tab_crosscheck(snap, live) -> None:
+def tab_crosscheck(live) -> None:
     """Daily Cross-Check: Weather vs. Hardware Wear.
 
     The operational loop, in the order a control room works in: here is the
@@ -1727,7 +1666,6 @@ def tab_crosscheck(snap, live) -> None:
         "month before, scores the target month against it, and separates the "
         "two — with the cost of getting it wrong in euros."
     )
-    tab_case_study(snap, live)
     result = tab_monthly_loop(live)
     tab_cost_impact(result)
     tab_explorer(live)
@@ -1942,7 +1880,6 @@ def main():
     _style()
 
     live = live_available()
-    snap = load_snapshot()
     engie = load_engie()
     care_score = load_care_score()
     multiv = load_multivariate()
@@ -1990,7 +1927,7 @@ def main():
     with t1:
         tab_forecast()
     with t2:
-        tab_crosscheck(snap, live)
+        tab_crosscheck(live)
     with t3:
         tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
     with t4:
