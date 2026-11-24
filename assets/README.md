@@ -9,12 +9,13 @@ Streamlit Community Cloud can run the detector without downloading 19 GB.
 |---|---|
 | source | ENGIE La Haute Borne, Mendeley Data **v2**, CC BY 4.0 |
 | turbine | `R80711` (2 050 kW Senvion MM82, Meuse, France) |
-| window | 1 August – 30 November 2017, 10-minute resolution |
-| rows | ~13 200 |
+| window | 1 May – 30 November 2017, 10-minute resolution |
+| rows | ~23 700 |
 | columns | `Date_time`, `P_avg`, `Ws_avg`, `Git_avg`, `Gost_avg`, `Gb2t_avg`, `Gb1t_avg`, `Db2t_avg`, `era5_temp_2m` |
 
-It covers September 2017, so it contains the case study's thermal
-signature: `Gb2t_avg` goes above 80 °C on R80711 while the ambient is
+It starts in May so that every month from July onwards can be trained on at
+least a month of healthy readings, and it covers September 2017, so it
+contains the case study's thermal signature: `Gb2t_avg` goes above 80 °C on R80711 while the ambient is
 around 15 °C.
 
 ### Two things to know about it

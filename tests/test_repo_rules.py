@@ -35,6 +35,8 @@ def test_readme_has_the_generated_markers():
     assert "<!-- RESULTS:END -->" in readme
     assert "<!-- METHOD:START -->" in readme
     assert "<!-- METHOD:END -->" in readme
+    assert "<!-- GOAL:START -->" in readme
+    assert "<!-- GOAL:END -->" in readme
 
 
 def test_readme_numbers_come_from_results():
@@ -49,6 +51,8 @@ def test_readme_numbers_come_from_results():
     # from the literature live in data/README.md, which is included below.
     body = readme.split("<!-- RESULTS:START -->", 1)[1].split("<!-- RESULTS:END -->", 1)[0]
     body += readme.split("<!-- METHOD:START -->", 1)[1].split("<!-- METHOD:END -->", 1)[0]
+    # The goal section is generated too, so it is held to the same rule.
+    body += readme.split("<!-- GOAL:START -->", 1)[1].split("<!-- GOAL:END -->", 1)[0]
 
     artefacts = {}
     for p in (ROOT / "results").glob("*.json"):
@@ -98,6 +102,7 @@ def test_report_generator_owns_the_results_section():
     assert "RESULTS:START" in src
     assert "RESULTS:END" in src
     assert "METHOD:START" in src
+    assert "GOAL:START" in src
 
 
 # --- Rule 2: logic in src/, orchestration in scripts/ ------------------------
@@ -400,3 +405,25 @@ def test_the_dashboard_holds_no_domain_logic():
     assert "from windmill import" in app or "from windmill." in app, (
         "app.py does not import the project's modules"
     )
+
+
+def test_every_makefile_target_is_named_in_the_makefile_header():
+    """`make help` lists the targets, but the header is what a reader sees
+    when they open the file. A target added without being named there is a
+    command nobody knows about."""
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[1] / "Makefile").read_text()
+    header = []
+    for line in text.splitlines():
+        if not line.startswith("#"):
+            break
+        header.append(line)
+    header_text = "\n".join(header)
+
+    targets = re.findall(r"^([a-zA-Z][a-zA-Z0-9_-]*):.*?## ", text, re.M)
+    assert targets, "no documented targets found in the Makefile"
+    missing = [t for t in targets if f"make {t}" not in header_text]
+    assert not missing, (
+        f"these Makefile targets are not named in its header: {missing}")

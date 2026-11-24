@@ -94,6 +94,75 @@ def load_thermal() -> dict | None:
     return _load("thermal_signal.json")
 
 
+@st.cache_data(show_spinner=False)
+def load_backtest() -> dict | None:
+    return _load("backtest.json")
+
+
+@st.cache_data(show_spinner=False)
+def load_operating_curve() -> dict | None:
+    return _load("operating_curve.json")
+
+
+@st.cache_data(show_spinner=False)
+def load_confirmation() -> dict | None:
+    return _load("monthly_confirmation.json")
+
+
+@st.cache_data(show_spinner=False)
+def load_daily_check() -> dict | None:
+    return _load("daily_check.json")
+
+
+def _daily_check_view(dcj: dict | None) -> None:
+    """The daily check over the whole record, read from results/daily_check.json.
+
+    A frozen monthly model predicts the healthy sensor value each day; the
+    day's mean difference from the sensor is compared with a tolerance.
+    """
+    if not dcj or not dcj.get("fleet"):
+        return
+    st.markdown("#### The daily check: predicted healthy value against the sensor")
+    st.markdown(
+        "<div class='note'>Each month the model is trained on at least a month "
+        "of healthy data (no standstill, no warm-up after a restart, no flagged "
+        "day, nothing before the last maintenance) and then frozen. Every day it "
+        "predicts what a healthy sensor should read from that day's power and "
+        "weather; a day whose mean is hotter than the tolerance is flagged. A "
+        "confirmed fault keeps the model frozen; after maintenance it is blank "
+        "for a month. Maintenance and inspections are stood in for, because the "
+        "data have no records.</div>", unsafe_allow_html=True)
+    rows = []
+    for tol in sorted(dcj["fleet"], key=float):
+        f = dcj["fleet"][tol]
+        rows.append({
+            "tolerance": f"{tol} K",
+            "healthy siblings, false call-outs / year":
+                f"{f['siblings_false_call_outs_per_year']:.1f}",
+            "R80711, false call-outs / year":
+                f"{f['case_false_call_outs_per_year']:.1f}",
+            "R80711, first call-out on the fault":
+                f["case_first_fault_call_out"] or "none",
+            "fault days flagged":
+                f"{f['case_fault_days_hot']} of {f['case_fault_days_checked']}",
+        })
+    case = next((r for r in dcj["by_turbine"] if r["turbine"] == "R80711"), None)
+    if case:
+        sib = [r["limit_false_call_outs_per_year"] for r in dcj["by_turbine"]
+               if r["turbine"] != "R80711" and r["tolerance"] == case["tolerance"]]
+        rows.append({
+            "tolerance": "plain 80 °C limit",
+            "healthy siblings, false call-outs / year":
+                " / ".join(f"{v:.1f}" for v in sib),
+            "R80711, false call-outs / year":
+                f"{case['limit_false_call_outs_per_year']:.1f}",
+            "R80711, first call-out on the fault":
+                case["limit_first_fault_call_out"] or "none",
+            "fault days flagged": "",
+        })
+    st.table(pd.DataFrame(rows))
+
+
 def live_available() -> bool:
     """Is the raw ENGIE data here? (Not just the directory -- the files.)"""
     if not DATA_RAW.exists():
@@ -203,7 +272,7 @@ FONT_SCALE = 1.0
 FONT_SIZES = {
     "body": 30,        # prose in the tabs and the sidebar
     "caption": 26,     # small explanatory lines under a widget
-    "tab": 28,         # the four tab headers
+    "tab": 24,         # the four tab headers: smaller than the prose, so they read as navigation
     "sidebar": 22,     # the narrow sidebar column
     "check": 26,       # checkbox and radio labels
     "widget": 28,      # widget labels: dropdowns, sliders, checkboxes
@@ -280,26 +349,28 @@ def _style():
         .stApp [data-testid="stMarkdownContainer"] h3 { font-size: __h3__px !important; }
         .stApp [data-testid="stMarkdownContainer"] h4 { font-size: __h4__px !important; }
 
-        /* The four tab headers. Streamlit renders these as
-           div[data-testid="stTab"], not as buttons. The labels are long
-           and there are four of them in one row, so they wrap onto two
-           lines -- and the tab list is a fixed height that would cut the
-           second line off, so it is given room for them. */
+        /* The four tab headers. They must read as NAVIGATION, not as body
+           text, so they are set smaller than the prose, in capitals with
+           letter-spacing, and held in their own bar (see "Tabs." below).
+           A label can still wrap onto two lines, so the bar is given room. */
         .stApp [data-testid="stTab"] p {
             font-size: __tab__px !important;
-            font-weight: 600 !important;
+            font-weight: 650 !important;
+            letter-spacing: .07em !important;
+            text-transform: uppercase !important;
             white-space: normal !important;
             line-height: 1.25 !important;
-            padding-bottom: 6px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            text-align: center !important;
+            color: inherit !important;
         }
         .stApp [data-testid="stTabs"] [role="tablist"] {
             height: auto !important;
             min-height: 0 !important;
-            align-items: flex-start !important;
         }
         .stApp [data-testid="stTab"] {
             height: auto !important;
-            align-items: flex-start !important;
         }
 
         /* Widget labels: dropdowns, sliders, checkboxes, radio buttons. */
@@ -513,13 +584,47 @@ def _style():
                      font-size: __caption__px !important; line-height: 1.6;}
         .app-footer a {color: var(--accent) !important; text-decoration: none;}
 
-        /* Tabs. */
-        .stApp [data-baseweb="tab-list"] {gap: 8px !important;
-                                         border-bottom: 1px solid var(--border);}
-        .stApp [data-testid="stTab"] {padding: 12px 20px !important;
-                                      border-radius: 10px 10px 0 0;}
-        .stApp [data-testid="stTab"]:hover {background: var(--accent-soft);}
-        .stApp [data-baseweb="tab-panel"] {padding-top: 1.4rem !important;}
+        /* Tabs: a contained, segmented bar that is visibly not the body
+           text. A panel with its own background and border; every tab the
+           same width; the active tab a filled accent pill with an accent
+           underline. Streamlit's own thin highlight and border are hidden
+           so there is exactly one indicator, not two. */
+        .stApp [data-testid="stTabs"] {margin-top: 1.4rem;}
+        .stApp [data-baseweb="tab-list"] {
+            gap: 6px !important;
+            padding: 6px !important;
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        }
+        .stApp [data-baseweb="tab-highlight"],
+        .stApp [data-baseweb="tab-border"] {display: none !important;}
+        .stApp [data-testid="stTab"] {
+            flex: 1 1 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 14px 16px !important;
+            border-radius: 10px !important;
+            border: 1px solid transparent !important;
+            color: var(--muted-foreground) !important;
+            transition: background .15s ease, color .15s ease,
+                        border-color .15s ease;
+        }
+        .stApp [data-testid="stTab"]:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: #e6edf3 !important;
+        }
+        .stApp [data-testid="stTab"][aria-selected="true"],
+        .stApp [data-baseweb="tab"][aria-selected="true"],
+        .stApp [role="tab"][aria-selected="true"] {
+            background: rgba(95, 211, 154, 0.16) !important;
+            border-color: rgba(95, 211, 154, 0.55) !important;
+            box-shadow: inset 0 -3px 0 var(--accent);
+            color: var(--accent) !important;
+        }
+        .stApp [data-baseweb="tab-panel"] {padding-top: 1.6rem !important;}
 
         /* Headings: a clear hierarchy, with the section titles marked. */
         .stApp [data-testid="stMarkdownContainer"] h2,
@@ -586,6 +691,13 @@ def _style():
                  letter-spacing: .06em; margin-top: 6px;}
         /* The delta carries an inline font-size, so this has to win. */
         .kpi div[style*="font-size"] { font-size: __kpi_delta__px !important; }
+        .kpi.status-monitoring {border-left: 5px solid #2EAD6B;}
+        .kpi.status-frozen {border-left: 5px solid #E05263;}
+        .kpi.status-hold {border-left: 5px solid #E0A526;}
+        .kpi.status-none {border-left: 5px solid #6B7280;}
+        .hold-bar {height: 8px; border-radius: 4px; margin: 8px 0;
+                   background: rgba(224,165,38,0.18);}
+        .hold-bar > div {height: 8px; border-radius: 4px; background: #E0A526;}
         .note {border: 1px solid var(--border); border-left: 4px solid var(--accent);
                background: var(--surface); border-radius: var(--radius);
                padding: 14px 20px; color: #c9d4df; margin: 6px 0 10px 0;
@@ -1043,8 +1155,9 @@ def _monthly_daily_figure(daily, prov):
 def tab_monthly_loop(live: bool) -> dict | None:
     """The monthly operational loop: a fresh fit, then a cross-check.
 
-    The reference is fitted on the thirty days before the target month and
-    on nothing else, and the rows that reference calls anomalous are dropped
+    The reference is fitted on at least a month of healthy readings before the
+    target month (the whole previous month, reached further back only as far
+    as needed), and the rows that reference calls anomalous are dropped
     and the reference refitted -- so a fault that was already developing last
     month cannot quietly become the new normal.
     """
@@ -1069,7 +1182,7 @@ def tab_monthly_loop(live: bool) -> dict | None:
     else:
         st.caption("The 19 GB release is not present, so this runs on the "
                    "committed sample CSV — real R80711 SCADA for "
-                   "August–November 2017.")
+                   "May–November 2017.")
 
     try:
         with st.spinner("Reading the series…"):
@@ -1086,8 +1199,9 @@ def tab_monthly_loop(live: bool) -> dict | None:
     with c1:
         target = st.selectbox(
             "Target month", months, index=months.index(default),
-            help="The month to score. The reference is fitted on the 30 days "
-                 "immediately before it.")
+            help="The month to score. The reference is fitted on the whole "
+                 "month before it, reaching further back (at most about three "
+                 "months) until it holds a month of healthy readings.")
     with c2:
         z_threshold = st.slider("Alarm threshold (z)", 2.0, 8.0, 3.0, 0.5,
                                  key="monthly_z",
@@ -1123,8 +1237,11 @@ def tab_monthly_loop(live: bool) -> dict | None:
     prov = result["provenance"]
     # --- the live fit proof ------------------------------------------------
     st.success(
-        f"**Trained live on {prov['train_month']}** "
-        f"({prov['clean_rows']:,} clean rows, from {prov['train_rows']:,}) "
+        f"**Trained live on {prov.get('train_start', prov['train_month'])} → "
+        f"{prov.get('train_end', prov['train_month'])}** "
+        f"({prov.get('train_days', 30)} days, {prov['clean_rows']:,} clean "
+        f"rows from {prov['train_rows']:,}; at least a month of healthy "
+        f"readings is required) "
         f"in **{prov['fit_seconds']:.2f} s** — "
         f"{prov['dropped_rows']:,} anomalous rows excluded, "
         f"threshold {prov['threshold_k']:.2f} K"
@@ -1157,7 +1274,9 @@ def tab_monthly_loop(live: bool) -> dict | None:
         "<div class='note'>All three arms are judged by the <b>same rule "
         f"on the same scale</b> (z &gt; {z_threshold:.1f}) — comparing "
         "alarm rates across models with different residual scales would mean "
-        "nothing.</div>",
+        "nothing. That puts their alarm counts in the same units, but it does "
+        "not make them equally calibrated: the cost view below also shows the "
+        "static baseline recalibrated on its own residuals.</div>",
         unsafe_allow_html=True,
     )
 
@@ -1196,6 +1315,268 @@ def tab_monthly_loop(live: bool) -> dict | None:
         unsafe_allow_html=True,
     )
     return result
+
+
+def _curve_economics(curve: dict | None, dispatch_cost: float) -> None:
+    """What the operating curve is worth, under the reader's own assumptions.
+
+    The measured part (false dispatches per turbine-year and the share of
+    faults caught, at every setting of every arm) comes from the operating
+    curve. The three prices are the reader's, so they are sliders. Every arm
+    is shown at its own most profitable setting, which puts the arms on an
+    equal footing; the arithmetic lives in `windmill.cost`.
+    """
+    import plotly.graph_objects as go
+    from windmill import cost as cost_mod
+
+    if not curve or not curve.get("points"):
+        return
+    arms = curve["protocol"]["arms"]
+    shapes = {"a flat temperature offset": curve["points"]}
+    if curve.get("points_ramp_load_proportional"):
+        shapes["a fault whose heat scales with load"] = (
+            curve["points_ramp_load_proportional"])
+    names = {"constant": "constant median", "load": "load-conditioned",
+             "load+ambient": "load + ambient (deployed)",
+             "lightgbm": "LightGBM"}
+
+    st.markdown("#### What the operating curve is worth")
+    st.markdown(
+        "<div class='note'><b>Equal footing.</b> The comparison above depends "
+        "on where each arm's dial happens to be set. Here every arm is given "
+        "its own most profitable setting, using the false dispatches per "
+        "turbine-year and the share of simulated faults caught that the "
+        "operating curve <b>measured</b>. The prices are <b>assumptions</b>: "
+        "move them.</div>", unsafe_allow_html=True)
+
+    s1, s2 = st.columns(2)
+    with s1:
+        faults = st.slider(
+            "Faults per turbine-year", 0.01, 0.20, 0.05, 0.01,
+            help="How often a developing fault turns up. A placeholder: the "
+                 "public data has too few faults to estimate it.")
+    with s2:
+        value = st.slider(
+            "Value of catching a fault early (€)", 20_000, 400_000,
+            int(cost_mod.DEFAULT_EARLY_INTERVENTION_VALUE), 5_000,
+            help="A planned repair set against a failure that trips the "
+                 "turbine. A planning assumption, not a measurement.")
+    a = cost_mod.CostAssumptions(float(dispatch_cost), float(value),
+                                 float(faults))
+
+    fault_axis = [round(0.01 + 0.01 * i, 2) for i in range(20)]
+    for shape, points in shapes.items():
+        rows, edge_notes = [], []
+        for arm in arms:
+            b = cost_mod.best_setting(points, arm, a)
+            if b is None:
+                continue
+            be = b["break_even_fault_rate"]
+            rows.append({
+                "arm": names.get(arm, arm),
+                "most profitable setting":
+                    f"{b['target_rate'] * 100:g} % · {b['persistence_hours']:g} h",
+                "false call-outs / year":
+                    f"{b['false_dispatches_per_turbine_year']:.1f}",
+                "faults caught": f"{b['detection_rate'] * 100:.0f} %",
+                "net value / turbine-year": f"€{b['net_value']:,.0f}",
+                "pays above (faults/yr)":
+                    "never" if be is None else f"{be:.3f}",
+            })
+            if b["at_grid_edge"]:
+                edge_notes.append(f"{names.get(arm, arm)}: "
+                                  + ", ".join(b["at_grid_edge"]))
+        st.markdown(f"**For {shape}:**")
+        left, right = st.columns([3, 2])
+        with left:
+            st.table(pd.DataFrame(rows))
+            if edge_notes:
+                st.caption("Best setting at the edge of the swept grid, so a "
+                           "wider sweep might find a better one — "
+                           + "; ".join(edge_notes) + ".")
+        with right:
+            fig = go.Figure()
+            for arm in arms:
+                curve_rows = cost_mod.net_value_curve(points, arm, fault_axis, a)
+                fig.add_trace(go.Scatter(
+                    x=[r["faults_per_turbine_year"] for r in curve_rows],
+                    y=[r["net_value"] for r in curve_rows],
+                    mode="lines", name=names.get(arm, arm),
+                    hovertemplate="%{x} faults/yr: €%{y:,.0f}<extra>%{fullData.name}</extra>"))
+            fig.add_hline(y=0, line_dash="dot", line_color="#9aa7b6")
+            fig.update_layout(
+                title="Net value at each arm's best setting",
+                xaxis_title="faults per turbine-year",
+                yaxis_title="net value per turbine-year (€)", height=380,
+                legend=dict(title=dict(text=""), orientation="h",
+                            yanchor="bottom", y=1.02, xanchor="left", x=0),
+                margin=dict(l=10, r=20, t=16, b=70))
+            _chart(fig, width="stretch")
+
+    st.markdown(
+        "<div class='note'>Each arm's setting is chosen on the same weeks it "
+        "is scored on, so every figure is optimistic, equally for every arm. "
+        "The faults are simulated. A false call-out is priced as one flat "
+        "cost, whereas an operator would look at the data remotely first, "
+        "which is cheaper.</div>", unsafe_allow_html=True)
+
+
+def _history_view(conf: dict | None) -> None:
+    """Train on last month, predict this month, over every month in the record.
+
+    The single-month loop above shows one month. This shows all of them, so the
+    claim that a healthy model fitted on last month predicts the next month is
+    confirmed against history rather than asserted. Every figure is read from
+    results/monthly_confirmation.json.
+    """
+    import plotly.graph_objects as go
+
+    if not conf or not conf.get("months"):
+        return
+    fleet = conf["summary"]["fleet"]
+    per = conf["summary"]["by_turbine"]
+    limit = conf["protocol"].get("fixed_limit_c", 80)
+
+    st.markdown("#### Historical confirmation: train on last month, predict this month")
+    st.markdown(
+        "<div class='note'>The single month above is one of every month in the "
+        "record. For each turbine and month, a fresh reference is fitted on at "
+        "least a month of healthy readings before it and asked what the month should look "
+        "like given its load and weather. Because the data are historical, "
+        "the answer can be checked.</div>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        kpi(f"{_fmt(fleet['median_mae_k'], 2)} K", "Median monthly error",
+            f"{fleet['healthy_months']} healthy turbine-months · "
+            f"{fleet['share_months_within_1k_bias'] * 100:.0f} % within 1 K of "
+            f"unbiased")
+    with c2:
+        kpi(f"{_fmt(fleet['healthy_model_dispatches_per_turbine_year'], 1)}",
+            "Model false dispatches a year",
+            "per turbine, healthy months, sustained for an hour")
+    with c3:
+        kpi(f"{_fmt(fleet['healthy_fixed_limit_dispatches_per_turbine_year'], 1)}",
+            f"Plain {limit:g} °C limit, a year",
+            f"{fleet['healthy_fixed_limit_dispatches_explained']} of its "
+            f"{fleet['healthy_fixed_limit_dispatches']} dispatches were "
+            "explained by load and weather")
+    with c4:
+        kpi(f"{fleet['anomaly_model_dispatches']} vs "
+            f"{fleet['anomaly_fixed_limit_dispatches']}",
+            "R80711 anomaly months",
+            f"dispatches: model vs the {limit:g} °C limit")
+
+    fig = go.Figure()
+    for turbine in per:
+        rows = [r for r in conf["months"] if r["turbine"] == turbine
+                and r["mae_k"] is not None]
+        fig.add_trace(go.Scatter(
+            x=[r["month"] for r in rows], y=[r["mae_k"] for r in rows],
+            mode="lines+markers", name=turbine, marker=dict(size=5),
+            hovertemplate="%{x}: %{y:.2f} K<extra>" + turbine + "</extra>"))
+    fig.update_layout(
+        title="How far off the prediction was, each month",
+        xaxis_title="month", yaxis_title="mean absolute error (K)", height=380,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        margin=dict(l=10, r=20, t=60, b=50))
+    _chart(fig, width="stretch")
+    st.table(pd.DataFrame([{
+        "turbine": t,
+        "healthy months": b["healthy_months"],
+        "median error": f"{b['median_mae_k']:.2f} K",
+        "model dispatches / year":
+            f"{b['healthy_model_dispatches_per_turbine_year']:.1f}",
+        f"{limit:g} °C limit dispatches / year":
+            f"{b['healthy_fixed_limit_dispatches_per_turbine_year']:.1f}",
+    } for t, b in per.items()]))
+
+    # Can the false alarms be turned down, and what does it cost? The same
+    # history re-scored at stricter settings (nothing refitted), beside the
+    # plain fixed limit held for the same time.
+    sweep = fleet.get("settings") or {}
+    if sweep:
+        r711 = per.get("R80711") or {}
+
+        def parse(key):
+            return float(key[1:key.index("_")]), int(key[key.index("_s") + 2:])
+
+        rows = []
+        for sustain in sorted({parse(k)[1] for k in sweep}):
+            held = f"{sustain * 10 / 60:g} h"
+            for key in sorted((k for k in sweep if parse(k)[1] == sustain),
+                              key=lambda k: parse(k)[0]):
+                a = (r711.get("settings") or {}).get(key) or {}
+                rows.append({
+                    "rule": f"model, z above {parse(key)[0]:g}, held {held}",
+                    "false dispatches / turbine-year":
+                        f"{sweep[key]['healthy_dispatches_per_turbine_year']:.1f}",
+                    "R80711 anomaly months alarmed":
+                        f"{a.get('anomaly_months_alarmed', 0)} of "
+                        f"{a.get('anomaly_months', 0)}",
+                })
+            fkey = f"s{sustain}"
+            fx = (fleet.get("fixed_settings") or {}).get(fkey)
+            if fx:
+                fa = (r711.get("fixed_settings") or {}).get(fkey) or {}
+                rows.append({
+                    "rule": f"plain {limit:g} °C limit, held {held}",
+                    "false dispatches / turbine-year":
+                        f"{fx['healthy_dispatches_per_turbine_year']:.1f}",
+                    "R80711 anomaly months alarmed":
+                        f"{fa.get('anomaly_months_alarmed', 0)} of "
+                        f"{fa.get('anomaly_months', 0)}",
+                })
+            two = fleet.get("two_stage") or {}
+            for key in sorted((k for k in two if parse(k)[1] == sustain),
+                              key=lambda k: parse(k)[0]):
+                ta = (r711.get("two_stage") or {}).get(key) or {}
+                rows.append({
+                    "rule": f"{limit:g} °C limit, vetoed by the model at z "
+                            f"above {parse(key)[0]:g}, held {held}",
+                    "false dispatches / turbine-year":
+                        f"{two[key]['healthy_dispatches_per_turbine_year']:.1f}",
+                    "R80711 anomaly months alarmed":
+                        f"{ta.get('anomaly_months_alarmed', 0)} of "
+                        f"{ta.get('anomaly_months', 0)}",
+                })
+        st.markdown("**Turning the alarm down:** the same history at stricter "
+                    "settings, nothing refitted. *Vetoed* rows are the "
+                    "two-stage rule: the limit triggers, and the model drops "
+                    "the alarms that load and weather explain.")
+        st.table(pd.DataFrame(rows))
+
+    # The sibling warning and the full strategy, beside the limit and the veto.
+    if fleet.get("strategy"):
+        sep = next((r for r in conf["months"] if r["turbine"] == "R80711"
+                    and r["month"] == "2017-09"), None)
+        r711 = per.get("R80711") or {}
+        srows = []
+
+        def srow(label, field, key):
+            a = (r711.get(field) or {}).get(key) or {}
+            srows.append({
+                "rule": label,
+                "R80711 false call-outs / year":
+                    f"{a.get('healthy_dispatches_per_turbine_year', 0):.1f}",
+                "all four, false / year":
+                    f"{fleet[field][key]['healthy_dispatches_per_turbine_year']:.1f}",
+                "R80711 fault months alarmed":
+                    f"{a.get('anomaly_months_alarmed', 0)} of "
+                    f"{a.get('anomaly_months', 0)}",
+                "first call-out, Sep 2017":
+                    ((((sep or {}).get(field) or {}).get(key) or {})
+                     .get("first") or "none"),
+            })
+
+        srow(f"plain {limit:g} °C limit, held 1 h", "fixed_settings", "s6")
+        srow("limit, vetoed by the model (z above 2)", "two_stage", "z2_s6")
+        for key in sorted(fleet["strategy"], key=lambda k: float(k[1:])):
+            srow(f"sibling warning, +{key[1:]} K", "sibling", key)
+            srow(f"strategy: veto + sibling, +{key[1:]} K", "strategy", key)
+        st.markdown("**The sibling warning and the full strategy:** a turbine "
+                    "compared with its siblings at the same moment and similar "
+                    "power, 5-day median, plus the veto.")
+        st.table(pd.DataFrame(srows))
 
 
 def tab_cost_impact(result: dict | None) -> None:
@@ -1255,19 +1636,32 @@ def tab_cost_impact(result: dict | None) -> None:
             kpi("€0", "Real fault protection value",
                 "the fault was not caught this month")
 
+    recal_false = len(episodes.get("recalibrated_false", []))
+    recal_true = len(episodes.get("recalibrated_true", []))
+    recal_rate = live_mod.RECALIBRATED_RATE * 100
     st.markdown(
-        "<div class='note'><b>Read this honestly.</b> A reference that is "
-        "not refreshed for the month's conditions raises "
-        f"{len(episodes['naive_false'])} false dispatches; the conditioned "
-        f"model raises {len(episodes['conditioned_false'])}. But a model "
-        "that never alarms is worthless, so the third card matters as much "
-        "as the first two. A fresh <b>monthly</b> reference has a "
+        "<div class='note'><b>Read this honestly.</b> The static baseline is "
+        "a fixed median that ignores load, judged here on the conditioned "
+        "model's tight scale, so it alarms whenever the machine runs hard: "
+        f"{len(episodes['naive_false'])} false dispatches this month. "
+        "Calibrated on its own training residuals like every other arm (set "
+        f"to alarm on {recal_rate:g} % of its training month), the same "
+        f"static baseline raises {recal_false} false dispatches and "
+        f"{recal_true} on the real fault, against "
+        f"{len(episodes['conditioned_false'])} and "
+        f"{prov['conditioned_true_dispatches']} for the conditioned model. "
+        "So the saving above is mostly a calibration effect, not a modelling "
+        "one. Counts also depend on where each arm's dial is set; the "
+        "operating curve in the README compares arms at equal false "
+        "call-outs per year. A fresh <b>monthly</b> reference has a "
         "documented blind spot: once a developing fault has been in the "
         "training window for a few weeks, the reference moves to meet it. "
         "That is why the R80711 overheat is caught by the <b>frozen</b> "
         "reference — the project ships both.</div>",
         unsafe_allow_html=True,
     )
+
+    _curve_economics(load_operating_curve(), cost_per_dispatch)
 
 
 # ------------------------------------------------- the live explorer
@@ -1623,7 +2017,7 @@ def tab_explorer(live: bool) -> None:
                 st.markdown(
                     "\n".join([
                         f"- {sample.stat().st_size/1e6:.2f} MB, "
-                        "August-November 2017 for R80711, straight from the "
+                        "May-November 2017 for R80711, straight from the "
                         "ENGIE release (Mendeley v2, CC BY 4.0).",
                         "- `era5_temp_2m` is the **reanalysis** ambient "
                         "temperature, not a turbine sensor: the ENGIE release "
@@ -2214,8 +2608,8 @@ def tab_crosscheck(live) -> None:
         "prices the difference."
     )
     result = tab_monthly_loop(live)
+    _history_view(load_confirmation())
     tab_cost_impact(result)
-    tab_explorer(live)
 
 
 # ---------------------------------------------------------------- tab 3
@@ -2413,6 +2807,362 @@ def tab_forensics():
 
 
 # ---------------------------------------------------------------- main
+# ------------------------------------------------- the daily pages (1, 2, 3)
+@st.cache_data(show_spinner=False)
+def load_daily_series() -> dict | None:
+    return _load("daily_series.json")
+
+
+def _daily_view():
+    _ensure_src()
+    from windmill import daily_view
+    return daily_view
+
+
+C_ACTUAL = "#E5E7EB"     # the sensor: the quiet neutral line, as elsewhere
+C_MODEL = "#00D4AA"      # the model fed the day's weather: teal, as elsewhere
+C_FORECAST = "#A78BFA"   # the same model fed the forecast issued days before
+C_HOT = "#E05263"
+
+
+def _three_line_figure(df, tolerance: float, lead: int, title: str):
+    """The forecast, the on-day prediction and the sensor, one point per day,
+    with the tolerance as a band around the on-day prediction."""
+    import plotly.graph_objects as go
+
+    fc = f"f{lead}"
+    chk = df[df["status"] == "checked"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=chk["day"], y=chk["pred"] + tolerance, mode="lines",
+        line=dict(width=0), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(
+        x=chk["day"], y=chk["pred"] - tolerance, mode="lines",
+        line=dict(width=0), fill="tonexty", fillcolor="rgba(0,212,170,0.12)",
+        name=f"tolerance ±{tolerance:g} K", hoverinfo="skip"))
+    if fc in df:
+        fig.add_trace(go.Scatter(
+            x=chk["day"], y=chk[fc], mode="lines+markers",
+            name=f"forecast, issued {lead} day{'s' if lead > 1 else ''} before",
+            line=dict(width=2, dash="dot", color=C_FORECAST),
+            marker=dict(size=6), connectgaps=False))
+    fig.add_trace(go.Scatter(
+        x=chk["day"], y=chk["pred"], mode="lines+markers",
+        name="predicted on the day (actual weather)",
+        line=dict(width=2.4, dash="dash", color=C_MODEL), marker=dict(size=6)))
+    fig.add_trace(go.Scatter(
+        x=chk["day"], y=chk["actual"], mode="lines+markers",
+        name="sensor (daily mean)", line=dict(width=2.6, color=C_ACTUAL),
+        marker=dict(size=7)))
+    hot = chk[chk["diff"] > tolerance]
+    if len(hot):
+        fig.add_trace(go.Scatter(
+            x=hot["day"], y=hot["actual"], mode="markers", name="call-out day",
+            marker=dict(size=16, color=C_HOT, symbol="circle-open",
+                        line=dict(width=3, color=C_HOT))))
+    fig.update_layout(
+        title=title, height=560, hovermode="x unified",
+        margin=dict(l=10, r=10, t=30, b=150),
+        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                    x=0, xanchor="left"))
+    fig.update_yaxes(title_text="°C")
+    return fig
+
+
+def _demo_cards(card: dict, badge: dict) -> None:
+    cols = st.columns(4)
+    with cols[0]:
+        kpi(f"{card['days_hot']} of {card['days_checked']}", "days flagged hot")
+    with cols[1]:
+        kpi(card["first_hot"] or "none", "first call-out")
+    with cols[2]:
+        kpi(f"{card['mae_on_day']:.1f} K" if card["mae_on_day"] is not None else "–",
+            "sensor vs on-day prediction")
+    with cols[3]:
+        kpi(f"{card['mae_forecast']:.1f} K" if card["mae_forecast"] is not None else "–",
+            "sensor vs forecast")
+    st.markdown(f"<div class='note'>{badge['text']}</div>", unsafe_allow_html=True)
+
+
+def page_demo(series: dict | None) -> None:
+    """Page 1: one month, a healthy turbine beside the faulty one."""
+    st.subheader("How it works: one month, two turbines")
+    if not series:
+        st.info("results/daily_series.json is missing: run `make daily`.")
+        return
+    dv = _daily_view()
+    tol = series["tolerance_k"]
+    demo = dv.DEMO
+    st.markdown(
+        f"At the start of each month a model is trained on a month of **healthy** "
+        f"data and then frozen. Each day it is fed only that day's power and "
+        f"weather and predicts what a healthy bearing should read. If the sensor "
+        f"runs more than **{tol:g} K** hotter, a technician is called out that day. "
+        f"Days ahead, the same model fed the **weather forecast** says what to expect.")
+    lead = st.select_slider("Forecast issued how many days before",
+                            options=series["leads"], value=demo["lead"],
+                            key="demo_lead")
+    window = f"{demo['start']} to {demo['end']}"
+    for role, label in (("healthy", "healthy"), ("faulty", "developing a fault")):
+        t = demo[role]
+        df = dv.frame(series, t, series["primary"], demo["start"], demo["end"])
+        card = dv.demo_summary(df, tol, lead)
+        _chart(_three_line_figure(
+            df, tol, lead,
+            f"{t}, {label}: gearbox bearing temperature, {window}"),
+            width="stretch")
+        _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
+    st.markdown(
+        "<div class='note'>The weather forecast is simulated: ERA5 reanalysis plus "
+        "an error that grows with lead time, because archived forecasts for the "
+        "site are not in the data. The call-out is made on the day, from the "
+        "actual weather; the forecast is for planning.</div>",
+        unsafe_allow_html=True)
+
+
+def _month_of_readings(series: dict) -> int:
+    return int(series.get("month_of_readings", 30 * 144))
+
+
+def _strip_figure(rows, tolerance: float, dv):
+    """The traffic light: one square per day per turbine."""
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    for kind in dv.LIGHTS:
+        xs, ys = [], []
+        for t, df in rows:
+            sel = df[dv.lights(df, tolerance) == kind]
+            xs += list(sel["day"])
+            ys += [t] * len(sel)
+        if xs:
+            fig.add_trace(go.Scatter(
+                x=xs, y=ys, mode="markers", name=dv.LIGHT_LABELS[kind],
+                marker=dict(symbol="square", size=22, color=dv.LIGHT_COLOURS[kind])))
+    fig.update_layout(
+        title="Every day of every turbine", height=170 + 60 * len(rows),
+        margin=dict(l=10, r=10, t=30, b=120),
+        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                    x=0, xanchor="left"))
+    fig.update_yaxes(type="category", categoryorder="array",
+                     categoryarray=[t for t, _ in rows][::-1])
+    return fig
+
+
+def page_explore(series: dict | None) -> None:
+    """Page 2: any month, any sensor, the four turbines side by side."""
+    st.subheader("Explore: the four turbines, day by day")
+    if not series:
+        st.info("results/daily_series.json is missing: run `make daily`.")
+        return
+    dv = _daily_view()
+    tol = series["tolerance_k"]
+    names = series["sensor_names"]
+    all_t = list(series["turbines"])
+    months = sorted({d[:7] for t in all_t for d in series["turbines"][t]["day"]})
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
+        chosen = st.multiselect("Turbines", all_t, default=all_t, key="ex_turbines")
+    with c2:
+        month = st.selectbox("Month", months,
+                             index=months.index("2017-09") if "2017-09" in months else 0,
+                             key="ex_month")
+    with c3:
+        sensors = [c for c in names if any(c in series["turbines"][t]["sensors"]
+                                           for t in all_t)]
+        sensor = st.selectbox("Sensor", sensors, format_func=lambda c: names[c],
+                              key="ex_sensor")
+    if not chosen:
+        st.info("Pick at least one turbine.")
+        return
+    start = f"{month}-01"
+    end = str((pd.Timestamp(start) + pd.offsets.MonthEnd(0)).date())
+    rows = [(t, dv.frame(series, t, sensor, start, end)) for t in chosen]
+    _chart(_strip_figure(rows, tol, dv), width="stretch")
+
+    cols = st.columns(len(chosen))
+    for col, t in zip(cols, chosen):
+        b = dv.badge(series, t, end, _month_of_readings(series))
+        label = {"monitoring": "MONITORING", "frozen": "FAULT · MODEL FROZEN",
+                 "hold": "MAINTENANCE HOLD", "none": "NOT CHECKED"}[b["kind"]]
+        extra = ""
+        if b["kind"] == "hold":
+            extra = (f"<div class='hold-bar'><div style='width:{b['share']:.0%}'>"
+                     "</div></div>")
+        with col:
+            st.markdown(
+                f"<div class='kpi status-{b['kind']}'><div class='v'>{t}</div>"
+                f"<div class='l'>{label}</div>{extra}"
+                "<div style='font-size:.8rem;color:var(--muted-foreground)'>"
+                f"{b['text']}</div></div>",
+                unsafe_allow_html=True)
+
+    c4, c5 = st.columns([1, 2])
+    with c4:
+        focus = st.selectbox("Plot turbine", chosen, key="ex_focus")
+    with c5:
+        leads = series["leads"] if sensor == series["primary"] else series["series_leads"]
+        lead = st.select_slider("Forecast issued how many days before", options=leads,
+                                value=leads[0], key="ex_lead")
+    df = dict(rows)[focus]
+    if (df["status"] == "checked").any():
+        _chart(_three_line_figure(df, tol, lead,
+                                  f"{focus}: {names[sensor]}, {month}"),
+               width="stretch")
+    else:
+        st.info(f"{focus} has no checked day in {month}.")
+    if sensor == series["primary"] and st.checkbox(
+            "Compare with the siblings at the same moment", key="ex_sib"):
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+        for t, d in rows:
+            fig.add_trace(go.Scatter(x=d["day"], y=d["sibling"], mode="lines+markers",
+                                     name=t))
+        fig.add_hline(y=2.0, line_dash="dash", line_color=C_HOT,
+                      annotation_text="+2 K")
+        fig.update_layout(
+            title="Change in the gap to the siblings (wind-direction aware, 5-day median)",
+            height=460, margin=dict(l=10, r=10, t=30, b=110),
+            legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                        x=0, xanchor="left"))
+        fig.update_yaxes(title_text="K")
+        _chart(fig, width="stretch")
+
+
+def page_performance(dcj: dict | None, series: dict | None, live: bool) -> None:
+    """Page 3: the record, every day of every turbine, and the monthly loop."""
+    st.subheader("Performance over the whole record")
+    if dcj and dcj.get("fleet"):
+        _daily_check_view(dcj)
+        _forecast_accuracy_view(dcj)
+        _sibling_view(dcj)
+        _case_timeline(series)
+    st.markdown("---")
+    tab_crosscheck(live)
+
+
+def _forecast_accuracy_view(dcj: dict) -> None:
+    import plotly.graph_objects as go
+
+    rows = [r for r in dcj["by_turbine"] if r.get("forecast_accuracy")]
+    if not rows:
+        return
+    leads = sorted({int(L) for r in rows for L in r["forecast_accuracy"]["by_lead"]})
+
+    def mean(key, L):
+        v = [r["forecast_accuracy"]["by_lead"][str(L)][key] for r in rows
+             if str(L) in r["forecast_accuracy"]["by_lead"]]
+        return sum(v) / len(v)
+
+    same = sum(r["forecast_accuracy"]["same_day_mae_vs_sensor_k"] for r in rows) / len(rows)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=leads, y=[mean("mae_vs_sensor_k", L) for L in leads],
+                             mode="lines+markers", name="forecast vs sensor",
+                             line=dict(color=C_FORECAST, width=3)))
+    fig.add_trace(go.Scatter(x=leads, y=[mean("mae_vs_same_day_k", L) for L in leads],
+                             mode="lines+markers", name="forecast vs on-day prediction",
+                             line=dict(color=C_FORECAST, width=2, dash="dot")))
+    fig.add_hline(y=same, line_dash="dash", line_color=C_MODEL,
+                  annotation_text=f"on-day prediction vs sensor {same:.2f} K")
+    fig.update_layout(title="How far ahead the bearing can be predicted (healthy days, "
+                            "four turbines)", height=480,
+                      margin=dict(l=10, r=10, t=30, b=110),
+                      legend=dict(orientation="h", yref="container", y=0,
+                                  yanchor="bottom", x=0, xanchor="left"))
+    fig.update_xaxes(title_text="forecast issued, days before", dtick=1)
+    fig.update_yaxes(title_text="mean absolute error (K)", rangemode="tozero")
+    _chart(fig, width="stretch")
+
+
+def _sibling_view(dcj: dict) -> None:
+    sib = dcj.get("siblings")
+    if not sib:
+        return
+    st.markdown("#### The sibling comparison, and the multi-sensor rule")
+    rows = []
+    for t, s in sib.items():
+        for mode, label in (("direction", "per wind sector"), ("overall", "one normal")):
+            b = s[mode]["by_threshold"]["2"]
+            rows.append({"turbine": t, "normal gap": label,
+                         "false call-outs / year at +2 K":
+                             f"{b['false_call_outs_per_year']:.1f}",
+                         "first call-out on the fault":
+                             b["first_fault_call_out"] or "–"})
+    for r in dcj["by_turbine"]:
+        if r["tolerance"] == 2.0:
+            rows.append({"turbine": r["turbine"],
+                         "normal gap": "model: bearing sensor alone",
+                         "false call-outs / year at +2 K":
+                             f"{r['false_call_outs_per_year']:.1f}",
+                         "first call-out on the fault":
+                             r["first_fault_call_out"] or "–"})
+        g = r.get("gearbox_rule")
+        if g and r["tolerance"] == 2.0:
+            rows.append({"turbine": r["turbine"],
+                         "normal gap": "model: 2 of 4 gearbox sensors",
+                         "false call-outs / year at +2 K":
+                             f"{g['false_call_outs_per_year']:.1f}",
+                         "first call-out on the fault":
+                             g["first_fault_call_out"] or "–"})
+    rows.sort(key=lambda r: r["turbine"])
+    st.table(pd.DataFrame(rows))
+    st.markdown(
+        "<div class='note'>The siblings are compared at the same moment and at "
+        "similar power, so weather and load cancel out. Learning the normal gap per "
+        "wind sector was meant to remove a direction effect; on the healthy "
+        "turbines it did not lower the false call-outs, and it called the fault "
+        "later. Requiring two gearbox sensors to agree raised false call-outs. "
+        "The bearing's own model stays the alarm; the siblings and the other "
+        "sensors are a second opinion for the technician.</div>",
+        unsafe_allow_html=True)
+
+
+def _case_timeline(series: dict | None) -> None:
+    """R80711 from May 2017: the daily difference from its healthy model."""
+    if not series or "R80711" not in series["turbines"]:
+        return
+    import plotly.graph_objects as go
+
+    dv = _daily_view()
+    tol = series["tolerance_k"]
+    df = dv.frame(series, "R80711", series["primary"], "2017-05-01", "2018-01-31")
+    chk = df[df["status"] == "checked"]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=chk["day"], y=chk["diff"], name="sensor − prediction",
+                         marker_color=[C_HOT if v > tol else "#7f8ea3"
+                                       for v in chk["diff"]]))
+    fig.add_trace(go.Scatter(x=df["day"], y=df["sibling"], mode="lines",
+                             name="change against the siblings",
+                             line=dict(color=C_FORECAST, width=2.5)))
+    fig.add_hline(y=tol, line_dash="dash", line_color=C_HOT,
+                  annotation_text=f"+{tol:g} K")
+    for a, b in series["anomaly_spans"].get("R80711", []):
+        fig.add_vrect(x0=a, x1=b, fillcolor="rgba(224,82,99,0.08)", line_width=0)
+    fig.update_layout(title="R80711, May 2017 to January 2018: the fault period shaded",
+                      height=520, margin=dict(l=10, r=10, t=30, b=110),
+                      legend=dict(orientation="h", yref="container", y=0,
+                                  yanchor="bottom", x=0, xanchor="left"))
+    fig.update_yaxes(title_text="K")
+    _chart(fig, width="stretch")
+
+
+def page_evidence(engie, care_score, multiv, lgbm, ae_audit, audit, thermal,
+                  live: bool) -> None:
+    """Page 4: the research behind the pages before it."""
+    _hero(engie, load_backtest(), load_snapshot(), load_operating_curve())
+    e1, e2, e3, e4 = st.tabs(["Weather Forecast", "Benchmark Comparison",
+                              "Engineering & Forensics", "Data Explorer"])
+    with e1:
+        tab_forecast()
+    with e2:
+        tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
+    with e3:
+        tab_forensics()
+    with e4:
+        tab_explorer(live)
+
+
 def _header() -> None:
     """The page header: what this dashboard is, before any tab says what it
     shows. The sidebar carries the brand; this carries the subject."""
@@ -2420,8 +3170,8 @@ def _header() -> None:
         f"<div class='app-header'><div class='app-mark'>{_TURBINE_ICON_SVG}</div>"
         "<div class='app-text'><div class='app-title'>Drift-Resilient Wind "
         "Turbine Condition Monitoring</div>"
-        "<div class='app-sub'>Weather-conditioned fault detection on ENGIE "
-        "La Haute Borne SCADA, scored against the CARE benchmark</div>"
+        "<div class='app-sub'>Fewer false maintenance call-outs and earlier "
+        "warning of bearing faults, on ENGIE La Haute Borne SCADA</div>"
         "<div class='chips'><span class='chip'>Python</span>"
         "<span class='chip'>pandas</span><span class='chip'>LightGBM</span>"
         "<span class='chip'>Plotly</span><span class='chip'>Streamlit</span>"
@@ -2433,31 +3183,106 @@ def _header() -> None:
     )
 
 
-def _hero(engie, care_score, snapshot) -> None:
-    """The headline results, above the tabs, so the first screen says what
-    the project found. Every figure is read from results/*.json."""
-    s = (engie or {}).get("strategies", {})
-    frozen = s.get("frozen_2014", {}).get("mean_rate_pct")
-    rolling = s.get("rolling_30d", {}).get("mean_rate_pct")
-    ratio = (frozen / rolling) if frozen and rolling else None
-    peak = ((snapshot or {}).get("kpis") or {}).get("r80711_max_c")
+def _hero(engie, backtest, snapshot, curve=None) -> None:
+    """The goal, stated as measurements, above the tabs.
 
-    st.markdown("<div class='eyebrow'>Headline results</div>",
-                unsafe_allow_html=True)
+    The goal is fewer false maintenance call-outs and earlier warning of a
+    developing fault. Each card answers one half of it from the artefact
+    that measured it (see windmill.scorecard), so the first screen says
+    what the project is for and what it found. Every figure is read from
+    results/*.json; none is computed here.
+    """
+    if str(ROOT / "src") not in sys.path:
+        sys.path.insert(0, str(ROOT / "src"))
+    from windmill import scorecard
+
+    card = scorecard.goal_scorecard(backtest, engie, snapshot, curve)
+    ages = card["false_alarm"]["ratio_by_reference_age"]
+    ratio = card["false_alarm"]["ratio_frozen_2014"]
+    det = card["detection"].get(scorecard.DEPLOYED_ARM) or {}
+    one, five = scorecard.lead_days(card)
+    learned_one, _ = scorecard.lead_days(card, scorecard.LEARNED_ARM)
+    peak = card["r80711"]["peak_c"]
+    peers = card["r80711"]["peer_max_c"]
+
+    st.markdown("<div class='eyebrow'>The goal: fewer false call-outs, "
+                "earlier warning</div>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        kpi(f"{_fmt(ratio, 1)}×" if ratio else "—", "False-alarm reduction",
-            "changing only the reference")
+        year, two = ages.get("one_year"), ages.get("two_years")
+        kpi(f"{_fmt(year, 1)}×" if year else "—", "False-alarm reduction",
+            "fresh 30-day vs 1-year-old reference, same threshold rule"
+            + (f" · {_fmt(two, 1)}× at 2 years" if two else ""))
     with c2:
-        kpi(f"{_fmt(rolling, 2)} %" if rolling else "—",
-            "Rolling 30-day false-alarm rate",
-            f"against {_fmt(frozen, 2)} % for a frozen reference")
+        op = (card.get("operating_point") or {}).get(scorecard.DEPLOYED_ARM)
+        if op and op.get("detection_rate") is not None:
+            sub = (f"median {_fmt(op['median_days'], 1)} days · chance level "
+                   f"{(op['chance_rate'] or 0) * 100:.0f} % · "
+                   f"{_fmt(op['false_dispatches_per_turbine_year'], 1)} "
+                   f"false call-outs a year")
+            kpi(f"{op['detection_rate'] * 100:.0f} %",
+                "Injected +4 K ramps caught", sub)
+        else:
+            rate, days = det.get("rate"), det.get("median_days")
+            kpi(f"{rate * 100:.0f} %" if rate is not None else "—",
+                "Injected +4 K ramps caught",
+                (f"median {_fmt(days, 1)} days to first alarm · "
+                 if days is not None else "") + "matched 1 % false-alarm rate")
     with c3:
-        kpi(_fmt(care_score["care_score"]) if care_score else "—",
-            "CARE score", "95 labelled events, leak-free")
+        an = card.get("anomaly") or {}
+        std = (an.get("standing") or {}).get(scorecard.DEPLOYED_ARM)
+        if std is not None:
+            # The real anomaly, on the same dial as the simulation: when the
+            # deployed model's standing setting first dispatched, against the
+            # first sustained hot spell. Negative days mean it came AFTER.
+            d = std["days_before_hot_spell"]
+            if d is None:
+                lead = "no warning"
+            elif d >= 0:
+                lead = f"{d:.1f} days early"
+            else:
+                lead = f"{-d:.1f} days late"
+            ec = (an.get("early_clean_settings") or {}).get(
+                scorecard.DEPLOYED_ARM)
+            kpi(lead, "R80711 dispatch vs the first hot spell",
+                "deployed model, standing 1 % · 1 h setting"
+                + (f" · {ec[0]} of {ec[1]} settings warned early without a "
+                   f"false dispatch" if ec else ""))
+        else:
+            if one is None or five is None:
+                lead = "—"
+            elif one == five:
+                lead = f"{five:.0f} days"
+            else:
+                lead = f"{one:.0f}–{five:.0f} days"
+            kpi(lead, "R80711 lead time before 80 °C",
+                "at a 1 % to 5 % false-alarm rate"
+                + (f" · learned arm {learned_one:.0f} d at 1 %"
+                   if learned_one is not None else ""))
     with c4:
         kpi(f"{peak:.2f} °C" if peak is not None else "—",
-            "R80711 bearing overheat", "caught against its sibling turbines")
+            "R80711 bearing overheat",
+            "unlabelled"
+            + (f" · siblings peak at {peers:.2f} °C"
+               if peers is not None else ""))
+    if ratio:
+        st.markdown(
+            f"<div class='note'>Against a reference frozen in 2014 the "
+            f"false-alarm rate is {_fmt(ratio, 1)}× higher — the same effect "
+            f"at its extreme. That figure lets each arm keep its own "
+            f"threshold rule; the cards above hold the rule fixed.</div>",
+            unsafe_allow_html=True)
+    base = (card.get("operating_point") or {}).get("constant")
+    if base and base.get("detection_rate") is not None:
+        st.markdown(
+            f"<div class='note'>For comparison, a constant-median arm "
+            f"recalibrated the same way catches "
+            f"{base['detection_rate'] * 100:.0f} % of the same ramps (chance "
+            f"level {(base['chance_rate'] or 0) * 100:.0f} %) at "
+            f"{_fmt(base['false_dispatches_per_turbine_year'], 1)} false "
+            f"call-outs a year. The operating curve in the README gives every "
+            f"setting, a held-out check and a load-proportional fault.</div>",
+            unsafe_allow_html=True)
 
 
 def _footer() -> None:
@@ -2516,22 +3341,17 @@ def main():
             unsafe_allow_html=True)
 
     _header()
-    _hero(engie, care_score, load_snapshot())
 
-    t1, t2, t3, t4 = st.tabs([
-        "🌤️ Weather Forecast",
-        "🔍 Daily Cross-Check",
-        "⚖️ Benchmark Comparison",
-        "🔧 Engineering & Forensics",
-    ])
+    series = load_daily_series()
+    t1, t2, t3, t4 = st.tabs(["Demo", "Explore", "Performance", "Evidence & method"])
     with t1:
-        tab_forecast()
+        page_demo(series)
     with t2:
-        tab_crosscheck(live)
+        page_explore(series)
     with t3:
-        tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
+        page_performance(load_daily_check(), series, live)
     with t4:
-        tab_forensics()
+        page_evidence(engie, care_score, multiv, lgbm, ae_audit, audit, thermal, live)
 
     _footer()
 

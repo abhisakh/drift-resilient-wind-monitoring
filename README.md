@@ -1,24 +1,52 @@
-# Drift-Resilient Wind Turbine Condition Monitoring: Weather-Conditioned Residuals, Deterministic Gates & Auditability
+# Drift-Resilient Wind Turbine Condition Monitoring: Fewer False Call-Outs, Earlier Warning
 
-**A weather-aware wind turbine power and condition-monitoring pipeline that separates inter-annual weather shifts from genuine equipment degradation using climatology-conditioned power residuals, deterministic alert gating, and auditable MLOps workflows. Separating benign weather shifts from real hardware degradation in wind turbine SCADA data, cutting false alarms by 46.5× with an auditable, zero-leakage pipeline.**
+**Condition monitoring for wind-turbine gearbox bearings, built around one goal: cut the cost of unnecessary maintenance call-outs by raising fewer false alarms, while still warning early enough of a developing fault that the turbine can be stopped on purpose instead of tripping on its own.**
 
->  This project demonstrates that reference calibration matters more than model complexity, cutting false alarms from **26.37%** to **0.57%** across multi-year ENGIE SCADA data and **95** CARE benchmark events.
+>  The central finding is that *the reference a detector compares against matters more than the model it uses.* A reference that is calibrated once and left to age turns slow, harmless drift into a stream of false alarms; one that is kept fresh and conditioned on the machine's operating point does not. The size of that effect, and what it costs in early warning, is measured below at matched false-alarm rates, including the results that do not support the project.
+
+<!-- GOAL:START -->
+
+## The goal
+
+**Cut the cost of unnecessary maintenance call-outs by raising fewer false alarms, while still warning early enough of a developing bearing fault that the turbine can be stopped on purpose instead of tripping on its own.**
+
+The two halves pull against each other: a detector can always be made quieter by making it less sensitive, and made to warn earlier by making it more sensitive. So no figure below is quoted alone -- each is stated at a false-alarm rate, and the evaluation suite compares every arm at the same one.
+
+| the question | the answer | measured by |
+|---|---|---|
+| Fewer false alarms? | 2.2x fewer than with a one-year-old reference and 4.5x fewer than with a two-year-old one, at the same threshold rule | B.4, the age of the reference |
+| Is a developing fault caught? | 85 % of injected +4 K ramps, a median 3.6 days after onset, with an hour of sustained alarm at a 1 % rate; a 0 K placebo is "caught" 26 % of the time; 17.2 false call-outs per turbine-year; a constant-median arm recalibrated the same way: 93 %, 2.3 days, chance 29 %, 16.1 false call-outs; the learned arm: 94 %, 3.0 days, chance 26 %, 13.6 false call-outs | the operating curve, a simulation |
+| How much warning on the one real case? | R80711, September 2017: the deployed model at the standing 1 %, 1 h setting dispatched 4.6 days after the first sustained hot spell (2017-09-08); 0 of 40 settings of its dial warned early without a false dispatch in the quiet stretch before the onset | the real-anomaly check, unlabelled |
+
+**What this does not show.**
+
+- **The savings are modelled, not measured.** The public data has no maintenance log, so the cost of a false call-out is an assumption (a flat figure per false dispatch, adjustable in the dashboard), not an observation.
+- **The faults are simulated, and the one real case is unlabelled.** The ENGIE release carries no fault label for the R80711 anomaly, so its lead time says how early a detector would have fired, not that a fault was confirmed.
+- **The operating point does the work; the weather barely does.** Conditioning on load cuts the median prediction error by 2.49 K against a constant. Adding ambient temperature changes it by 0.007 K and wind speed by -0.012 K on this channel.
+- **The learned model is not the worse predictor.** Its median error is 2.02 K against 2.10 K for the deterministic model; the deterministic one is kept for being transparent, not for being more accurate.
+- **The 46.5x figure is the extreme case, not the like-for-like one.** It compares a reference frozen in 2014 with a rolling one, each arm keeping its own threshold rule; the matched-threshold figures above are the ones to quote.
+- **The simulated fault and the real one disagree.** The settings the economics prefer for a flat offset were also run on the one real anomaly: 4 of 4 arms never dispatched during it. The real excess grows with load and comes in spells, not as a steady step, so a rule that waits for a long unbroken alarm can miss it. The cost ranking should be read with that in mind.
+- **Early warning at equal false call-outs.** At 12 false call-outs per turbine-year the best setting of a constant-median arm catches 90 % of +4 K ramps in 2.9 days, against 100 % in 2.1 days for the deployed model. The operating curve gives every budget, a held-out check and a load-proportional fault.
+- **The weather is hindsight, not a forecast.** The expected temperature is computed from the turbine's measured power and reanalysis ambient temperature; the forecast chain (A.3) is a simulation with injected forecast error.
+
+<!-- GOAL:END -->
 
 ---
 
 ## Executive Summary & Key Findings
 
-1. **The Reference Strategy Matters More Than the Model (46.5× Fewer False Alarms)**
-   * Naive static baselines produce **14.89–37.73%** false alarms (mean **26.37%**) as weather regimes shift.
-   * A rolling 30-day, load- and temperature-conditioned reference reduces false alarms to **0.34–0.95%** (mean **0.57%**), outperforming LightGBM (**3.94%**).
-2. **Caught a Real, Undocumented Bearing Anomaly (`R80711`, Sept 2017)**
-   * Flagged a sustained gearbox bearing overheat peaking at **86.64 °C** against sibling control turbines.
-3. **Honest, Leak-Free Benchmark Audit (`CARE`, 95 Events)**
-   * Reproduced published Autoencoder claims across **95** events (**0.5028** deterministic CARE score vs. **0.5809** reproduced AE), balancing normal-operation accuracy (**95.1%** vs. **77.9%**).
-4. **An Evaluation Suite That Measures Every Claim, Including the Ones That Fail**
-   * Eight tests over the four ENGIE turbines and the CARE events, with the train/test split enforced in code and every arm calibrated to the same 1 % false-alarm rate on its own out-of-fold training residuals. **Two results do not support the project and are reported as they are**: the learned arm is the more accurate temperature *predictor* (median MAE 2.02 K against the deployed model's 2.10 K), and the weather ablation does **not** measurably cut the prediction error on the bearing channel — the operating point does, the weather does not.
-5. **Production-Grade Reproducibility**
-   * Backed by **271** automated unit/architectural tests, CI documentation sync, and deterministic seeds.
+1. **A fresh reference means fewer false alarms, by a factor of roughly two for a one-year-old reference.**
+   * A reference that is calibrated once and left to age raises more false alarms the older it gets; the matched-threshold figures are in the goal table above, and the operating-curve section measures it in false call-outs per turbine-year for every arm. The extreme case, a reference frozen in 2014, gives a mean false-alarm rate of **26.37%** against **0.57%** for a rolling 30-day reference (**46.5×**, across multi-year ENGIE SCADA data). That comparison lets each arm keep its own threshold rule, so quote the matched figures first.
+2. **Early warning is real, and it is paid for in false alarms.**
+   * On `R80711` (Sept 2017) a sustained gearbox-bearing overheat peaks at **86.64 °C** while its sibling turbines stay below 80 °C. The case is unlabelled (no fault label, no maintenance record), and the days of warning a detector gives depend on the false-alarm rate it is allowed.
+3. **Conditioning on the operating point improves prediction a great deal, but on this data it does not buy earlier warning at equal false call-outs.**
+   * It cuts the temperature prediction error by more than half. But a constant median recalibrated the same way catches simulated ramps about as well at the same number of false call-outs a year, so the weather-conditioning idea is not what the early-warning result rests on. This held when the setting was chosen on half the weeks and scored on the other half, and for a fault whose heat scales with load. The learned (LightGBM) arm is not yet part of that comparison.
+4. **The model class matters little.**
+   * A transparent lookup table predicts the bearing temperature about as well as LightGBM. The deterministic model is the primary arm because it is auditable and has nothing to retrain, not because it is more accurate.
+5. **An honest benchmark audit (`CARE`, 95 events), as external validity.**
+   * The published autoencoder beats this project's thermal-only detector (**0.5809** reproduced against **0.5028**), because most CARE faults are not thermal; the audit shows where it loses and why.
+6. **Reproducibility.**
+   * An automated test suite (the count is generated in the Tests section), CI documentation sync, and deterministic seeds.
 
 ---
 
@@ -50,14 +78,16 @@ and the honest reading is this: **with a stale reference the learned arm is
 the better one** (15.79 % false alarms against the
 deterministic arm's 26.37 %), because a smooth model of
 the operating point drifts less sharply than a set of fixed per-bin
-medians. **With a current reference the deterministic arm wins by a wide
-margin** (0.57 % against 3.94 %, about 7.0x fewer false alarms), and
+medians. **With a current reference the deterministic arm has far fewer
+false alarms in that comparison** (0.57 % against 3.94 %, about 7.0x fewer false alarms), and
 it does so with no model to train and no thresholds to re-validate.
 
 The project's claim is therefore not 'the deterministic method is better'
 but the sharper one: **the reference matters more than the model.**
 Re-estimating the reference reduced false alarms by 46.5x for the deterministic
 detector and 4.0x for the learned one.
+
+**The like-for-like reading.** The two ENGIE comparisons above let each arm keep its own threshold rule and its own spread estimate, so they measure more than the model. The evaluation suite further down fixes the protocol -- a strict train-then-test split, every arm calibrated to the same 1 % rate on its own training residuals -- and there the two models predict the bearing temperature almost equally well: a median error of 2.02 K for the learned arm and 2.10 K for the deterministic one. The deterministic model is the primary arm because it is transparent and has nothing to retrain, not because it is the more accurate predictor.
 
 We also do **not** claim operational weather forecasting. ERA5 conditions a
 long-term reference; it is not a forecast engine, and the residual is always
@@ -389,6 +419,335 @@ The ratio grows with the age of the reference, which is the project's headline c
 | thermal-observable | 34 | 0.2003 | 0.0951 |
 
 Coverage improves by **0.049** and earliness by **0.0156** once the non-thermal faults are excluded — which is the argument for a thermal detector being the right instrument for this benchmark.
+### The daily check: predict the healthy value, compare it every day
+
+Each month a model is trained on at least a month of healthy readings from before the month, leaving out standstill, the 12-hour warm-up after every restart (a bearing that restarts cold runs up to 12 K below normal), every day that was flagged, and everything before the last maintenance. It is then frozen for the month: it never learns from the month's own sensor values. Every day it predicts what a healthy sensor should read from that day's power and weather, and the day's mean difference from what the sensor shows is compared with a tolerance. A run of hot days is one call-out at the end of its first day. After a confirmed fault the model stays frozen until maintenance; after maintenance it is blank until a new month of healthy data exists.
+
+**Stood in for, because the data have no records:** maintenance is a restart after three days or more without running; what an inspection would find is the documented anomaly span (R80711 from 15 August 2017). A hot day outside it counts as a false alarm.
+
+**False call-outs a year and the real fault, by tolerance:**
+
+| tolerance | healthy siblings, false call-outs a year | R80711, false call-outs a year | R80711, first call-out on the fault | fault days hot, of those checked | siblings, cold days a year |
+|---|---|---|---|---|---|
+| 1 K | 1.5 | 8.8 | 2017-10-03 23:50 | 9 of 84 | 35.5 |
+| 1.5 K | 0.1 | 6.4 | 2017-08-15 23:50 | 58 of 111 | 24.4 |
+| 2 K | 0.1 | 4.8 | 2017-08-15 23:50 | 48 of 115 | 16.6 |
+| 3 K | 0.1 | 0.7 | 2017-09-13 23:50 | 4 of 115 | 7.5 |
+| plain 80 °C limit, held 1 h | 0.0 / 0.0 / 0.0 | 2.9 | 2017-08-15 11:10 | | |
+
+On healthy days the day's mean difference has a standard deviation of 1.00 to 1.19 K on the siblings, so a tolerance of 1 K sits inside the model's own day-to-day noise. Too tight a tolerance also starves the training: every flagged day is left out, and when too few healthy days remain the model goes blank.
+
+**R80711 before its fault (2 K).** Hot call-outs outside the fault period, by year: 2013: 1, 2015: 4, 2016: 2, 2017: 15. Hot days by month from 2017: 2017-05: 2, 2017-06: 6, 2017-07: 9, 2017-08: 7, 2017-09: 7, 2017-10: 11, 2017-11: 8, 2017-12: 11, 2018-01: 7. The bearing began running hotter than its own healthy reference from May 2017, months before the first sustained hot spell on 8 September. With no fault labels this is a candidate early warning, not a proven one: those days count as false alarms here.
+
+**What it costs in coverage (2 K):**
+
+| turbine | running days | days blank (start, maintenance) | running days checked | maintenance restarts |
+|---|---|---|---|---|
+| R80711 | 1812 | 174 | 73 % | 2 |
+| R80721 | 1804 | 366 | 60 % | 4 |
+| R80736 | 1817 | 246 | 65 % | 2 |
+| R80790 | 1559 | 357 | 61 % | 6 |
+
+**The 7-day forecast (2 K, healthy days, the four turbines averaged).** The month's frozen model is fed a weather forecast issued days before; the power comes from the turbine's own power curve against wind. The forecast is simulated: ERA5 plus a stated error, a bias per day and noise per hour, whose sigma is 1 a day ahead rising to 2.5 a week ahead (m/s for wind, K for temperature); power from the turbine's own power curve against ERA5 wind; the model in force when the forecast is issued.
+
+| issued, days before | forecast vs sensor (K) | forecast vs on-day prediction (K) |
+|---|---|---|
+| 1 | 1.68 | 1.44 |
+| 2 | 1.87 | 1.63 |
+| 3 | 2.02 | 1.82 |
+| 4 | 2.16 | 1.96 |
+| 5 | 2.34 | 2.15 |
+| 6 | 2.51 | 2.31 |
+| 7 | 2.55 | 2.34 |
+| on the day, actual weather | 0.65 | |
+
+The model fed the day's actual weather is within 0.65 K of the sensor on average; fed a forecast, the error grows from 1.7 K a day ahead to 2.6 K a week ahead. That is the weather's error, not the bearing's, so the call-out is made on the day and the forecast is for planning.
+
+**Second opinions (2 K): every gearbox sensor, and the siblings.** Each sensor has its own model. The siblings are compared at the same moment, power within a tenth of rated, the normal gap learned per wind sector or overall, and a call-out when the 5-day median change passes +2 K.
+
+| turbine | bearing model alone | 2 of 4 gearbox sensors | siblings, per wind sector | siblings, one normal |
+|---|---|---|---|---|
+| R80711 | 4.8 / yr, fault 2017-08-15 | 6.2 / yr, fault 2017-08-15 | 3.6 / yr, fault 2017-09-09 | 4.4 / yr, fault 2017-08-18 |
+| R80721 | 0.0 / yr | 1.8 / yr | 0.5 / yr | 0.0 / yr |
+| R80736 | 0.4 / yr | 0.8 / yr | 0.3 / yr | 0.0 / yr |
+| R80790 | 0.0 / yr | 0.5 / yr | 0.3 / yr | 0.3 / yr |
+
+False call-outs a year, and the day of the first call-out on the fault. Neither second opinion beats the bearing's own model: asking two gearbox sensors to agree adds false call-outs, and learning the sibling gap per wind sector did not lower them on the healthy turbines and called the fault later. They stay what the technician looks at, not the alarm.
+
+**What this does not show.** Maintenance and inspections are stood in for, not recorded. There is one documented fault. Days with too few usable readings are not checked. The tolerance is chosen on the same history it is scored on.
+
+### The historical confirmation: train on last month, predict this month
+
+The project in one paragraph. Every month a fresh reference is fitted on at least one month of healthy readings (the whole previous month, reached further back only as far as needed), so it knows how each sensor behaves when nothing is wrong, including how load and weather move it. It is then asked what a healthy machine would show in the next month, given that month's load and weather, and an alarm is raised when the sensor runs hotter than that expectation, not merely above a fixed number. The data are historical, so the next month is already known and the prediction can be confirmed. This runs the dashboard's monthly loop over every month of every turbine (223 turbine-months). Health is an assumption: every month of every turbine, except the documented R80711 anomaly.
+
+**Was the month predicted?** The gearbox bearing's temperature, predicted from the month before:
+
+| turbine | healthy months | median error | 90th-percentile error | months within 1 K of unbiased |
+|---|---|---|---|---|
+| R80711 | 52 | 1.67 K | 2.06 K | 92 % |
+| R80721 | 58 | 1.81 K | 2.26 K | 90 % |
+| R80736 | 58 | 1.90 K | 2.42 K | 81 % |
+| R80790 | 49 | 1.71 K | 2.23 K | 90 % |
+| all four | 217 | 1.80 K | 2.27 K | 88 % |
+
+**False alarms in healthy months: the model against a plain 80 °C limit.** A dispatch is an alarm sustained for an hour. In a healthy month every dispatch is a false one. The last column is the fixed limit's alarms on which the model stayed quiet, because load and weather explained that temperature.
+
+| turbine | model dispatches | per turbine-year | 80 °C limit dispatches | per turbine-year | limit alarms the model stayed quiet on |
+|---|---|---|---|---|---|
+| R80711 | 60 | 13.8 | 12 | 2.8 | 0 of 12 |
+| R80721 | 22 | 4.6 | 0 | 0.0 | 0 of 0 |
+| R80736 | 29 | 6.0 | 0 | 0.0 | 0 of 0 |
+| R80790 | 17 | 4.2 | 0 | 0.0 | 0 of 0 |
+| all four | 128 | 7.1 | 12 | 0.7 | 0 of 12 |
+
+**The anomaly months (R80711).** Here an alarm is what is wanted:
+
+| month | prediction error | model dispatches | first model dispatch | 80 °C limit dispatches | first limit dispatch |
+|---|---|---|---|---|---|
+| 2017-08 | 2.06 K | 0 | none | 3 | 2017-08-03 13:50 |
+| 2017-09 | 2.29 K | 1 | 2017-09-13 16:20 | 9 | 2017-09-08 09:10 |
+| 2017-10 | 2.07 K | 0 | none | 8 | 2017-10-05 01:30 |
+| 2017-11 | 2.47 K | 1 | 2017-11-11 17:30 | 11 | 2017-11-02 04:30 |
+| 2017-12 | 2.35 K | 7 | 2017-12-08 01:00 | 25 | 2017-12-07 16:20 |
+| 2018-01 | 1.97 K | 0 | none | 8 | 2018-01-01 00:00 |
+
+**Can the false alarms be turned down, and what does it cost?** The same history re-scored at stricter alarm settings, with nothing refitted. False dispatches per turbine-year in healthy months, then how many of R80711's anomaly months were alarmed at all, and when the first dispatch of September 2017 came (the real hot spell began on 2017-09-08).
+
+| rule | all four | R80711 | R80721 | R80736 | R80790 | anomaly months alarmed | first dispatch, Sep 2017 |
+|---|---|---|---|---|---|---|---|
+| model, z above 2, held 1 h | 19.7 | 33.7 | 10.6 | 20.1 | 15.2 | 6 of 6 | 2017-09-13 16:20 |
+| model, z above 2.5, held 1 h | 11.7 | 22.4 | 6.8 | 10.8 | 7.3 | 6 of 6 | 2017-09-13 16:20 |
+| model, z above 3, held 1 h | 7.1 | 13.8 | 4.6 | 6.0 | 4.2 | 3 of 6 | 2017-09-13 16:20 |
+| model, z above 4, held 1 h | 3.8 | 7.4 | 2.9 | 2.3 | 2.9 | 2 of 6 | 2017-09-13 16:20 |
+| model, z above 5, held 1 h | 2.3 | 5.3 | 1.7 | 0.8 | 1.5 | 1 of 6 | none |
+| model, z above 6, held 1 h | 1.4 | 4.2 | 1.0 | 0.2 | 0.5 | 1 of 6 | none |
+| model, z above 8, held 1 h | 0.8 | 2.1 | 0.8 | 0.0 | 0.2 | 0 of 6 | none |
+| **plain 80 °C limit, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 6 of 6 | 2017-09-08 09:10 |
+| **80 °C limit, vetoed by the model at z above 2, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 5 of 6 | 2017-09-08 11:50 |
+| **80 °C limit, vetoed by the model at z above 2.5, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 5 of 6 | 2017-09-13 07:30 |
+| **80 °C limit, vetoed by the model at z above 3, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 4 of 6 | 2017-09-13 07:30 |
+| **80 °C limit, vetoed by the model at z above 4, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 4 of 6 | 2017-09-13 08:40 |
+| **80 °C limit, vetoed by the model at z above 5, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 4 of 6 | 2017-09-12 21:20 |
+| **80 °C limit, vetoed by the model at z above 6, held 1 h** | 0.7 | 2.8 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-12 21:20 |
+| **80 °C limit, vetoed by the model at z above 8, held 1 h** | 0.3 | 1.2 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-12 21:20 |
+| model, z above 2, held 6 h | 1.6 | 4.4 | 1.0 | 0.2 | 1.0 | 1 of 6 | none |
+| model, z above 2.5, held 6 h | 0.9 | 2.5 | 0.8 | 0.2 | 0.2 | 1 of 6 | none |
+| model, z above 3, held 6 h | 0.8 | 1.8 | 0.8 | 0.2 | 0.2 | 0 of 6 | none |
+| model, z above 4, held 6 h | 0.3 | 0.7 | 0.6 | 0.0 | 0.0 | 0 of 6 | none |
+| model, z above 5, held 6 h | 0.2 | 0.2 | 0.4 | 0.0 | 0.0 | 0 of 6 | none |
+| model, z above 6, held 6 h | 0.1 | 0.0 | 0.4 | 0.0 | 0.0 | 0 of 6 | none |
+| model, z above 8, held 6 h | 0.1 | 0.0 | 0.2 | 0.0 | 0.0 | 0 of 6 | none |
+| **plain 80 °C limit, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 5 of 6 | 2017-09-08 17:10 |
+| **80 °C limit, vetoed by the model at z above 2, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 4 of 6 | 2017-09-08 23:00 |
+| **80 °C limit, vetoed by the model at z above 2.5, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 4 of 6 | 2017-09-13 07:30 |
+| **80 °C limit, vetoed by the model at z above 3, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-13 07:30 |
+| **80 °C limit, vetoed by the model at z above 4, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-13 08:40 |
+| **80 °C limit, vetoed by the model at z above 5, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-13 02:20 |
+| **80 °C limit, vetoed by the model at z above 6, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-13 02:20 |
+| **80 °C limit, vetoed by the model at z above 8, held 6 h** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 3 of 6 | 2017-09-13 02:20 |
+
+The rows in bold that say *vetoed* are the two-stage rule: the 80 °C limit triggers, and a dispatch stands only if the healthy model also finds the temperature unexpected inside it. A limit alarm that load and weather explain is dropped; one the model cannot predict (a load it has hardly seen) is NOT explained, so it stands. Note that the August row counts as an anomaly month because the anomaly span starts on 15 August, so a limit alarm early in August is counted as caught although it came before the anomaly.
+
+**The sibling warning and the full strategy.** The sibling warning compares a turbine with its siblings at the same moment and similar power, against its normal gap over the model's training window, smoothed by a 5-day median; a run of flagged days is one call-out at the end of its first day. *Confirmed* means the model also found unexplained heat that day. The strategy is the veto (z above 2) plus the sibling call-outs, counted once per day. False call-outs per turbine-year in healthy months:
+
+| rule | R80711 | R80721 | R80736 | R80790 | all four | R80711 fault months alarmed | first call-out, Sep 2017 |
+|---|---|---|---|---|---|---|---|
+| plain 80 °C limit, held 1 h | 2.8 | 0.0 | 0.0 | 0.0 | 0.7 | 6 of 6 | 2017-09-08 09:10 |
+| limit, vetoed by the model at z above 2 | 2.8 | 0.0 | 0.0 | 0.0 | 0.7 | 5 of 6 | 2017-09-08 11:50 |
+| sibling warning, +2 K | 4.2 | 0.0 | 0.0 | 0.2 | 1.1 | 5 of 6 | 2017-09-09 23:50 |
+| sibling warning, +2 K, confirmed | 3.7 | 0.0 | 0.0 | 0.2 | 0.9 | 5 of 6 | 2017-09-09 23:50 |
+| **strategy: veto + sibling, +2 K** | 6.9 | 0.0 | 0.0 | 0.2 | 1.7 | 6 of 6 | 2017-09-08 11:50 |
+| **strategy: veto + confirmed sibling, +2 K** | 6.5 | 0.0 | 0.0 | 0.2 | 1.6 | 6 of 6 | 2017-09-08 11:50 |
+| sibling warning, +2.5 K | 3.2 | 0.0 | 0.0 | 0.2 | 0.8 | 5 of 6 | 2017-09-11 23:50 |
+| sibling warning, +2.5 K, confirmed | 2.3 | 0.0 | 0.0 | 0.0 | 0.6 | 5 of 6 | 2017-09-11 23:50 |
+| **strategy: veto + sibling, +2.5 K** | 6.0 | 0.0 | 0.0 | 0.2 | 1.5 | 6 of 6 | 2017-09-08 11:50 |
+| **strategy: veto + confirmed sibling, +2.5 K** | 5.1 | 0.0 | 0.0 | 0.0 | 1.2 | 6 of 6 | 2017-09-08 11:50 |
+| sibling warning, +3 K | 1.2 | 0.0 | 0.0 | 0.0 | 0.3 | 5 of 6 | 2017-09-12 23:50 |
+| sibling warning, +3 K, confirmed | 0.9 | 0.0 | 0.0 | 0.0 | 0.2 | 5 of 6 | 2017-09-12 23:50 |
+| **strategy: veto + sibling, +3 K** | 3.9 | 0.0 | 0.0 | 0.0 | 0.9 | 6 of 6 | 2017-09-08 11:50 |
+| **strategy: veto + confirmed sibling, +3 K** | 3.7 | 0.0 | 0.0 | 0.0 | 0.9 | 6 of 6 | 2017-09-08 11:50 |
+
+**Where the veto's removals were.** In R80711's healthy months the limit raised 12 dispatches and the veto kept 12 of them at z above 2 and 12 at z above 3. In its fault months the limit raised 64 and the veto kept 46 and 29. So the alarms the veto removes are, on this record, alarms raised DURING the fault, most likely because the monthly reference re-learns a fault that has lasted for weeks (its training window then holds it) and so explains its heat away; that mechanism is not measured directly here.
+
+**R80711's stretches hotter than its siblings than usual** (more than 2 K above its gap over the previous 30 days, 5-day median), for judging what they were:
+
+| from | to | days | peak |
+|---|---|---|---|
+| 2013-08-15 | 2013-08-18 | 4 | +2.25 K |
+| 2013-09-24 | 2013-09-28 | 5 | +3.55 K |
+| 2013-09-30 | 2013-10-04 | 5 | +2.81 K |
+| 2013-10-12 | 2013-10-12 | 1 | +2.03 K |
+| 2013-11-29 | 2013-12-01 | 3 | +2.82 K |
+| 2013-12-11 | 2013-12-11 | 1 | +4.48 K |
+| 2013-12-14 | 2013-12-15 | 2 | +4.48 K |
+| 2014-10-29 | 2014-10-29 | 1 | +2.03 K |
+| 2015-01-21 | 2015-01-23 | 3 | +2.33 K |
+| 2015-02-11 | 2015-02-15 | 5 | +4.01 K |
+| 2015-10-18 | 2015-10-20 | 3 | +2.81 K |
+| 2015-11-02 | 2015-11-05 | 4 | +3.85 K |
+| 2016-01-21 | 2016-01-22 | 2 | +2.49 K |
+| 2016-12-21 | 2016-12-21 | 1 | +2.33 K |
+| 2017-07-31 | 2017-07-31 | 1 | +2.17 K |
+| 2017-08-03 | 2017-08-04 | 2 | +2.17 K |
+| 2017-09-09 | 2017-09-16 | 8 | +5.82 K |
+| 2017-10-22 | 2017-10-24 | 3 | +4.49 K |
+| 2017-11-12 | 2017-11-14 | 3 | +2.81 K |
+| 2017-11-24 | 2017-11-27 | 4 | +4.51 K |
+| 2017-12-10 | 2017-12-17 | 8 | +6.96 K |
+| 2017-12-27 | 2017-12-27 | 1 | +2.32 K |
+| 2017-12-29 | 2018-01-08 | 11 | +7.66 K |
+
+**What this does not show.** Health is assumed, not labelled. There is one real anomaly. In the later anomaly months the fresh reference has been fitted partly on the anomaly itself, which is its documented blind spot. The alarm settings are scored on the same history they are read from, so none of them is a forecast of how a setting would do on unseen months.
+
+### The operating curve: what a false call-out buys
+
+The two halves of the goal pull against each other, so no figure is quoted alone. A detector has two dials: its **sensitivity** (the share of its own training window it is calibrated to alarm on) and its **persistence** (how long an alarm must be sustained before it is worth sending someone). At every setting this measures the false dispatches per turbine-year on healthy turbine-weeks, and how often and how fast an injected +4 K ramp is caught. A 0 K **placebo** ramp is run through the same code: whatever it "detects" is a false dispatch that happened to land after the onset, so it is the chance level a real detection has to be read against.
+
+Exposure: 14.5 turbine-years of healthy operation over 241 non-overlapping windows. Windows touching the R80711 anomaly are left out for every arm alike.
+
+**At the standing sensitivity (a 1 % rate), with and without persistence:**
+
+| arm | sustained for | false dispatches per turbine-year | +4 K ramps caught | median days to dispatch | 0 K placebo "caught" |
+|---|---|---|---|---|---|
+| constant median (no operating point) | 10 min | 191.6 | 97 % | 1.1 | 67 % |
+| constant median (no operating point) | 1 h | 16.1 | 93 % | 2.3 | 29 % |
+| load-conditioned | 10 min | 250.2 | 98 % | 1.2 | 83 % |
+| load-conditioned | 1 h | 10.3 | 84 % | 4.0 | 23 % |
+| load + ambient (the deployed model) | 10 min | 271.5 | 98 % | 1.3 | 85 % |
+| load + ambient (the deployed model) | 1 h | 17.2 | 85 % | 3.6 | 26 % |
+| LightGBM (the learned arm) | 10 min | 447.5 | 100 % | 1.1 | 97 % |
+| LightGBM (the learned arm) | 1 h | 13.6 | 94 % | 3.0 | 26 % |
+
+With no persistence requirement the deployed arm "catches" 98 % of the +4 K ramps, but it also "catches" 85 % of the 0 K placebo ramps: most of that detection is chance. With an hour of sustained alarm it catches 85 % against a chance level of 26 %.
+
+**At equal false call-outs per turbine-year, each arm at its own best setting:**
+
+| false call-out budget | arm | sensitivity | sustained for | false dispatches | +4 K caught | median days | chance (0 K) |
+|---|---|---|---|---|---|---|---|
+| 6 | constant median (no operating point) | 2.00 % | 6 h | 3.1 | 72 % | 5.1 | 9 % |
+| 6 | load-conditioned | 20.00 % | 24 h | 0.4 | 67 % | 7.1 | 1 % |
+| 6 | load + ambient (the deployed model) | 20.00 % | 24 h | 0.4 | 60 % | 7.2 | 1 % |
+| 6 | LightGBM (the learned arm) | 10.00 % | 6 h | 2.5 | 91 % | 3.5 | 8 % |
+| 12 | constant median (no operating point) | 0.25 % | 1 h | 9.2 | 90 % | 2.9 | 21 % |
+| 12 | load-conditioned | 20.00 % | 6 h | 7.5 | 99 % | 2.1 | 18 % |
+| 12 | load + ambient (the deployed model) | 20.00 % | 6 h | 9.6 | 100 % | 2.1 | 20 % |
+| 12 | LightGBM (the learned arm) | 20.00 % | 6 h | 8.3 | 100 % | 2.1 | 22 % |
+| 26 | constant median (no operating point) | 1.00 % | 1 h | 16.1 | 93 % | 2.3 | 29 % |
+| 26 | load-conditioned | 20.00 % | 6 h | 7.5 | 99 % | 2.1 | 18 % |
+| 26 | load + ambient (the deployed model) | 20.00 % | 6 h | 9.6 | 100 % | 2.1 | 20 % |
+| 26 | LightGBM (the learned arm) | 20.00 % | 6 h | 8.3 | 100 % | 2.1 | 22 % |
+| 52 | constant median (no operating point) | 20.00 % | 6 h | 37.5 | 98 % | 3.0 | 51 % |
+| 52 | load-conditioned | 20.00 % | 6 h | 7.5 | 99 % | 2.1 | 18 % |
+| 52 | load + ambient (the deployed model) | 20.00 % | 6 h | 9.6 | 100 % | 2.1 | 20 % |
+| 52 | LightGBM (the learned arm) | 20.00 % | 6 h | 8.3 | 100 % | 2.1 | 22 % |
+
+* At 6 false call-outs per turbine-year: LightGBM (the learned arm) 91 % in 3.5 days; constant median (no operating point) 72 % in 5.1 days; load-conditioned 67 % in 7.1 days; load + ambient (the deployed model) 60 % in 7.2 days.
+* At 12 false call-outs per turbine-year: load + ambient (the deployed model) 100 % in 2.1 days; LightGBM (the learned arm) 100 % in 2.1 days; load-conditioned 99 % in 2.1 days; constant median (no operating point) 90 % in 2.9 days.
+* At 26 false call-outs per turbine-year: load + ambient (the deployed model) 100 % in 2.1 days; LightGBM (the learned arm) 100 % in 2.1 days; load-conditioned 99 % in 2.1 days; constant median (no operating point) 93 % in 2.3 days.
+* At 52 false call-outs per turbine-year: load + ambient (the deployed model) 100 % in 2.1 days; LightGBM (the learned arm) 100 % in 2.1 days; load-conditioned 99 % in 2.1 days; constant median (no operating point) 98 % in 3.0 days.
+
+**Setting chosen on half the windows, scored on the other half** (this removes the optimism of picking the best of a grid on the same weeks it is scored on):
+
+| false call-out budget | arm | false dispatches | +4 K caught | median days | chance (0 K) |
+|---|---|---|---|---|---|
+| 6 | constant median (no operating point) | 5.2 | 77 % | 5.3 | 14 % |
+| 6 | load-conditioned | 3.7 | 80 % | 5.4 | 9 % |
+| 6 | load + ambient (the deployed model) | 2.4 | 56 % | 6.5 | 6 % |
+| 6 | LightGBM (the learned arm) | 2.5 | 91 % | 3.5 | 8 % |
+| 12 | constant median (no operating point) | 10.9 | 91 % | 2.7 | 21 % |
+| 12 | load-conditioned | 7.5 | 99 % | 2.1 | 18 % |
+| 12 | load + ambient (the deployed model) | 9.6 | 100 % | 2.2 | 20 % |
+| 12 | LightGBM (the learned arm) | 8.3 | 100 % | 2.2 | 22 % |
+| 26 | constant median (no operating point) | 23.3 | 93 % | 2.4 | 34 % |
+| 26 | load-conditioned | 7.5 | 99 % | 2.1 | 18 % |
+| 26 | load + ambient (the deployed model) | 9.6 | 100 % | 2.2 | 20 % |
+| 26 | LightGBM (the learned arm) | 8.3 | 100 % | 2.2 | 22 % |
+| 52 | constant median (no operating point) | 37.5 | 98 % | 2.9 | 51 % |
+| 52 | load-conditioned | 7.5 | 99 % | 2.1 | 18 % |
+| 52 | load + ambient (the deployed model) | 9.6 | 100 % | 2.2 | 20 % |
+| 52 | LightGBM (the learned arm) | 8.3 | 100 % | 2.2 | 22 % |
+
+**A fault whose heat scales with load** (the offset is +4 K at half of rated power and proportional to load from there), best setting within each budget:
+
+| false call-out budget | arm | false dispatches | +4 K caught | median days | chance (0 K) |
+|---|---|---|---|---|---|
+| 6 | constant median (no operating point) | 3.1 | 63 % | 5.5 | 9 % |
+| 6 | load-conditioned | 4.4 | 56 % | 6.5 | 13 % |
+| 6 | load + ambient (the deployed model) | 5.3 | 53 % | 5.7 | 12 % |
+| 6 | LightGBM (the learned arm) | 2.5 | 59 % | 7.2 | 8 % |
+| 12 | constant median (no operating point) | 9.2 | 95 % | 3.0 | 21 % |
+| 12 | load-conditioned | 7.5 | 78 % | 5.1 | 18 % |
+| 12 | load + ambient (the deployed model) | 9.6 | 83 % | 5.4 | 20 % |
+| 12 | LightGBM (the learned arm) | 8.3 | 78 % | 5.4 | 22 % |
+| 26 | constant median (no operating point) | 16.1 | 97 % | 2.8 | 29 % |
+| 26 | load-conditioned | 24.1 | 80 % | 4.3 | 37 % |
+| 26 | load + ambient (the deployed model) | 9.6 | 83 % | 5.4 | 20 % |
+| 26 | LightGBM (the learned arm) | 8.3 | 78 % | 5.4 | 22 % |
+| 52 | constant median (no operating point) | 27.9 | 98 % | 2.2 | 39 % |
+| 52 | load-conditioned | 44.4 | 90 % | 2.9 | 46 % |
+| 52 | load + ambient (the deployed model) | 9.6 | 83 % | 5.4 | 20 % |
+| 52 | LightGBM (the learned arm) | 8.3 | 78 % | 5.4 | 22 % |
+
+**The age of the reference.** The same windows for every age, at a 1 % rate with an hour of sustained alarm; false dispatches per turbine-year:
+
+| arm | reference 0 days old | reference 90 days old | reference 365 days old | oldest over freshest |
+|---|---|---|---|---|
+| constant median (no operating point) | 18.5 | 18.6 | 32.2 | 1.74x |
+| load-conditioned | 11.6 | 23.7 | 23.2 | 2.00x |
+| load + ambient (the deployed model) | 20.0 | 27.0 | 28.7 | 1.44x |
+| LightGBM (the learned arm) | 13.0 | 38.7 | 30.7 | 2.35x |
+
+**The one real anomaly, on the same dial.** Nothing is injected here: each arm is fitted on the month before 2017-08-15 and scored on R80711 up to 2017-10-15. The first sustained hot spell (a day with at least 30 samples above 80 °C) began on 2017-09-08; the onset, when R80711 first ran hotter than its siblings, is 2017-09-01. A dispatch before the onset is a false alarm, not a warning, so it is counted against the setting.
+
+| arm | standing 1 %, 1 h | most profitable setting, flat offset | most profitable setting, load-proportional fault | settings that warned early with no false dispatch |
+|---|---|---|---|---|
+| constant median (no operating point) | 4.7 d late (0 false before onset) | 0.10 % · 6 h: never dispatched (0 false before onset) | 0.10 % · 6 h: never dispatched (0 false before onset) | 0 of 40 |
+| load-conditioned | 4.6 d late (0 false before onset) | 20.00 % · 24 h: never dispatched (0 false before onset) | 0.25 % · 6 h: never dispatched (0 false before onset) | 0 of 40 |
+| load + ambient (the deployed model) | 4.6 d late (0 false before onset) | 20.00 % · 24 h: never dispatched (0 false before onset) | 0.25 % · 6 h: never dispatched (0 false before onset) | 0 of 40 |
+| LightGBM (the learned arm) | 4.9 d late (0 false before onset) | 20.00 % · 24 h: never dispatched (0 false before onset) | 5.00 % · 6 h: never dispatched (0 false before onset) | 0 of 40 |
+
+**Where the excess is.** The mean temperature above what the load + ambient (the deployed model) model expected, by load (samples in brackets):
+
+| load | before the onset | hot-spell days | other days after the onset |
+|---|---|---|---|
+| 0–20 % | -0.5 K (1216) | 2.3 K (121) | -1.6 K (2751) |
+| 20–40 % | -0.0 K (350) | 2.9 K (169) | 0.3 K (600) |
+| 40–60 % | 0.2 K (70) | 2.6 K (246) | -0.0 K (232) |
+| 60–80 % | 0.3 K (19) | 6.4 K (181) | 1.8 K (56) |
+| 80–100 % | 9.4 K (1) | 13.9 K (90) | 12.5 K (11) |
+
+**What this does not show.** The ramp is a simulation of an offset on one channel; a real bearing fault may involve several channels and develop differently. The two shapes above bracket how its heat might depend on load, and the held-out table removes the optimism of choosing a setting on the weeks it is scored on, but none of the figures is an out-of-sample forecast of operations. Detection is measured on a 28-day window held to a reference fitted on the thirty days before it, which is the dashboard's monthly loop; a weekly refit would change the false-dispatch counts.
+
+### What the operating curve is worth in money
+
+**Three numbers here are assumed, not measured**, because the public data has no maintenance log: a false dispatch costs 2,000, catching a fault early is worth 185,000 (a planned repair against a failure that trips the turbine), and a fault turns up 0.05 times per turbine-year. What is measured is the false dispatches per turbine-year and the share of simulated faults caught, at every setting of every arm. Each arm is shown at its own most profitable setting, so it is judged at the dial that suits it, not at one setting shared by all. Net value is against not monitoring at all.
+
+**A flat temperature offset:**
+
+| arm | most profitable setting (sensitivity, sustained for) | false dispatches per turbine-year | +4 K caught | net value per turbine-year | break-even fault rate | net value at the standing 1 %, 1 h setting |
+|---|---|---|---|---|---|---|
+| constant median (no operating point) | 0.10 % · 6 h | 0.8 | 46 % | 2,743 | 0.018 | -23,723 |
+| load-conditioned | 20.00 % · 24 h | 0.4 | 67 % | 5,351 | 0.007 | -12,765 |
+| load + ambient (the deployed model) | 20.00 % · 24 h | 0.4 | 60 % | 4,738 | 0.007 | -26,520 |
+| LightGBM (the learned arm) | 20.00 % · 24 h | 0.0 | 54 % | 5,028 | 0.000 | -18,503 |
+
+**A fault whose heat scales with load:**
+
+| arm | most profitable setting (sensitivity, sustained for) | false dispatches per turbine-year | +4 K caught | net value per turbine-year | break-even fault rate | net value at the standing 1 %, 1 h setting |
+|---|---|---|---|---|---|---|
+| constant median (no operating point) | 0.10 % · 6 h | 0.8 | 50 % | 3,088 | 0.016 | -23,300 |
+| load-conditioned | 0.25 % · 6 h | 0.4 | 20 % | 1,015 | 0.022 | -14,185 |
+| load + ambient (the deployed model) | 0.25 % · 6 h | 0.5 | 20 % | 838 | 0.027 | -27,864 |
+| LightGBM (the learned arm) | 5.00 % · 6 h | 0.7 | 40 % | 2,343 | 0.019 | -21,421 |
+
+* The most profitable arm for a flat offset, by share: constant median (no operating point) 0 %; load-conditioned 28 %; load + ambient (the deployed model) 0 %; LightGBM (the learned arm) 72 % of 75 combinations of the three assumptions.
+* The most profitable arm for a load-proportional fault: constant median (no operating point) 61 %; load-conditioned 0 %; load + ambient (the deployed model) 0 %; LightGBM (the learned arm) 39 % of 75 combinations of the three assumptions.
+* The arm with the best worse case across the two fault shapes: constant median (no operating point) 61 %; load-conditioned 0 %; load + ambient (the deployed model) 0 %; LightGBM (the learned arm) 39 % of 75 combinations of the three assumptions.
+
+_The most profitable setting of constant median (no operating point) (least sensitive rate swept); load-conditioned (most sensitive rate swept); load + ambient (the deployed model) (most sensitive rate swept); LightGBM (the learned arm) (most sensitive rate swept) sits at the edge of the swept grid, so a wider sweep might find a better one._
+
+**What this does not show.** The prices are placeholders: change them in the dashboard and the ranking and the break-even rates move. Each arm's setting is chosen on the same weeks it is scored on, so every figure is optimistic, equally for every arm. The detection rate is a simulated ramp, not a recorded fault. And a false dispatch is priced as one flat cost, whereas a real operator would look at the data remotely before sending anyone, which is cheaper.
+
 <!-- RESULTS:END -->
 
 ## Layout
@@ -467,14 +826,17 @@ detector. They write nothing and are not part of the pipeline.
 make dashboard     # http://localhost:8501
 ```
 
-A four-tab Streamlit dashboard, ordered the way a control room works:
+Four pages, the demonstration first and the research last:
 
-| tab | what it does |
+| page | what it shows |
 |---|---|
-| 🌤️ **Weather Forecast & Power Prediction** | a real 7-day hourly forecast from Open-Meteo, the turbine's own conditioned power curve applied to it, and what-if sliders for a wind or temperature shift. Plus a **demo checkpoint** selector: curated historical weeks scored by a reference trained on exactly the thirty days before them, and by the same rule applied one and two years earlier. No model comparison on this tab. |
-| 🔍 **Daily Cross-Check: Weather vs. Hardware Wear** | opens on the **fresh monthly fit** — fitted, scored against the target month and priced on arrival, with no button press — then the dispatch-episode and cost impact, then the live explorer. |
-| ⚖️ **Model & Benchmark Comparison** | the deterministic arm against the learned one, the false-alarm rate by year, the CARE benchmark, and the audit of the published autoencoder baseline. |
-| 🔧 **Engineering & Data Forensics** | the pipeline, the CI guarantees, and the upstream data bugs this project caught. |
+| **Demo** | one month, 15 August to 14 September 2017, a healthy turbine (R80721) above the faulty one (R80711). Three lines per day: the bearing temperature the frozen monthly model predicted from a weather forecast issued days before, what it predicted from the day's actual weather, and what the sensor read, with the tolerance as a band. The hot days are the call-outs. |
+| **Explore** | any month, any of the nine temperature sensors, the four turbines: a traffic light for every day, a status card per turbine (monitoring, fault confirmed and model frozen, or maintenance hold with how much of the new healthy month has been collected), the three lines for one turbine, and the comparison with its siblings. |
+| **Performance** | the daily check over the whole record: false call-outs a year by tolerance against the plain 80 °C limit, how the forecast error grows with lead time, the second opinions (every gearbox sensor, the siblings), R80711's year, and the live monthly loop with its cost. |
+| **Evidence & method** | the headline measurements and the research behind them: the live weather forecast and power prediction, the model and CARE benchmark comparison, the engineering and data forensics, and the data explorer. |
+
+Everything on the first three pages is read from `results/daily_check.json`
+and `results/daily_series.json`, written by `make daily`.
 
 The monthly loop fits its reference on the thirty days before the target
 month and on nothing else, drops the training rows that reference itself
@@ -645,7 +1007,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-271 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+350 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

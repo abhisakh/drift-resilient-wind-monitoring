@@ -5,13 +5,56 @@
 # so it must run last; 02_condition.py must precede 03_detect.py, and so on.
 # This Makefile is the memory of that order.
 #
-#   make help      list the targets
-#   make setup     create the venv and install dependencies
-#   make data      download + verify the pinned datasets (19 GB, once)
-#   make pipeline  run every artifact-producing step, in order
-#   make report    regenerate README.md from results/ (after any change)
-#   make test      run the test suite
-#   make demo      watch the detector work on real SCADA
+# Every target carries a "## description" on its own line, which is what
+# `make help` prints. This header names all of them, in five groups, and a
+# test (tests/test_repo_rules.py) fails if a target is added without being
+# listed here.
+#
+# Setup
+#   make help            list every target with its description
+#   make setup           create the venv (Python 3.11) and install dependencies
+#   make data            download + checksum-verify the pinned datasets (19 GB, once)
+#
+# The pipeline: writes results/*.json. The order matters, so use the target.
+#   make pipeline        run every artifact-producing step in dependency order;
+#                        it finishes with `make report` and `make summary`
+#   make report          regenerate README.md from results/ (after any change)
+#   make summary         write results/summary.json, one table across every arm
+#
+# Evidence that is NOT part of `make pipeline` (slower; run on demand, and run
+# `make report` afterwards so the README picks the result up)
+#   make backtest        the evaluation suite: every claim, measured (about 90 s)
+#   make daily           the daily check: a frozen monthly model predicts the healthy
+#                        sensor value each day, alarms when the sensor departs from
+#                        it; every sensor, a 7-day forecast and the sibling
+#                        comparison; writes the dashboard's daily series
+#                        (about 6 min)
+#   make confirm         the historical confirmation: train on each month, predict
+#                        the next, and check it against what happened, over every
+#                        month of every turbine (about 5 to 10 min)
+#   make curve           the operating curve: false call-outs per year against
+#                        time to catch a fault (needs LightGBM; about 2 min)
+#   make cost            price the operating curve under stated assumptions
+#                        (reads results/operating_curve.json, so run it after
+#                        `make curve`; takes a moment)
+#   make audit           re-run the autoencoder-comparability audit on all 95
+#                        CARE datasets (about 1 h), then compare + thermal-signal
+#   make audit-quick     the same audit on a small subset (a few minutes)
+#   make compare         score both arms on the SAME CARE subset (like-for-like)
+#   make thermal-signal  how much thermal signal is inside a fault window at all
+#
+# See it work
+#   make demo            watch the detector work on real SCADA
+#   make snapshot        export results/demo_r80711.json + assets/sample_turbine.csv
+#   make dashboard       run the Streamlit dashboard (http://localhost:8501)
+#
+# Checks and housekeeping
+#   make test            run the test suite
+#   make diagnostics     run the one-off diagnostic probes (they write no artefacts)
+#   make lint            syntax-check every Python file
+#   make clean           remove caches and build artefacts (keeps results/, data/)
+#   make clean-results   delete the generated result files (a deliberate act:
+#                        they are committed)
 #
 # Rule 1 of the repo: results/*.json is the single source of truth and
 # README.md is generated from it. If you change anything under src/windmill/,
@@ -24,7 +67,7 @@ SCRIPTS := scripts/pipeline
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
         compare thermal-signal dashboard snapshot diagnostics lint clean clean-results \
-        backtest
+        backtest curve cost confirm daily
 
 help: ## list the available targets
 	@echo ""
@@ -85,6 +128,18 @@ thermal-signal: ## how much thermal signal is inside a fault window at all
 
 backtest: ## run the evaluation suite: every claim, measured (results/backtest.json)
 	$(PY) $(SCRIPTS)/15_backtest.py
+
+daily: ## the daily check, every sensor, the 7-day forecast and the siblings (results/daily_check.json, results/daily_series.json)
+	$(PY) $(SCRIPTS)/19_daily_check.py
+
+confirm: ## train on last month, predict this month, check it: every month of every turbine (results/monthly_confirmation.json)
+	$(PY) $(SCRIPTS)/18_monthly_confirmation.py
+
+curve: ## the operating curve: false call-outs per year against time to catch a fault (results/operating_curve.json)
+	$(PY) $(SCRIPTS)/16_operating_curve.py
+
+cost: ## price the operating curve under stated assumptions (results/cost_model.json)
+	$(PY) $(SCRIPTS)/17_cost_model.py
 
 demo: ## watch the detector work on real SCADA
 	$(PY) $(SCRIPTS)/11_demo.py

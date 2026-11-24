@@ -74,7 +74,8 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     at.run()
 
     assert not at.exception, f"the app raised in cloud mode: {at.exception}"
-    assert len(at.tabs) == 4, f"expected 4 tabs, got {len(at.tabs)}"
+    # Four pages, and the four sections of the evidence page inside the last.
+    assert len(at.tabs) == 8, f"expected 8 tabs, got {len(at.tabs)}"
 
     text = "\n".join(m.value for m in at.sidebar.markdown)
     assert "CLOUD SNAPSHOT MODE" in text, (
@@ -511,23 +512,79 @@ def test_the_watermark_is_a_valid_inline_svg():
     assert "<circle" in svg
 
 
+# ---------------------------------------------- the headline cards
+def test_the_headline_cards_state_the_goal():
+    """The first screen says what the project is FOR, then what it found.
+
+    The cards are the goal's two halves (fewer false call-outs, earlier
+    warning) plus the case study, each read from the evaluation suite
+    through windmill.scorecard.
+    """
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "fewer false call-outs" in body, "the goal is not stated"
+    for card in ("False-alarm reduction", "Injected +4 K ramps caught",
+                 "R80711 bearing overheat"):
+        assert card in body, f"the headline card {card!r} is missing"
+    # The third card reads the real-anomaly check when the curve carries it,
+    # and the older single-sample lead time otherwise.
+    assert ("R80711 dispatch vs the first hot spell" in body
+            or "R80711 lead time before 80 °C" in body), \
+        "the R80711 lead-time card is missing"
+
+
+def test_the_headline_cards_render_in_cloud_mode(tmp_path):
+    """The cards read results/backtest.json, which the cloud copy carries."""
+    from streamlit.testing.v1 import AppTest
+
+    cloud = _cloud_copy(tmp_path)
+    at = AppTest.from_file(str(cloud / "app.py"), default_timeout=180)
+    at.run()
+    assert not at.exception, f"the app raised in cloud mode: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Injected +4 K ramps caught" in body
+    assert ("dispatch vs the first hot spell" in body
+            or "lead time before 80" in body)
+
+
 # ---------------------------------------------- the four-tab layout
 def _tab_labels(at):
     return [t.label for t in at.tabs]
 
 
-def test_the_four_tabs_are_the_operational_story():
-    """Forecast, then cross-check, then the technical study, then the
-    forensics. The operational story comes first."""
+def test_the_four_pages_lead_with_the_demo():
+    """The demo first, then free exploration, then the record's performance;
+    the research behind it sits in its own last page, in four sections."""
     at = _app_test()
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
     labels = _tab_labels(at)
-    assert len(labels) == 4, labels
-    assert "Weather Forecast" in labels[0], labels
-    assert "Cross-Check" in labels[1], labels
-    assert "Benchmark Comparison" in labels[2], labels
-    assert "Forensics" in labels[3], labels
+    assert labels[:4] == ["Demo", "Explore", "Performance", "Evidence & method"], labels
+    assert labels[4:] == ["Weather Forecast", "Benchmark Comparison",
+                          "Engineering & Forensics", "Data Explorer"], labels
+
+
+def test_the_demo_shows_a_healthy_and_a_faulty_turbine_on_the_same_month():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "R80721, healthy" in body and "R80711, developing a fault" in body
+    assert "2017-08-15 to 2017-09-14" in body
+    assert any(s.label.startswith("Forecast issued") for s in at.select_slider)
+
+
+def test_the_explore_page_offers_turbines_month_and_sensor():
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    assert [m.label for m in at.multiselect] == ["Turbines"]
+    labels = [s.label for s in at.selectbox]
+    assert "Month" in labels and "Sensor" in labels
+    body = "\n".join(m.value for m in at.markdown)
+    assert "MONITORING" in body or "MAINTENANCE HOLD" in body
 
 
 def test_the_forecast_tab_carries_no_benchmark_comparison():
@@ -1059,7 +1116,22 @@ def test_the_monthly_loop_runs_on_arrival():
     body = "\n".join(m.value for m in at.markdown)
     assert "Monthly Operational Loop" in body
     assert "Avoided false dispatches" in body, "the cost cards are missing"
-    assert "€14,000" in body, "the cost saving is not on screen on arrival"
+    # The saving on screen is the engine's own count for the month on arrival
+    # (September 2017, R80711, z above 3) at the slider's default of 2,000 a
+    # dispatch. It is computed here rather than pinned, because it depends on
+    # the training rule (at least a month of healthy data), which is a choice.
+    if str(ROOT / "src") not in sys.path:
+        sys.path.insert(0, str(ROOT / "src"))
+    from windmill import live
+
+    mod = _import_app()
+    source = "engie" if mod.live_available() else "sample"
+    prov = live.monthly_cross_check("2017-09", ROOT / "data", source=source,
+                                    turbine="R80711",
+                                    z_threshold=3.0)["provenance"]
+    avoided = prov["naive_false_dispatches"] - prov["conditioned_false_dispatches"]
+    assert avoided > 0, prov
+    assert f"€{avoided * 2000:,}" in body, "the cost saving is not on screen on arrival"
 
 
 def test_the_monthly_chart_shows_the_model_curves():
@@ -1258,3 +1330,67 @@ def test_the_typography_is_sized_for_reading():
         "the chart text is being overridden from CSS, which breaks the "
         "chart's own layout"
     )
+
+
+def test_the_cost_view_says_the_saving_is_a_calibration_effect():
+    """The static baseline is judged on the conditioned model's scale, so a
+    saving measured against it is mostly calibration. The view must say so,
+    and must show the same arm recalibrated on its own residuals."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "calibration effect" in body, "the saving is not qualified"
+    assert "recalibrated" in body.lower(), "no recalibrated baseline is shown"
+    assert "operating curve" in body.lower(), "the fair comparison is not pointed to"
+    # And the old, misleading explanation is gone.
+    assert "not refreshed for the month's conditions" not in body
+
+
+def test_the_tabs_are_a_navigation_bar_not_body_text():
+    """The tab headers sat in the same size as the prose with a hairline
+    under them, so they read as part of the page. They are now smaller than
+    the body text, set in capitals, held in their own bar, with one clear
+    active state and no emoji."""
+    import re
+
+    mod = _import_app()
+    assert mod.FONT_SIZES["tab"] < mod.FONT_SIZES["body"], mod.FONT_SIZES
+    src = (ROOT / "app.py").read_text()
+    assert 'aria-selected="true"' in src, "the active tab has no style"
+    assert 'data-baseweb="tab-highlight"' in src, (
+        "Streamlit's own tab highlight is not hidden, so there would be "
+        "two indicators")
+    assert "text-transform: uppercase" in src
+
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    for label in _tab_labels(at):
+        assert not re.search("[\U0001F300-\U0001FAFF☀-➿]", label), label
+
+
+def test_the_cost_view_prices_the_operating_curve_on_equal_footing():
+    """Every arm is shown at its own most profitable setting, with the prices
+    as sliders the reader can move."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "What the operating curve is worth" in body
+    labels = [s.label for s in at.slider]
+    assert any("Faults per turbine-year" in s for s in labels), labels
+    assert any("Value of catching a fault early" in s for s in labels), labels
+    # The existing cost slider is still found by its own label.
+    assert [s for s in at.slider if "dispatch" in s.label.lower()]
+
+    def economics_tables():
+        return [t.value.to_csv() for t in at.table
+                if "net value / turbine-year" in t.value.columns]
+
+    before = economics_tables()
+    assert before, "no economics table is on screen"
+    faults = [s for s in at.slider if "Faults per turbine-year" in s.label][0]
+    faults.set_value(0.2).run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    assert economics_tables() != before, "moving the fault rate changed nothing"

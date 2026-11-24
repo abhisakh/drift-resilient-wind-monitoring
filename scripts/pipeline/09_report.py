@@ -24,6 +24,13 @@ MARKER_END = "<!-- RESULTS:END -->"
 #: a hand-written number in the README would drift from the artefacts.
 METHOD_START = "<!-- METHOD:START -->"
 METHOD_END = "<!-- METHOD:END -->"
+#: The goal and the three measurements that answer it. Generated too, from
+#: the same module the dashboard's headline cards read.
+GOAL_START = "<!-- GOAL:START -->"
+GOAL_END = "<!-- GOAL:END -->"
+
+sys.path.insert(0, str(ROOT / "src"))
+from windmill import scorecard  # noqa: E402
 
 
 def load(name: str) -> dict | None:
@@ -580,6 +587,7 @@ def section_method() -> str:
     lg = load("lightgbm_nbm.json")
     mv = load("multivariate.json")
     em = load("engie_multivariate.json")
+    bt = load("backtest.json")
     out = ["## What this is, and what it is not\n"]
     out.append(
         "The method is **deterministic**: a per-turbine reference conditioned on load and\n"
@@ -609,8 +617,8 @@ def section_method() -> str:
                 f"the better one** ({fmt(frl['mean_rate_pct'], 2)} % false alarms against the\n"
                 f"deterministic arm's {fmt(fr['mean_rate_pct'], 2)} %), because a smooth model of\n"
                 "the operating point drifts less sharply than a set of fixed per-bin\n"
-                "medians. **With a current reference the deterministic arm wins by a wide\n"
-                f"margin** ({fmt(ro['mean_rate_pct'], 2)} % against {fmt(rol['mean_rate_pct'], 2)} %, "
+                "medians. **With a current reference the deterministic arm has far fewer\n"
+                f"false alarms in that comparison** ({fmt(ro['mean_rate_pct'], 2)} % against {fmt(rol['mean_rate_pct'], 2)} %, "
                 "about "
                 f"{fmt(rol['mean_rate_pct'] / ro['mean_rate_pct'], 1)}x fewer false alarms), and\n"
                 "it does so with no model to train and no thresholds to re-validate.\n"
@@ -622,6 +630,23 @@ def section_method() -> str:
                 f"{fmt(fr['mean_rate_pct'] / ro['mean_rate_pct'], 1)}x for the deterministic\n"
                 f"detector and {fmt(frl['mean_rate_pct'] / rol['mean_rate_pct'], 1)}x for the learned one.\n"
             )
+    pooled = ((bt or {}).get("A1_A2_weekly_backtest") or {}).get("pooled") or {}
+    dep = (pooled.get("summary") or {}).get("load+ambient")
+    lrn_bt = (pooled.get("summary") or {}).get("lightgbm")
+    if dep and lrn_bt:
+        out.append(
+            "**The like-for-like reading.** The two ENGIE comparisons above let "
+            "each arm keep its own threshold rule and its own spread estimate, "
+            "so they measure more than the model. The evaluation suite further "
+            "down fixes the protocol -- a strict train-then-test split, every "
+            "arm calibrated to the same 1 % rate on its own training residuals "
+            "-- and there the two models predict the bearing temperature almost "
+            f"equally well: a median error of {fmt(lrn_bt['mae_k_median'], 2)} K "
+            f"for the learned arm and {fmt(dep['mae_k_median'], 2)} K for the "
+            "deterministic one. The deterministic model is the primary arm "
+            "because it is transparent and has nothing to retrain, not because "
+            "it is the more accurate predictor.\n"
+        )
     out.append(
         "We also do **not** claim operational weather forecasting. ERA5 conditions a\n"
         "long-term reference; it is not a forecast engine, and the residual is always\n"
@@ -864,10 +889,1017 @@ def section_backtest() -> str:
     return "\n".join(lines)
 
 
+def _persistence_label(samples: int, minutes: float = 10.0) -> str:
+    """How long a sustained alarm must last, in words: 10 min, 1 h, 24 h."""
+    total = samples * minutes
+    return f"{total:g} min" if total < 60 else f"{total / 60:g} h"
+
+
+def _pct(x) -> str:
+    return "not measured" if x is None else fmt(float(x) * 100, 0)
+
+
+_ARM_LABELS = {
+    "constant": "constant median (no operating point)",
+    "load": "load-conditioned",
+    "load+ambient": "load + ambient (the deployed model)",
+    "lightgbm": "LightGBM (the learned arm)",
+}
+
+
+def section_operating_curve() -> str:
+    """The operating curve: false call-outs per year against time to catch a ramp.
+
+    Written from results/operating_curve.json, so every number is the one
+    the sweep produced, including the ones that do not flatter the project.
+    Skipped until the sweep has been run.
+    """
+    oc_json = load("operating_curve.json")
+    if not oc_json or not oc_json.get("points"):
+        return ""
+    points = oc_json["points"]
+    proto = oc_json.get("protocol", {})
+    arms = [a for a in proto.get("arms", []) if any(p["arm"] == a for p in points)]
+    label = lambda a: _ARM_LABELS.get(a, a)  # noqa: E731
+    ramp_k = scorecard.HEADLINE_RAMP_K
+    key = f"{ramp_k:g}"
+
+    def at(arm, rate, persistence):
+        for p in points:
+            if (p["arm"] == arm and p["target_rate"] == rate
+                    and p["persistence_samples"] == persistence):
+                return p
+        return None
+
+    first = points[0]
+    windows = sum((oc_json.get("windows_used") or {}).values())
+    out = ["### The operating curve: what a false call-out buys\n"]
+    out.append(
+        "The two halves of the goal pull against each other, so no figure is "
+        "quoted alone. A detector has two dials: its **sensitivity** (the share "
+        "of its own training window it is calibrated to alarm on) and its "
+        "**persistence** (how long an alarm must be sustained before it is "
+        "worth sending someone). At every setting this measures the false "
+        "dispatches per turbine-year on healthy turbine-weeks, and how often "
+        f"and how fast an injected +{fmt(ramp_k, 0)} K ramp is caught. A 0 K "
+        "**placebo** ramp is run through the same code: whatever it \"detects\" "
+        "is a false dispatch that happened to land after the onset, so it is "
+        "the chance level a real detection has to be read against.\n")
+    out.append(
+        f"Exposure: {fmt(first['exposure_turbine_years'], 1)} turbine-years of "
+        f"healthy operation over {windows} non-overlapping windows. Windows "
+        "touching the R80711 anomaly are left out for every arm alike.\n")
+
+    # --- the dashboard's rule, with and without persistence ------------------
+    rows = []
+    for arm in arms:
+        for m in (1, 6):
+            p = at(arm, 0.01, m)
+            if p is None:
+                continue
+            r, z = p["ramps"][key], p["ramps"]["0"]
+            rows.append(
+                f"| {label(arm)} | {_persistence_label(m)} | "
+                f"{fmt(p['false_dispatches_per_turbine_year'], 1)} | "
+                f"{_pct(r['detection_rate'])} % | "
+                f"{fmt(r['median_days_to_dispatch'], 1)} | "
+                f"{_pct(z['detection_rate'])} % |")
+    if rows:
+        out.append("**At the standing sensitivity (a 1 % rate), with and without "
+                   "persistence:**\n")
+        out.append(f"| arm | sustained for | false dispatches per turbine-year | "
+                   f"+{fmt(ramp_k, 0)} K ramps caught | median days to dispatch | "
+                   f"0 K placebo \"caught\" |")
+        out.append("|---|---|---|---|---|---|")
+        out.extend(rows)
+        out.append("")
+    dep = at(scorecard.DEPLOYED_ARM, 0.01, 1)
+    dep6 = at(scorecard.DEPLOYED_ARM, 0.01, 6)
+    if dep and dep6:
+        out.append(
+            f"With no persistence requirement the deployed arm \"catches\" "
+            f"{_pct(dep['ramps'][key]['detection_rate'])} % of the +{fmt(ramp_k, 0)} K "
+            f"ramps, but it also \"catches\" {_pct(dep['ramps']['0']['detection_rate'])} % "
+            f"of the 0 K placebo ramps: most of that detection is chance. With an "
+            f"hour of sustained alarm it catches "
+            f"{_pct(dep6['ramps'][key]['detection_rate'])} % against a chance level of "
+            f"{_pct(dep6['ramps']['0']['detection_rate'])} %.\n")
+
+    # --- equal false call-outs ----------------------------------------------
+    budgets = oc_json.get("budgets_ramp_4k") or {}
+    if budgets:
+        out.append("**At equal false call-outs per turbine-year, each arm at its own "
+                   "best setting:**\n")
+        out.append(f"| false call-out budget | arm | sensitivity | sustained for | "
+                   f"false dispatches | +{fmt(ramp_k, 0)} K caught | median days | "
+                   f"chance (0 K) |")
+        out.append("|---|---|---|---|---|---|---|---|")
+        lines_by_budget = []
+        for budget, row in budgets.items():
+            ranked = []
+            for arm in arms:
+                r = row.get(arm)
+                if not r:
+                    out.append(f"| {budget} | {label(arm)} | no setting fits | | | | | |")
+                    continue
+                out.append(
+                    f"| {budget} | {label(arm)} | {fmt(r['target_rate'] * 100, 2)} % | "
+                    f"{_persistence_label(r['persistence_samples'])} | "
+                    f"{fmt(r['false_dispatches_per_turbine_year'], 1)} | "
+                    f"{_pct(r['detection_rate'])} % | "
+                    f"{fmt(r['median_days_to_dispatch'], 1)} | "
+                    f"{_pct(r['placebo_detection_rate'])} % |")
+                ranked.append((-(r["detection_rate"] or 0.0),
+                               r["median_days_to_dispatch"] or 1e9, arm, r))
+            ranked.sort(key=lambda t: (t[0], t[1]))
+            if ranked:
+                lines_by_budget.append((budget, ranked))
+        out.append("")
+        for budget, ranked in lines_by_budget:
+            parts_ = "; ".join(
+                f"{label(arm)} {_pct(r['detection_rate'])} % in "
+                f"{fmt(r['median_days_to_dispatch'], 1)} days"
+                for _, _, arm, r in ranked)
+            out.append(f"* At {budget} false call-outs per turbine-year: {parts_}.")
+        out.append("")
+
+    held = oc_json.get("held_out_budgets_ramp_4k") or {}
+    if held:
+        out.append("**Setting chosen on half the windows, scored on the other "
+                   "half** (this removes the optimism of picking the best of a "
+                   "grid on the same weeks it is scored on):\n")
+        out.append(f"| false call-out budget | arm | false dispatches | "
+                   f"+{fmt(ramp_k, 0)} K caught | median days | chance (0 K) |")
+        out.append("|---|---|---|---|---|---|")
+        for budget, row in held.items():
+            for arm in arms:
+                h = row.get(arm)
+                if not h:
+                    continue
+                out.append(
+                    f"| {budget} | {label(arm)} | "
+                    f"{fmt(h['false_dispatches_per_turbine_year'], 1)} | "
+                    f"{_pct(h['detection_rate'])} % | "
+                    f"{fmt(h['median_days_to_dispatch'], 1)} | "
+                    f"{_pct(h['placebo_detection_rate'])} % |")
+        out.append("")
+
+    shaped = oc_json.get("budgets_ramp_4k_load_proportional") or {}
+    if shaped:
+        out.append("**A fault whose heat scales with load** (the offset is "
+                   f"+{fmt(ramp_k, 0)} K at half of rated power and proportional "
+                   "to load from there), best setting within each budget:\n")
+        out.append(f"| false call-out budget | arm | false dispatches | "
+                   f"+{fmt(ramp_k, 0)} K caught | median days | chance (0 K) |")
+        out.append("|---|---|---|---|---|---|")
+        for budget, row in shaped.items():
+            for arm in arms:
+                r = row.get(arm)
+                if not r:
+                    continue
+                out.append(
+                    f"| {budget} | {label(arm)} | "
+                    f"{fmt(r['false_dispatches_per_turbine_year'], 1)} | "
+                    f"{_pct(r['detection_rate'])} % | "
+                    f"{fmt(r['median_days_to_dispatch'], 1)} | "
+                    f"{_pct(r['placebo_detection_rate'])} % |")
+        out.append("")
+
+    ages = oc_json.get("reference_age") or {}
+    age_keys = sorted((k for k in ages if k.isdigit()), key=int)
+    if age_keys:
+        out.append("**The age of the reference.** The same windows for every age, "
+                   "at a 1 % rate with an hour of sustained alarm; false "
+                   "dispatches per turbine-year:\n")
+        out.append("| arm | " + " | ".join(f"reference {k} days old" for k in age_keys)
+                   + " | oldest over freshest |")
+        out.append("|---|" + "---|" * (len(age_keys) + 1))
+        ratios = ages.get("ratio_oldest_over_fresh") or {}
+        for arm in arms:
+            cells = []
+            for k in age_keys:
+                cell = (ages[k].get(arm) or {}).get("6")
+                cells.append(fmt(cell["false_dispatches_per_turbine_year"], 1)
+                             if cell else "not measured")
+            ratio = (ratios.get(arm) or {}).get("6")
+            out.append(f"| {label(arm)} | " + " | ".join(cells)
+                       + f" | {fmt(ratio, 2)}x |")
+        out.append("")
+
+    anomaly = oc_json.get("r80711_lead_time") or {}
+    if anomaly.get("rows"):
+        cm = load("cost_model.json") or {}
+
+        def find(arm, rate, m):
+            for r in anomaly["rows"]:
+                if (r["arm"] == arm and r["target_rate"] == rate
+                        and r["persistence_samples"] == m):
+                    return r
+            return None
+
+        def verdict(r):
+            if r is None:
+                return "not swept"
+            quiet = f"{r['dispatches_before_onset']} false before onset"
+            d = r.get("days_before_hot_spell")
+            if r.get("days_after_onset") is None:
+                return f"never dispatched ({quiet})"
+            if d is None:
+                return f"first dispatch {str(r['first_dispatch_after_onset'])[:10]} ({quiet})"
+            when = f"{fmt(d, 1)} d early" if d >= 0 else f"{fmt(-d, 1)} d late"
+            return f"{when} ({quiet})"
+
+        out.append("**The one real anomaly, on the same dial.** Nothing is injected "
+                   "here: each arm is fitted on the month before "
+                   f"{anomaly.get('test', ['', ''])[0]} and scored on R80711 up to "
+                   f"{anomaly.get('test', ['', ''])[1]}. The first sustained hot spell "
+                   f"(a day with at least {anomaly.get('min_hot_samples')} samples above "
+                   f"{fmt(anomaly.get('hot_c'), 0)} °C) began on "
+                   f"{str(anomaly.get('first_hot_spell') or '')[:10]}; the onset, when "
+                   f"R80711 first ran hotter than its siblings, is {anomaly.get('onset')}. "
+                   "A dispatch before the onset is a false alarm, not a warning, "
+                   "so it is counted against the setting.\n")
+        out.append("| arm | standing 1 %, 1 h | most profitable setting, flat offset | "
+                   "most profitable setting, load-proportional fault | settings that "
+                   "warned early with no false dispatch |")
+        out.append("|---|---|---|---|---|")
+        for arm in arms:
+            cells = [verdict(find(arm, 0.01, 6))]
+            for blk in (cm.get("arms", {}).get(arm, {}),
+                        (cm.get("arms", {}).get(arm, {}) or {}).get("load_proportional") or {}):
+                b = (blk or {}).get("best_setting")
+                cells.append("not priced" if not b else
+                             f"{fmt(b['target_rate'] * 100, 2)} % · "
+                             f"{_persistence_label(b['persistence_samples'])}: "
+                             + verdict(find(arm, b["target_rate"], b["persistence_samples"])))
+            ec = scorecard.early_clean_settings(oc_json, arm)
+            cells.append(f"{ec[0]} of {ec[1]}" if ec else "not measured")
+            out.append(f"| {label(arm)} | " + " | ".join(cells) + " |")
+        out.append("")
+        rbl = anomaly.get("residual_by_load")
+        if rbl and rbl.get("phases"):
+            edges = rbl["load_bins"]
+            out.append(f"**Where the excess is.** The mean temperature above what the "
+                       f"{label(rbl['arm'])} model expected, by load (samples in "
+                       "brackets):\n")
+            out.append("| load | before the onset | hot-spell days | other days after the onset |")
+            out.append("|---|---|---|---|")
+            for i, lo in enumerate(edges):
+                row = [f"{lo * 100:.0f}–{(lo + 0.2) * 100:.0f} %"]
+                for phase in ("before_onset", "hot_spell_days", "other_days_after_onset"):
+                    c = rbl["phases"][phase][i]
+                    row.append("none" if c["mean_residual_k"] is None else
+                               f"{fmt(c['mean_residual_k'], 1)} K ({c['n']})")
+                out.append("| " + " | ".join(row) + " |")
+            out.append("")
+
+        cov = anomaly.get("high_load_coverage")
+        if cov and cov.get("daily"):
+            from datetime import date, timedelta
+
+            hl = cov["high_load"] * 100
+            n_between = cov["samples_between_onset_and_hot_spell"]
+            if n_between == 0:
+                verdict_txt = (
+                    "There was no high-load operation between the onset and the "
+                    "first hot spell, so there was nothing for any model to see: "
+                    "the hot spell is simply the first day the turbine ran hard. "
+                    "That limits the warning time whatever the model or the dial; "
+                    "it is a property of the weather and the fault.")
+            else:
+                verdict_txt = (
+                    f"High-load operation before the first hot spell was brief "
+                    f"({n_between} samples), which limits how early any model "
+                    "could see this fault.")
+            out.append(
+                "**Why the warning was not earlier.** The excess shows mainly at "
+                "high load, so a fault like this can only be seen once the "
+                f"turbine works hard. Between the onset and the first hot spell "
+                f"there were {n_between} samples at {hl:.0f} % load or more, and "
+                f"the training month held {cov['training_high_load_samples']} of "
+                f"{cov['training_samples']} "
+                f"({fmt(cov['training_high_load_share'] * 100, 1)} %). "
+                + verdict_txt + "\n")
+            spell_day = str(anomaly.get("first_hot_spell") or "")[:10]
+            days = cov["daily"]
+            try:
+                lo = (date.fromisoformat(str(anomaly.get("onset")))
+                      - timedelta(days=3)).isoformat()
+                hi_ = (date.fromisoformat(spell_day) + timedelta(days=4)).isoformat()
+                days = [d for d in days if lo <= d["day"] <= hi_]
+            except ValueError:
+                days = days[:14]
+            out.append("| day | samples at high load | mean excess at high load |")
+            out.append("|---|---|---|")
+            for d in days:
+                out.append(
+                    f"| {d['day']} | {d['n_high_load']} | "
+                    + ("none" if d["mean_residual_k"] is None
+                       else f"{fmt(d['mean_residual_k'], 1)} K") + " |")
+            out.append("")
+
+    if "lightgbm" not in arms:
+        out.append("_The learned arm (LightGBM) is not in this run; run "
+                   "`make curve` on a machine that has it._\n")
+
+    out.append(
+        "**What this does not show.** The ramp is a simulation of an offset on "
+        "one channel; a real bearing fault may involve several channels and "
+        "develop differently. The two shapes above bracket how its heat might "
+        "depend on load, and the held-out table removes the optimism of "
+        "choosing a setting on the weeks it is scored on, but none of the "
+        "figures is an out-of-sample forecast of operations. Detection is "
+        "measured on a 28-day window held to a reference fitted on the thirty "
+        "days before it, which is the dashboard's monthly loop; a weekly refit "
+        "would change the false-dispatch counts.\n")
+    return "\n".join(out)
+
+
+def section_cost() -> str:
+    """What the operating curve is worth in money, under stated assumptions.
+
+    Written from results/cost_model.json, which `17_cost_model.py` derives
+    from the operating curve. The false dispatches and the share of faults
+    caught are measured; the three prices are assumed, and the section says
+    so before it says anything else. Skipped until `make cost` has run.
+    """
+    cm = load("cost_model.json")
+    if not cm or not cm.get("arms"):
+        return ""
+    a = cm["assumptions"]
+    arms = list(cm["arms"])
+    label = lambda x: _ARM_LABELS.get(x, x)  # noqa: E731
+    robust = cm.get("ranking_robustness") or {}
+    cells = robust.get("assumption_grid_cells")
+
+    out = ["### What the operating curve is worth in money\n"]
+    out.append(
+        "**Three numbers here are assumed, not measured**, because the public "
+        f"data has no maintenance log: a false dispatch costs {a['dispatch_cost']:,.0f}, "
+        f"catching a fault early is worth {a['early_intervention_value']:,.0f} "
+        f"(a planned repair against a failure that trips the turbine), and a "
+        f"fault turns up {fmt(a['faults_per_turbine_year'], 2)} times per "
+        "turbine-year. What is measured is the false dispatches per "
+        "turbine-year and the share of simulated faults caught, at every "
+        "setting of every arm. Each arm is shown at its own most profitable "
+        "setting, so it is judged at the dial that suits it, not at one "
+        "setting shared by all. Net value is against not monitoring at all.\n")
+
+    def table(title, getter):
+        rows = []
+        for arm in arms:
+            blk = getter(cm["arms"][arm])
+            if not blk:
+                continue
+            b, s = blk.get("best_setting"), blk.get("standing_setting")
+            if not b:
+                continue
+            rows.append(
+                f"| {label(arm)} | {fmt(b['target_rate'] * 100, 2)} % · "
+                f"{_persistence_label(b['persistence_samples'])} | "
+                f"{fmt(b['false_dispatches_per_turbine_year'], 1)} | "
+                f"{_pct(b['detection_rate'])} % | {b['net_value']:,.0f} | "
+                f"{fmt(b['break_even_fault_rate'], 3)} | "
+                f"{(s['net_value'] if s else float('nan')):,.0f} |")
+        if not rows:
+            return
+        out.append(title + "\n")
+        out.append("| arm | most profitable setting (sensitivity, sustained for) | "
+                   "false dispatches per turbine-year | "
+                   f"+{fmt(cm.get('ramp_k', 4.0), 0)} K caught | "
+                   "net value per turbine-year | break-even fault rate | "
+                   "net value at the standing 1 %, 1 h setting |")
+        out.append("|---|---|---|---|---|---|---|")
+        out.extend(rows)
+        out.append("")
+
+    table("**A flat temperature offset:**", lambda blk: blk)
+    table("**A fault whose heat scales with load:**",
+          lambda blk: blk.get("load_proportional"))
+
+    def shares(key, title):
+        sh = robust.get(key)
+        if not sh:
+            return
+        cells_txt = f" of {cells} combinations of the three assumptions" if cells else ""
+        out.append(
+            f"* {title}: " + "; ".join(
+                f"{label(arm)} {_pct(v)} %" for arm, v in sh.items()
+                if v is not None) + cells_txt + ".")
+
+    shares("share_where_arm_is_most_profitable",
+           "The most profitable arm for a flat offset, by share")
+    shares("share_where_arm_is_most_profitable_load_proportional",
+           "The most profitable arm for a load-proportional fault")
+    shares("share_where_arm_is_best_in_the_worse_case",
+           "The arm with the best worse case across the two fault shapes")
+    out.append("")
+
+    edge_arms = []
+    for arm in arms:
+        for blk in (cm["arms"][arm], cm["arms"][arm].get("load_proportional") or {}):
+            b = (blk or {}).get("best_setting") or {}
+            if b.get("at_grid_edge"):
+                edge_arms.append((label(arm), ", ".join(b["at_grid_edge"])))
+    if edge_arms:
+        out.append(
+            "_The most profitable setting of "
+            + "; ".join(f"{n} ({e})" for n, e in dict(edge_arms).items())
+            + " sits at the edge of the swept grid, so a wider sweep might "
+              "find a better one._\n")
+
+    out.append(
+        "**What this does not show.** The prices are placeholders: change them "
+        "in the dashboard and the ranking and the break-even rates move. Each "
+        "arm's setting is chosen on the same weeks it is scored on, so every "
+        "figure is optimistic, equally for every arm. The detection rate is a "
+        "simulated ramp, not a recorded fault. And a false dispatch is priced "
+        "as one flat cost, whereas a real operator would look at the data "
+        "remotely before sending anyone, which is cheaper.\n")
+    return "\n".join(out)
+
+
+def section_daily_check() -> str:
+    """The daily check: a frozen monthly model, a daily comparison, the rules.
+
+    Written from results/daily_check.json. Skipped until `make daily` has run.
+    """
+    dcj = load("daily_check.json")
+    if not dcj or not dcj.get("by_turbine"):
+        return ""
+    proto = dcj["protocol"]
+    rows = dcj["by_turbine"]
+    fleet = dcj["fleet"]
+    turbines = proto["turbines"]
+    case = "R80711"
+    tols = sorted(fleet, key=float)
+    at = lambda t, tol: next((r for r in rows if r["turbine"] == t  # noqa: E731
+                              and f"{r['tolerance']:g}" == tol), None)
+
+    out = ["### The daily check: predict the healthy value, compare it every day\n"]
+    out.append(
+        "Each month a model is trained on at least a month of healthy readings "
+        "from before the month, leaving out standstill, the "
+        f"{fmt(proto['warmup_hours'], 0)}-hour warm-up after every restart (a "
+        "bearing that restarts cold runs up to 12 K below normal), every day "
+        "that was flagged, and everything before the last maintenance. It is "
+        "then frozen for the month: it never learns from the month's own sensor "
+        "values. Every day it predicts what a healthy sensor should read from "
+        "that day's power and weather, and the day's mean difference from what "
+        "the sensor shows is compared with a tolerance. A run of hot days is one "
+        "call-out at the end of its first day. After a confirmed fault the model "
+        "stays frozen until maintenance; after maintenance it is blank until a "
+        "new month of healthy data exists.\n")
+    out.append(
+        "**Stood in for, because the data have no records:** maintenance is a "
+        "restart after three days or more without running; what an inspection "
+        "would find is the documented anomaly span (R80711 from 15 August 2017). "
+        "A hot day outside it counts as a false alarm.\n")
+
+    out.append("**False call-outs a year and the real fault, by tolerance:**\n")
+    out.append("| tolerance | healthy siblings, false call-outs a year | "
+               f"{case}, false call-outs a year | {case}, first call-out on "
+               "the fault | fault days hot, of those checked | siblings, cold "
+               "days a year |")
+    out.append("|---|---|---|---|---|---|")
+    for tol in tols:
+        f = fleet[tol]
+        out.append(
+            f"| {tol} K | {fmt(f['siblings_false_call_outs_per_year'], 1)} | "
+            f"{fmt(f['case_false_call_outs_per_year'], 1)} | "
+            f"{f['case_first_fault_call_out'] or 'none'} | "
+            f"{f['case_fault_days_hot']} of {f['case_fault_days_checked']} | "
+            f"{fmt(f['siblings_cold_days_per_year'], 1)} |")
+    ref = at(case, tols[0])
+    if ref:
+        sib_lim = [fmt(at(t, tols[0])["limit_false_call_outs_per_year"], 1)
+                   for t in turbines if t != case and at(t, tols[0])]
+        out.append(
+            f"| plain 80 °C limit, held 1 h | {' / '.join(sib_lim)} | "
+            f"{fmt(ref['limit_false_call_outs_per_year'], 1)} | "
+            f"{ref['limit_first_fault_call_out'] or 'none'} | | |")
+    out.append("")
+
+    noise = [at(t, tols[0])["healthy_daily_mean_k"]["sd"] for t in turbines
+             if t != case and at(t, tols[0])]
+    if noise:
+        out.append(
+            "On healthy days the day's mean difference has a standard deviation "
+            f"of {fmt(min(noise), 2)} to {fmt(max(noise), 2)} K on the siblings, "
+            "so a tolerance of 1 K sits inside the model's own day-to-day noise. "
+            "Too tight a tolerance also starves the training: every flagged day "
+            "is left out, and when too few healthy days remain the model goes "
+            "blank.\n")
+
+    r2 = at(case, "2")
+    if r2:
+        by_year = r2.get("false_call_outs_by_year") or {}
+        months_2017 = {k: v for k, v in (r2.get("hot_days_by_month") or {}).items()
+                       if k >= "2017"}
+        out.append(
+            f"**{case} before its fault (2 K).** Hot call-outs outside the fault "
+            "period, by year: " + ", ".join(f"{y}: {n}" for y, n in by_year.items())
+            + ". Hot days by month from 2017: "
+            + ", ".join(f"{m}: {n}" for m, n in months_2017.items())
+            + ". The bearing began running hotter than its own healthy reference "
+            "from May 2017, months before the first sustained hot spell on "
+            "8 September. With no fault labels this is a candidate early warning, "
+            "not a proven one: those days count as false alarms here.\n")
+
+    out.append("**What it costs in coverage (2 K):**\n")
+    out.append("| turbine | running days | days blank (start, maintenance) | "
+               "running days checked | maintenance restarts |")
+    out.append("|---|---|---|---|---|")
+    for t in turbines:
+        r = at(t, "2")
+        if r:
+            out.append(f"| {t} | {r['running_days']} | {r['blank_running_days']} | "
+                       f"{_pct(r['checked_share'])} % | "
+                       f"{len(r['maintenance_restarts'])} |")
+    out.append("")
+
+    # The 7-day forecast: the same frozen model fed a weather forecast.
+    acc = [at(t, "2")["forecast_accuracy"] for t in turbines
+           if at(t, "2") and at(t, "2").get("forecast_accuracy")]
+    if acc:
+        leads = sorted({int(L) for a in acc for L in a["by_lead"]})
+
+        def mean(key, L):
+            v = [a["by_lead"][str(L)][key] for a in acc if str(L) in a["by_lead"]]
+            return sum(v) / len(v)
+
+        same = sum(a["same_day_mae_vs_sensor_k"] for a in acc) / len(acc)
+        out.append("**The 7-day forecast (2 K, healthy days, the four turbines "
+                   "averaged).** The month's frozen model is fed a weather "
+                   "forecast issued days before; the power comes from the "
+                   "turbine's own power curve against wind. The forecast is "
+                   "simulated: " + proto.get("forecast", "") + ".\n")
+        out.append("| issued, days before | forecast vs sensor (K) | "
+                   "forecast vs on-day prediction (K) |")
+        out.append("|---|---|---|")
+        for L in leads:
+            out.append(f"| {L} | {fmt(mean('mae_vs_sensor_k', L), 2)} | "
+                       f"{fmt(mean('mae_vs_same_day_k', L), 2)} |")
+        out.append(f"| on the day, actual weather | {fmt(same, 2)} | |")
+        out.append("")
+        out.append(
+            "The model fed the day's actual weather is within "
+            f"{fmt(same, 2)} K of the sensor on average; fed a forecast, the error "
+            f"grows from {fmt(mean('mae_vs_sensor_k', leads[0]), 1)} K a day ahead "
+            f"to {fmt(mean('mae_vs_sensor_k', leads[-1]), 1)} K a week ahead. That "
+            "is the weather's error, not the bearing's, so the call-out is made on "
+            "the day and the forecast is for planning.\n")
+
+    # Every sensor, and the siblings.
+    sib = dcj.get("siblings") or {}
+    if sib:
+        out.append("**Second opinions (2 K): every gearbox sensor, and the "
+                   "siblings.** Each sensor has its own model. The siblings are "
+                   "compared at the same moment, power within "
+                   "a tenth of rated, the normal gap learned per wind sector or "
+                   "overall, and a call-out when the 5-day median change passes "
+                   "+2 K.\n")
+        out.append("| turbine | bearing model alone | 2 of 4 gearbox sensors | "
+                   "siblings, per wind sector | siblings, one normal |")
+        out.append("|---|---|---|---|---|")
+        for t in turbines:
+            r = at(t, "2")
+            if not r or t not in sib:
+                continue
+            g = r.get("gearbox_rule") or {}
+
+            def cell(v, first):
+                return f"{fmt(v, 1)} / yr" + (f", fault {first[:10]}" if first else "")
+
+            d = sib[t]["direction"]["by_threshold"]["2"]
+            o = sib[t]["overall"]["by_threshold"]["2"]
+            out.append(
+                f"| {t} | {cell(r['false_call_outs_per_year'], r['first_fault_call_out'])} | "
+                f"{cell(g.get('false_call_outs_per_year'), g.get('first_fault_call_out'))} | "
+                f"{cell(d['false_call_outs_per_year'], d['first_fault_call_out'])} | "
+                f"{cell(o['false_call_outs_per_year'], o['first_fault_call_out'])} |")
+        out.append("")
+        out.append(
+            "False call-outs a year, and the day of the first call-out on the "
+            "fault. Neither second opinion beats the bearing's own model: asking "
+            "two gearbox sensors to agree adds false call-outs, and learning the "
+            "sibling gap per wind sector did not lower them on the healthy "
+            "turbines and called the fault later. They stay what the technician "
+            "looks at, not the alarm.\n")
+
+    out.append(
+        "**What this does not show.** Maintenance and inspections are stood in "
+        "for, not recorded. There is one documented fault. Days with too few "
+        "usable readings are not checked. The tolerance is chosen on the same "
+        "history it is scored on.\n")
+    return "\n".join(out)
+
+
+def section_confirmation() -> str:
+    """The historical confirmation: train on last month, predict this month.
+
+    Written from results/monthly_confirmation.json. Every figure is the one the
+    monthly loop produced, over every month of every turbine, so the claim that
+    a healthy model fitted on last month predicts next month is shown rather
+    than asserted. Skipped until `make confirm` has run.
+    """
+    cf = load("monthly_confirmation.json")
+    if not cf or not cf.get("months"):
+        return ""
+    s = cf["summary"]
+    fleet, per = s["fleet"], s["by_turbine"]
+    proto = cf.get("protocol", {})
+    limit = fmt(proto.get("fixed_limit_c"), 0)
+
+    out = ["### The historical confirmation: train on last month, predict this month\n"]
+    out.append(
+        "The project in one paragraph. Every month a fresh reference is fitted "
+        "on at least one month of healthy readings (the whole previous month, "
+        "reached further back only as far as needed), so it knows how each sensor "
+        "behaves when nothing is wrong, including how load and weather move it. "
+        "It is then asked what a healthy machine would show in the next month, "
+        "given that month's load and weather, and an alarm is raised when the "
+        "sensor runs hotter than that expectation, not merely above a fixed "
+        "number. The data are historical, so the next month is already known and "
+        "the prediction can be confirmed. This runs the dashboard's monthly loop "
+        f"over every month of every turbine ({fleet['months']} turbine-months). "
+        "Health is an assumption: every month of every turbine, except the "
+        "documented R80711 anomaly.\n")
+
+    out.append("**Was the month predicted?** The gearbox bearing's temperature, "
+               "predicted from the month before:\n")
+    out.append("| turbine | healthy months | median error | 90th-percentile error | "
+               "months within 1 K of unbiased |")
+    out.append("|---|---|---|---|---|")
+    for name, b in list(per.items()) + [("all four", fleet)]:
+        out.append(
+            f"| {name} | {b['healthy_months']} | {fmt(b['median_mae_k'], 2)} K | "
+            f"{fmt(b['p90_mae_k'], 2)} K | "
+            f"{_pct(b['share_months_within_1k_bias'])} % |")
+    out.append("")
+
+    out.append(f"**False alarms in healthy months: the model against a plain "
+               f"{limit} °C limit.** A dispatch is an alarm sustained for an "
+               "hour. In a healthy month every dispatch is a false one. The last "
+               "column is the fixed limit's alarms on which the model stayed "
+               "quiet, because load and weather explained that temperature.\n")
+    out.append("| turbine | model dispatches | per turbine-year | "
+               f"{limit} °C limit dispatches | per turbine-year | "
+               "limit alarms the model stayed quiet on |")
+    out.append("|---|---|---|---|---|---|")
+    for name, b in list(per.items()) + [("all four", fleet)]:
+        out.append(
+            f"| {name} | {b['healthy_model_dispatches']} | "
+            f"{fmt(b['healthy_model_dispatches_per_turbine_year'], 1)} | "
+            f"{b['healthy_fixed_limit_dispatches']} | "
+            f"{fmt(b['healthy_fixed_limit_dispatches_per_turbine_year'], 1)} | "
+            f"{b['healthy_fixed_limit_dispatches_explained']} of "
+            f"{b['healthy_fixed_limit_dispatches']} |")
+    out.append("")
+
+    anomaly = [r for r in cf["months"] if not r["healthy_assumed"]]
+    if anomaly:
+        out.append("**The anomaly months (R80711).** Here an alarm is what is wanted:\n")
+        out.append("| month | prediction error | model dispatches | "
+                   f"first model dispatch | {limit} °C limit dispatches | "
+                   "first limit dispatch |")
+        out.append("|---|---|---|---|---|---|")
+        for r in anomaly:
+            out.append(
+                f"| {r['month']} | {fmt(r['mae_k'], 2)} K | {r['model_dispatches']} | "
+                f"{r['first_model_dispatch'] or 'none'} | "
+                f"{r['fixed_dispatches']} | {r['first_fixed_dispatch'] or 'none'} |")
+        out.append("")
+
+    fleet_settings = fleet.get("settings") or {}
+    if fleet_settings:
+        sep = next((r for r in cf["months"] if r["turbine"] == "R80711"
+                    and r["month"] == "2017-09"), None)
+        turbines = list(per)
+        out.append(
+            "**Can the false alarms be turned down, and what does it cost?** The "
+            "same history re-scored at stricter alarm settings, with nothing "
+            "refitted. False dispatches per turbine-year in healthy months, then "
+            "how many of R80711's anomaly months were alarmed at all, and when the "
+            "first dispatch of September 2017 came (the real hot spell began on "
+            "2017-09-08).\n")
+        out.append("| rule | all four | " + " | ".join(turbines)
+                   + " | anomaly months alarmed | first dispatch, Sep 2017 |")
+        out.append("|---|" + "---|" * (len(turbines) + 3))
+
+        def parse(key):
+            return float(key[1:key.index("_")]), int(key[key.index("_s") + 2:])
+
+        def row_for(label, get, first):
+            cells = [fmt(get(fleet)["healthy_dispatches_per_turbine_year"], 1)]
+            cells += [fmt(get(per[t])["healthy_dispatches_per_turbine_year"], 1)
+                      for t in turbines]
+            a = get(per["R80711"]) if "R80711" in per else None
+            cells.append(f"{a['anomaly_months_alarmed']} of {a['anomaly_months']}"
+                         if a else "not measured")
+            cells.append(first or "none")
+            out.append(f"| {label} | " + " | ".join(cells) + " |")
+
+        for sustain in sorted({parse(k)[1] for k in fleet_settings}):
+            held = _persistence_label(sustain)
+            for key in sorted((k for k in fleet_settings if parse(k)[1] == sustain),
+                              key=lambda k: parse(k)[0]):
+                z = parse(key)[0]
+                row_for(f"model, z above {z:g}, held {held}",
+                        lambda blk, key=key: blk["settings"][key],
+                        ((sep or {}).get("settings", {}).get(key) or {}).get("first"))
+            fkey = f"s{sustain}"
+            if fkey in (fleet.get("fixed_settings") or {}):
+                row_for(f"**plain {limit} °C limit, held {held}**",
+                        lambda blk, fkey=fkey: blk["fixed_settings"][fkey],
+                        ((sep or {}).get("fixed_settings", {}).get(fkey) or {}).get("first"))
+            two = fleet.get("two_stage") or {}
+            for key in sorted((k for k in two if parse(k)[1] == sustain),
+                              key=lambda k: parse(k)[0]):
+                row_for(f"**{limit} °C limit, vetoed by the model at z above "
+                        f"{parse(key)[0]:g}, held {held}**",
+                        lambda blk, key=key: blk["two_stage"][key],
+                        ((sep or {}).get("two_stage", {}).get(key) or {}).get("first"))
+        out.append("")
+        if fleet.get("two_stage"):
+            out.append(
+                "The rows in bold that say *vetoed* are the two-stage rule: the "
+                f"{limit} °C limit triggers, and a dispatch stands only if the "
+                "healthy model also finds the temperature unexpected inside it. "
+                "A limit alarm that load and weather explain is dropped; one the "
+                "model cannot predict (a load it has hardly seen) is NOT "
+                "explained, so it stands. Note "
+                "that the August row counts as an anomaly month because the "
+                "anomaly span starts on 15 August, so a limit alarm early in "
+                "August is counted as caught although it came before the anomaly.\n")
+
+    if fleet.get("strategy"):
+        turbines = list(per)
+        sep = next((r for r in cf["months"] if r["turbine"] == "R80711"
+                    and r["month"] == "2017-09"), None)
+        r711 = per.get("R80711") or {}
+        out.append(
+            "**The sibling warning and the full strategy.** The sibling warning "
+            "compares a turbine with its siblings at the same moment and similar "
+            "power, against its normal gap over the model's training window, "
+            "smoothed by a 5-day median; a run of flagged days is one call-out at "
+            "the end of its first day. *Confirmed* means the model also found "
+            "unexplained heat that day. The strategy is the veto (z above 2) plus "
+            "the sibling call-outs, counted once per day. False call-outs per "
+            "turbine-year in healthy months:\n")
+        out.append("| rule | " + " | ".join(turbines) + " | all four | R80711 fault months "
+                   "alarmed | first call-out, Sep 2017 |")
+        out.append("|---|" + "---|" * (len(turbines) + 3))
+
+        def srow(label, field, key):
+            cells = [fmt(per[t][field][key]["healthy_dispatches_per_turbine_year"], 1)
+                     for t in turbines]
+            cells.append(fmt(fleet[field][key]["healthy_dispatches_per_turbine_year"], 1))
+            a = (r711.get(field) or {}).get(key) or {}
+            cells.append(f"{a.get('anomaly_months_alarmed', 0)} of {a.get('anomaly_months', 0)}")
+            cells.append((((sep or {}).get(field) or {}).get(key) or {}).get("first") or "none")
+            out.append(f"| {label} | " + " | ".join(cells) + " |")
+
+        srow(f"plain {limit} °C limit, held 1 h", "fixed_settings", "s6")
+        srow("limit, vetoed by the model at z above 2", "two_stage", "z2_s6")
+        for key in sorted(fleet["strategy"], key=lambda k: float(k[1:])):
+            thr = key[1:]
+            srow(f"sibling warning, +{thr} K", "sibling", key)
+            srow(f"sibling warning, +{thr} K, confirmed", "sibling_confirmed", key)
+            srow(f"**strategy: veto + sibling, +{thr} K**", "strategy", key)
+            srow(f"**strategy: veto + confirmed sibling, +{thr} K**", "strategy_confirmed", key)
+        out.append("")
+        fx = r711.get("fixed_settings", {}).get("s6") or {}
+        v2 = r711.get("two_stage", {}).get("z2_s6") or {}
+        v3 = r711.get("two_stage", {}).get("z3_s6") or {}
+        if fx and v2 and v3:
+            out.append(
+                "**Where the veto's removals were.** In R80711's healthy months the "
+                f"limit raised {fx['healthy_dispatches']} dispatches and the veto kept "
+                f"{v2['healthy_dispatches']} of them at z above 2 and "
+                f"{v3['healthy_dispatches']} at z above 3. In its fault months the "
+                f"limit raised {fx['anomaly_dispatches']} and the veto kept "
+                f"{v2['anomaly_dispatches']} and {v3['anomaly_dispatches']}. So the "
+                "alarms the veto removes are, on this record, alarms raised DURING "
+                "the fault, most likely because the monthly reference re-learns a "
+                "fault that has lasted for weeks (its training window then holds "
+                "it) and so explains its heat away; that mechanism is not measured "
+                "directly here.\n")
+
+    episodes = cf.get("r80711_sibling_episodes") or []
+    if episodes:
+        out.append("**R80711's stretches hotter than its siblings than usual** (more "
+                   "than 2 K above its gap over the previous 30 days, 5-day median), "
+                   "for judging what they were:\n")
+        out.append("| from | to | days | peak |")
+        out.append("|---|---|---|---|")
+        for e in episodes:
+            out.append(f"| {e['start']} | {e['end']} | {e['days']} | "
+                       f"+{fmt(e['peak_k'], 2)} K |")
+        out.append("")
+
+    out.append(
+        "**What this does not show.** Health is assumed, not labelled. There is "
+        "one real anomaly. In the later anomaly months the fresh reference has "
+        "been fitted partly on the anomaly itself, which is its documented blind "
+        "spot. The alarm settings are scored on the same history they are read "
+        "from, so none of them is a forecast of how a setting would do on "
+        "unseen months.\n")
+    return "\n".join(out)
+
+
+def section_goal() -> str:
+    """The project's goal, and the three measurements that answer it.
+
+    Generated from results/backtest.json through `windmill.scorecard`, the
+    same module the dashboard's headline cards read, so no number here is
+    typed by hand and the README cannot disagree with the dashboard.
+    """
+    b = load("backtest.json")
+    if not b:
+        return ""
+    curve = load("operating_curve.json")
+    card = scorecard.goal_scorecard(b, load("engie_multivariate.json"),
+                                    load("demo_r80711.json"), curve)
+    ages = card["false_alarm"]["ratio_by_reference_age"]
+    frozen_ratio = card["false_alarm"]["ratio_frozen_2014"]
+    det = card["detection"].get(scorecard.DEPLOYED_ARM) or {}
+    lrn = card["detection"].get(scorecard.LEARNED_ARM) or {}
+    one, five = scorecard.lead_days(card)
+    l_one, _ = scorecard.lead_days(card, scorecard.LEARNED_ARM)
+    pooled = (b.get("A1_A2_weekly_backtest") or {}).get("pooled") or {}
+    summary = pooled.get("summary") or {}
+    paired = pooled.get("paired") or {}
+
+    out = ["## The goal\n"]
+    out.append(
+        "**Cut the cost of unnecessary maintenance call-outs by raising fewer "
+        "false alarms, while still warning early enough of a developing "
+        "bearing fault that the turbine can be stopped on purpose instead of "
+        "tripping on its own.**\n")
+    out.append(
+        "The two halves pull against each other: a detector can always be made "
+        "quieter by making it less sensitive, and made to warn earlier by "
+        "making it more sensitive. So no figure below is quoted alone -- each "
+        "is stated at a false-alarm rate, and the evaluation suite compares "
+        "every arm at the same one.\n")
+    out.append("| the question | the answer | measured by |")
+    out.append("|---|---|---|")
+    if ages.get("one_year") and ages.get("two_years"):
+        out.append(
+            f"| Fewer false alarms? | {fmt(ages['one_year'], 1)}x fewer than "
+            f"with a one-year-old reference and {fmt(ages['two_years'], 1)}x "
+            f"fewer than with a two-year-old one, at the same threshold rule | "
+            f"B.4, the age of the reference |")
+    ops = card.get("operating_point") or {}
+    op = ops.get(scorecard.DEPLOYED_ARM)
+    if op and op.get("detection_rate") is not None:
+        others = ""
+        for arm, name in (("constant", "a constant-median arm recalibrated the "
+                                       "same way"),
+                          (scorecard.LEARNED_ARM, "the learned arm")):
+            o = ops.get(arm)
+            if o and o.get("detection_rate") is not None:
+                others += (f"; {name}: {_pct(o['detection_rate'])} %, "
+                           f"{fmt(o['median_days'], 1)} days, chance "
+                           f"{_pct(o['chance_rate'])} %, "
+                           f"{fmt(o['false_dispatches_per_turbine_year'], 1)} "
+                           f"false call-outs")
+        out.append(
+            f"| Is a developing fault caught? | {_pct(op['detection_rate'])} % of "
+            f"injected +{fmt(scorecard.HEADLINE_RAMP_K, 0)} K ramps, a median "
+            f"{fmt(op['median_days'], 1)} days after onset, with an hour of "
+            f"sustained alarm at a 1 % rate; a 0 K placebo is \"caught\" "
+            f"{_pct(op['chance_rate'])} % of the time; "
+            f"{fmt(op['false_dispatches_per_turbine_year'], 1)} false call-outs "
+            f"per turbine-year{others} | the operating curve, a simulation |")
+    elif det.get("rate") is not None:
+        learned = ""
+        if lrn.get("rate") is not None:
+            learned = (f" (the learned arm: {fmt(lrn['rate'] * 100, 0)} %, "
+                       f"{fmt(lrn.get('median_days'), 1)} days)")
+        out.append(
+            f"| Is a developing fault caught? | {fmt(det['rate'] * 100, 0)} % of "
+            f"injected +{fmt(scorecard.HEADLINE_RAMP_K, 0)} K ramps, a median "
+            f"{fmt(det.get('median_days'), 1)} days after onset, at a 1 % "
+            f"false-alarm rate{learned} | C.6, a simulation |")
+    anomaly = card.get("anomaly") or {}
+    std = (anomaly.get("standing") or {}).get(scorecard.DEPLOYED_ARM)
+    ec = (anomaly.get("early_clean_settings") or {}).get(scorecard.DEPLOYED_ARM)
+    if std is not None:
+        d = std.get("days_before_hot_spell")
+        if std.get("days_after_onset") is None:
+            verdict = "never dispatched during the anomaly"
+        elif d is None:
+            verdict = f"first dispatched on {str(std['first_dispatch'])[:10]}"
+        elif d >= 0:
+            verdict = f"dispatched {fmt(d, 1)} days before"
+        else:
+            verdict = f"dispatched {fmt(-d, 1)} days after"
+        spell = str(anomaly.get("first_hot_spell") or "")[:10]
+        out.append(
+            f"| How much warning on the one real case? | R80711, September "
+            f"2017: the deployed model at the standing 1 %, 1 h setting "
+            f"{verdict}"
+            + (f" the first sustained hot spell ({spell})"
+               if d is not None and std.get("days_after_onset") is not None else "")
+            + (f"; {ec[0]} of {ec[1]} settings of its dial warned early "
+               f"without a false dispatch in the quiet stretch before the onset"
+               if ec else "")
+            + " | the real-anomaly check, unlabelled |")
+    elif one is not None and five is not None:
+        learned = (f" (the learned arm: {fmt(l_one, 0)} days at 1 %)"
+                   if l_one is not None else "")
+        out.append(
+            f"| How much warning on the one real case? | R80711, September "
+            f"2017, by the first day with any alarmed sample: {fmt(one, 0)} days before the temperature crosses 80 °C at "
+            f"a 1 % false-alarm rate, {fmt(five, 0)} days at 5 %{learned} | "
+            f"C.7, unlabelled |")
+    out.append("")
+
+    out.append("**What this does not show.**\n")
+    out.append(
+        "- **The savings are modelled, not measured.** The public data has no "
+        "maintenance log, so the cost of a false call-out is an assumption "
+        "(a flat figure per false dispatch, adjustable in the dashboard), not "
+        "an observation.")
+    out.append(
+        "- **The faults are simulated, and the one real case is unlabelled.** "
+        "The ENGIE release carries no fault label for the R80711 anomaly, so "
+        "its lead time says how early a detector would have fired, not that a "
+        "fault was confirmed.")
+    lc, lo, lw = (paired.get("load+ambient vs constant") or {},
+                  paired.get("load+ambient vs load") or {},
+                  paired.get("load+ambient+wind vs load+ambient") or {})
+    if lc and lo and lw:
+        out.append(
+            "- **The operating point does the work; the weather barely does.** "
+            "Conditioning on load cuts the median prediction error by "
+            f"{fmt(abs(lc.get('median_delta')), 2)} K against a constant. Adding "
+            f"ambient temperature changes it by {fmt(lo.get('median_delta'), 3)} K "
+            f"and wind speed by {fmt(lw.get('median_delta'), 3)} K on this channel.")
+    dep, lgb = summary.get("load+ambient"), summary.get("lightgbm")
+    if dep and lgb:
+        out.append(
+            f"- **The learned model is not the worse predictor.** Its median "
+            f"error is {fmt(lgb['mae_k_median'], 2)} K against "
+            f"{fmt(dep['mae_k_median'], 2)} K for the deterministic model; the "
+            f"deterministic one is kept for being transparent, not for being "
+            f"more accurate.")
+    if frozen_ratio:
+        out.append(
+            f"- **The {fmt(frozen_ratio, 1)}x figure is the extreme case, not "
+            f"the like-for-like one.** It compares a reference frozen in 2014 "
+            f"with a rolling one, each arm keeping its own threshold rule; the "
+            f"matched-threshold figures above are the ones to quote.")
+    n_never = n_arms = 0
+    cm_ = load("cost_model.json") or {}
+    for arm in (curve or {}).get("protocol", {}).get("arms", []):
+        b = ((cm_.get("arms") or {}).get(arm) or {}).get("best_setting")
+        rows_ = ((curve or {}).get("r80711_lead_time") or {}).get("rows") or []
+        if not b or not rows_:
+            continue
+        r = next((x for x in rows_ if x["arm"] == arm
+                  and x["target_rate"] == b["target_rate"]
+                  and x["persistence_samples"] == b["persistence_samples"]), None)
+        if r is not None:
+            n_arms += 1
+            n_never += 1 if r.get("days_after_onset") is None else 0
+    if n_arms:
+        out.append(
+            "- **The simulated fault and the real one disagree.** The settings "
+            "the economics prefer for a flat offset were also run on the one "
+            f"real anomaly: {n_never} of {n_arms} arms never dispatched during "
+            "it. The real excess grows with load and comes in spells, not as a "
+            "steady step, so a rule that waits for a long unbroken alarm can "
+            "miss it. The cost ranking should be read with that in mind.")
+    c_b = scorecard.curve_budget_reading(curve, 12, "constant")
+    d_b = scorecard.curve_budget_reading(curve, 12, scorecard.DEPLOYED_ARM)
+    if c_b and d_b:
+        out.append(
+            "- **Early warning at equal false call-outs.** At 12 false call-outs "
+            "per turbine-year the best setting of a constant-median arm catches "
+            f"{_pct(c_b['detection_rate'])} % of +{fmt(scorecard.HEADLINE_RAMP_K, 0)} K ramps "
+            f"in {fmt(c_b['median_days_to_dispatch'], 1)} days, against "
+            f"{_pct(d_b['detection_rate'])} % in "
+            f"{fmt(d_b['median_days_to_dispatch'], 1)} days for the deployed model. "
+            "The operating curve gives every budget, a held-out check and a "
+            "load-proportional fault.")
+    out.append(
+        "- **The weather is hindsight, not a forecast.** The expected "
+        "temperature is computed from the turbine's measured power and "
+        "reanalysis ambient temperature; the forecast chain (A.3) is a "
+        "simulation with injected forecast error.")
+    out.append("")
+    return "\n".join(out)
+
+
 def main() -> int:
     parts = [section_conditioning(), section_decomposition(),
              section_engie_multivariate(), section_scorability(),
-             section_care(), section_backtest()]
+             section_care(), section_backtest(), section_daily_check(),
+             section_confirmation(),
+             section_operating_curve(), section_cost()]
     body = "\n".join(p for p in parts if p.strip())
 
     readme = README.read_text()
@@ -883,6 +1915,12 @@ def main() -> int:
         mhead = new.split(METHOD_START)[0]
         mtail = new.split(METHOD_END)[1]
         new = f"{mhead}{METHOD_START}\n\n{method}\n{METHOD_END}{mtail}"
+
+    goal = section_goal()
+    if goal and GOAL_START in new and GOAL_END in new:
+        ghead = new.split(GOAL_START)[0]
+        gtail = new.split(GOAL_END)[1]
+        new = f"{ghead}{GOAL_START}\n\n{goal}\n{GOAL_END}{gtail}"
 
     # The test count is generated too, so it cannot go stale.
     n_tests = _count_tests()

@@ -382,9 +382,34 @@ def test_the_monthly_cross_check_splits_genuine_from_false_dispatches():
 
 def test_the_monthly_cross_check_refuses_a_month_with_no_predecessor():
     """There is nothing to train on for the first month in the data."""
-    months = live.available_months(ROOT / "data", "sample")
+    first = sorted(live._monthly_frame(ROOT / "data", "sample", "R80711")["month"].unique())[0]
     with pytest.raises(live.LiveEngineError):
-        live.monthly_cross_check(months[0], ROOT / "data", source="sample")
+        live.monthly_cross_check(first, ROOT / "data", source="sample")
+
+
+def test_the_training_holds_at_least_a_month_of_healthy_readings():
+    """The rule: at least one month of HEALTHY data, after the unhealthy rows
+    are trimmed, starting from the whole previous calendar month and reaching
+    further back only as far as needed, at most about three months."""
+    for month in live.available_months(ROOT / "data", "sample"):
+        prov = live.monthly_cross_check(month, ROOT / "data", source="sample")["provenance"]
+        assert prov["clean_rows"] >= live.MONTH_OF_READINGS, (month, prov["clean_rows"])
+        start = pd.Timestamp(prov["train_start"])
+        m_start = pd.Timestamp(month + "-01")
+        # never less than the whole previous calendar month ...
+        assert start <= m_start - pd.offsets.MonthBegin(1), (month, start)
+        # ... and never more than about three months back
+        assert (m_start - start).days <= live.MAX_TRAIN_LOOKBACK_DAYS, (month, start)
+        assert prov["train_end"] == str(m_start - pd.Timedelta(days=1))[:10]
+
+
+def test_a_month_without_a_month_of_healthy_data_behind_it_is_refused():
+    """The sample starts in May 2017: June has only May behind it, which is
+    less than a month of readings, so June is refused, not scored on too little,
+    and is not offered."""
+    with pytest.raises(live.LiveEngineError, match="less than a month"):
+        live.monthly_cross_check("2017-06", ROOT / "data", source="sample")
+    assert "2017-06" not in live.available_months(ROOT / "data", "sample")
 
 
 def test_the_monthly_cross_check_refuses_a_month_that_is_not_there():
@@ -508,3 +533,30 @@ def test_the_daily_summary_of_nothing_is_empty():
     assert len(daily) == 0
     for col in live.DAILY_TEMPERATURE_COLUMNS:
         assert col in daily.columns, col
+
+
+# ------------------------------------- the recalibrated static baseline
+def test_the_recalibrated_static_baseline_is_reported_and_partitioned():
+    """The static arm judged on the weather model's scale is not a fair
+    baseline, so the same arm is also calibrated on its OWN residuals. Its
+    dispatches must be reported, and split into false and genuine like the
+    others, or the saving cannot be quoted against it."""
+    res = _monthly("2017-09")
+    prov, eps = res["provenance"], res["episodes"]
+    assert len(eps["recalibrated"]) == (
+        len(eps["recalibrated_false"]) + len(eps["recalibrated_true"]))
+    assert prov["recalibrated_static_episodes"] == len(eps["recalibrated"])
+    assert (prov["recalibrated_static_false_dispatches"]
+            == len(eps["recalibrated_false"]))
+    assert (res["cost"]["recalibrated_static_false_dispatches"]
+            == len(eps["recalibrated_false"]))
+
+
+def test_calibrated_on_its_own_residuals_the_static_arm_is_far_quieter():
+    """The whole reason it is reported: judged on the weather model's scale the
+    static arm alarms whenever the machine runs hard, and that is a
+    calibration effect, not a modelling one."""
+    prov = _monthly("2017-09")["provenance"]
+    assert (prov["recalibrated_static_false_dispatches"]
+            < prov["naive_false_dispatches"]), prov
+    assert prov["recalibrated_static_threshold_k"] is not None

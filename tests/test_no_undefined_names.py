@@ -120,3 +120,89 @@ def test_library_module_defines_every_name_it_uses(module: Path):
     assert not undefined, (
         f"{module.relative_to(ROOT)} reads names it never defines: {undefined}"
     )
+
+
+# ------------------------------------------------------------ scope-aware
+# The checks above treat a name as defined if it is bound ANYWHERE in the file.
+# That is too generous for the lazy-import style this codebase uses
+# (`import plotly.graph_objects as go` inside each chart function): a function
+# that forgets its own import is covered by the seven other functions that
+# made theirs. That is exactly how `_curve_economics` shipped with
+# `go.Figure()` and no import, and failed every test that renders the app.
+#
+# This check is scope-aware. Inside a function, a name that is neither local,
+# nor from an enclosing function, nor bound at MODULE level, nor a builtin, is
+# a NameError waiting for the first caller.
+import symtable  # noqa: E402
+
+
+def _unresolved_in_source(source: str, filename: str = "<string>") -> list:
+    top = symtable.symtable(source, filename, "exec")
+    defined = ({s.get_name() for s in top.get_symbols()
+                if s.is_assigned() or s.is_imported() or s.is_namespace()}
+               | BUILTINS | DUNDERS)
+    found: list = []
+
+    def walk(table, where):
+        for sym in table.get_symbols():
+            if (table.get_type() == "function" and sym.is_global()
+                    and sym.is_referenced() and sym.get_name() not in defined):
+                found.append((where, sym.get_name()))
+        for child in table.get_children():
+            walk(child, f"{where}.{child.get_name()}")
+
+    for child in top.get_children():
+        walk(child, child.get_name())
+    return sorted(set(found))
+
+
+def test_the_scope_aware_check_catches_a_name_imported_in_another_function():
+    """The bug that shipped: one function imports a module lazily, a second
+    uses the same name without importing it. The file-wide check passes this;
+    the scope-aware one must not."""
+    source = (
+        "def draws():\n"
+        "    import plotly.graph_objects as go\n"
+        "    return go.Figure()\n"
+        "\n"
+        "def forgets():\n"
+        "    return go.Figure()\n"
+    )
+    assert _unresolved_in_source(source) == [("forgets", "go")]
+    # And the file-wide check really would have missed it.
+    tree = ast.parse(source)
+    assert "go" in _bound_names(tree), "the file-wide check would have caught it"
+
+
+def test_the_scope_aware_check_accepts_the_codebases_legitimate_patterns():
+    source = (
+        "import json\n"
+        "CONSTANT = 1\n"
+        "def uses_module_level():\n"
+        "    return json.dumps(CONSTANT)\n"
+        "def lazy():\n"
+        "    import os\n"
+        "    return os.sep\n"
+        "def closure():\n"
+        "    x = 1\n"
+        "    def inner():\n"
+        "        return x + CONSTANT\n"
+        "    return [x for x in range(3)], inner\n"
+        "def uses_builtin():\n"
+        "    return len([])\n"
+    )
+    assert _unresolved_in_source(source) == []
+
+
+@pytest.mark.parametrize("script", sorted(PIPELINE.glob("*.py")) +
+                         sorted(DIAGNOSTICS.glob("*.py")) +
+                         [ROOT / "app.py"] + sorted(LIBRARY.glob("*.py")),
+                         ids=lambda p: str(p.relative_to(ROOT)))
+def test_every_function_resolves_the_names_it_uses(script: Path):
+    unresolved = _unresolved_in_source(script.read_text(), str(script))
+    assert not unresolved, (
+        f"{script.relative_to(ROOT)}: a function uses a name that is not "
+        f"local, not imported in it, not defined at module level and not a "
+        f"builtin: {unresolved}. A lazy `import x` in one function does not "
+        f"make `x` available in another."
+    )

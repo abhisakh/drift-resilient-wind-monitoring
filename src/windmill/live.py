@@ -734,7 +734,7 @@ def run_upload(
 # ------------------------------------------------------------ sample file
 #: The window the downloadable sample covers: the anomaly and the months
 #: either side of it, so a rolling reference has history to work with.
-SAMPLE_START = "2017-08-01"
+SAMPLE_START = "2017-05-01"
 SAMPLE_END = "2017-11-30"
 
 
@@ -799,6 +799,20 @@ OVERHEAT_C = 80.0
 #: technician is called out. Six is one hour, and it is the difference
 #: between "a reading" and "an alarm a control room would act on".
 DISPATCH_MIN_RUN = 6
+
+#: The training set must hold at least one month of HEALTHY ten-minute
+#: readings, after the unhealthy rows are trimmed: thirty days of them.
+MONTH_OF_READINGS = 30 * 144
+
+#: How far back the training window may reach to collect that month of
+#: readings, and the step it reaches back by. About three months: further back
+#: and the reference would no longer be fresh.
+MAX_TRAIN_LOOKBACK_DAYS = 92
+TRAIN_EXTEND_DAYS = 7
+
+#: The share of its own training month the RECALIBRATED static baseline is set
+#: to alarm on: the operating curve's standing sensitivity.
+RECALIBRATED_RATE = 0.01
 
 
 def dispatch_episodes(flags, min_run: int = DISPATCH_MIN_RUN) -> list[dict]:
@@ -886,9 +900,11 @@ def monthly_cross_check(
 ) -> dict:
     """Fit a fresh reference on the month before `target_month` and score it.
 
-    The reference is fitted on the thirty days immediately before the target
-    month and on nothing else: no carry-over from an older baseline, because
-    the whole point is to show what a monthly operational loop does. The
+    The reference is fitted on the whole calendar month before the target
+    month, reached further back (at most about three months) only until it
+    holds a month of healthy readings, and on nothing else: no carry-over from
+    an older baseline, because the whole point is to show what a monthly
+    operational loop does. The
     training rows are then TRIMMED -- the rows the reference itself calls
     anomalous are dropped and the reference is refitted -- so a fault that
     was already developing last month cannot quietly become the new normal.
@@ -926,24 +942,48 @@ def monthly_cross_check(
 
     m_start = pd.Timestamp(target_month + "-01", tz="UTC")
     m_end = (m_start + pd.offsets.MonthBegin(1))
-    train_start = m_start - pd.Timedelta(days=30)
-    train = frame[(frame["ts"] >= train_start) & (frame["ts"] < m_start)].copy()
     test = frame[(frame["ts"] >= m_start) & (frame["ts"] < m_end)].copy()
-    if train.empty or test.empty:
-        raise LiveEngineError(f"no rows for {target_month} or {train_month}")
 
     thermal = [c for c in CROSS_CHECK_CHANNELS if c in frame.columns]
     if CROSS_CHECK_CHANNEL not in thermal:
         raise LiveEngineError(f"no {CROSS_CHECK_CHANNEL} channel in the data")
 
-    # --- the fresh fit, with the trimming ---------------------------------
+    # --- the fresh fit, on at least a month of HEALTHY data ---------------
+    # The window starts as the whole previous calendar month. Gaps in the
+    # record, standstill and the trimming of unhealthy rows usually leave less
+    # than a month of readings in it, so it is reached further back, a week at
+    # a time, until the trimmed training set holds a month of readings, at
+    # most about three months back. If even that is not enough, the month is
+    # refused rather than scored on too little.
     t_fit = time.perf_counter()
-    worst = pd.Series(0.0, index=train.index, dtype="float64")
-    for ch in thermal:
-        z = _out_of_fold_residual(train, ch, "P_norm", "era5_temp_2m")
-        worst = worst.combine(z.fillna(0.0), np.fmax)
-    keep = worst <= trim_k
-    clean = train[keep].reset_index(drop=True)
+    floor = m_start - pd.Timedelta(days=MAX_TRAIN_LOOKBACK_DAYS)
+    first_ts = frame["ts"].min()
+    train_start = m_start - pd.offsets.MonthBegin(1)
+    train = frame.iloc[0:0]
+    keep = pd.Series(dtype=bool)
+    clean = train
+    while True:
+        train = frame[(frame["ts"] >= train_start) & (frame["ts"] < m_start)].copy()
+        if not train.empty:
+            worst = pd.Series(0.0, index=train.index, dtype="float64")
+            for ch in thermal:
+                z = _out_of_fold_residual(train, ch, "P_norm", "era5_temp_2m")
+                worst = worst.combine(z.fillna(0.0), np.fmax)
+            keep = worst <= trim_k
+            clean = train[keep].reset_index(drop=True)
+            if len(clean) >= MONTH_OF_READINGS:
+                break
+        if train_start <= floor or train_start <= first_ts:
+            break
+        train_start = max(train_start - pd.Timedelta(days=TRAIN_EXTEND_DAYS), floor)
+    if train.empty or test.empty:
+        raise LiveEngineError(f"no rows for {target_month} or {train_month}")
+    if len(clean) < MONTH_OF_READINGS:
+        raise LiveEngineError(
+            f"less than a month of healthy data to train on before "
+            f"{target_month}: {len(clean)} readings in the "
+            f"{(m_start - train_start).days} days available, against the "
+            f"{MONTH_OF_READINGS} a month holds")
     dropped = int((~keep).sum())
 
     # --- the three arms, on ONE physical scale ----------------------------
@@ -987,6 +1027,23 @@ def monthly_cross_check(
     scale = float(np.nanmedian(scale_arr))
     threshold_k = z_threshold * scale
 
+    # --- a fair baseline: the static arm, calibrated like every other arm ---
+    # The static arm above is judged on the weather arm's tight scale, so it
+    # alarms whenever the machine runs hard. Calibrated instead on ITS OWN
+    # out-of-fold training residuals, at a stated rate, it is the adaptive
+    # limit an operator could simply set. That is the baseline a conditioned
+    # model has to beat, so the saving is quoted against it as well.
+    clean_vals = clean[ch].to_numpy(dtype="float64")
+    half_n = len(clean_vals) // 2
+    if half_n >= 50:
+        oof_static = np.concatenate([
+            clean_vals[:half_n] - np.nanmedian(clean_vals[half_n:]),
+            clean_vals[half_n:] - np.nanmedian(clean_vals[:half_n])])
+        recal_threshold_k = float(np.nanquantile(
+            oof_static, 1.0 - RECALIBRATED_RATE))
+    else:
+        recal_threshold_k = float("inf")
+
     out = test.reset_index(drop=True).copy()
     out["residual_static"] = residual_static
     out["residual_load"] = residual_load
@@ -1000,6 +1057,7 @@ def monthly_cross_check(
     out["alarm_static"] = z_static > z_threshold
     out["alarm_load"] = z_load > z_threshold
     out["alarm_weather"] = z_weather > z_threshold
+    out["alarm_static_recalibrated"] = residual_static > recal_threshold_k
     out["overheating"] = out[ch] > OVERHEAT_C
     fit_seconds = time.perf_counter() - t_fit
 
@@ -1012,6 +1070,12 @@ def monthly_cross_check(
     naive_eps = dispatch_episodes(out["alarm_static"].to_numpy(), min_episode)
     load_eps = dispatch_episodes(out["alarm_load"].to_numpy(), min_episode)
     cond_eps = dispatch_episodes(out["alarm_weather"].to_numpy(), min_episode)
+    recal_eps = dispatch_episodes(
+        out["alarm_static_recalibrated"].to_numpy(), min_episode)
+    recal_false = [e for e in recal_eps
+                   if not hot[e["start"]:e["end"] + 1].any()]
+    recal_true = [e for e in recal_eps
+                  if hot[e["start"]:e["end"] + 1].any()]
     naive_false = [e for e in naive_eps if not hot[e["start"]:e["end"] + 1].any()]
     load_false = [e for e in load_eps if not hot[e["start"]:e["end"] + 1].any()]
     cond_false = [e for e in cond_eps if not hot[e["start"]:e["end"] + 1].any()]
@@ -1026,6 +1090,7 @@ def monthly_cross_check(
     cost["naive_true_dispatches"] = len(naive_true)
     cost["conditioned_true_dispatches"] = len(cond_true)
     cost["load_only_false_dispatches"] = len(load_false)
+    cost["recalibrated_static_false_dispatches"] = len(recal_false)
 
     naive_alarm_pct = float(100.0 * out["alarm_static"].mean())
     load_alarm_pct = float(100.0 * out["alarm_load"].mean())
@@ -1039,6 +1104,10 @@ def monthly_cross_check(
         source=f"monthly cross-check — {turbine}, {target_month}",
         train_month=train_month,
         target_month=target_month,
+        train_start=str(train_start)[:10],
+        train_end=str(m_start - pd.Timedelta(days=1))[:10],
+        train_days=int((m_start - train_start).days),
+        train_extended=bool(train_start < m_start - pd.offsets.MonthBegin(1)),
         train_rows=int(len(train)),
         clean_rows=int(len(clean)),
         dropped_rows=dropped,
@@ -1054,13 +1123,23 @@ def monthly_cross_check(
         conditioned_false_dispatches=len(cond_false),
         naive_true_dispatches=len(naive_true),
         conditioned_true_dispatches=len(cond_true),
+        recalibrated_static_threshold_k=(round(recal_threshold_k, 3)
+                                         if np.isfinite(recal_threshold_k)
+                                         else None),
+        recalibrated_static_alarm_pct=round(float(
+            100.0 * out["alarm_static_recalibrated"].mean()), 3),
+        recalibrated_static_episodes=len(recal_eps),
+        recalibrated_static_false_dispatches=len(recal_false),
+        recalibrated_static_true_dispatches=len(recal_true),
         fault_rows=int(hot.sum()),
         fault_rows_flagged=flagged_hot,
     )
     return {"frame": out, "provenance": prov, "episodes": {
         "naive": naive_eps, "conditioned": cond_eps,
         "naive_false": naive_false, "conditioned_false": cond_false,
-        "naive_true": naive_true, "conditioned_true": cond_true},
+        "naive_true": naive_true, "conditioned_true": cond_true,
+        "recalibrated": recal_eps, "recalibrated_false": recal_false,
+        "recalibrated_true": recal_true},
         "cost": cost, "threshold": threshold_k, "scale": scale}
 
 
@@ -1145,6 +1224,20 @@ def daily_temperature_summary(frame: pd.DataFrame) -> pd.DataFrame:
 
 def available_months(data_dir: Path, source: str = "sample",
                       turbine: str = "R80711") -> list[str]:
-    """The months the monthly cross-check can be run on."""
+    """The months the monthly cross-check can be run on.
+
+    A month is offered only when the record holds at least a month of
+    readings in the window the training may reach back over; the first months
+    of a record cannot be trained on at least a month of data, so they are
+    not offered. (Trimming can still, rarely, leave too little; the engine
+    then refuses the month with a message.)
+    """
     frame = _monthly_frame(data_dir, source, turbine)
-    return sorted(frame["month"].unique())
+    out = []
+    for month in sorted(frame["month"].unique()):
+        m_start = pd.Timestamp(month + "-01", tz="UTC")
+        lo = m_start - pd.Timedelta(days=MAX_TRAIN_LOOKBACK_DAYS)
+        n = int(((frame["ts"] >= lo) & (frame["ts"] < m_start)).sum())
+        if n >= MONTH_OF_READINGS:
+            out.append(month)
+    return out
