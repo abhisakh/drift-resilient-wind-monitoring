@@ -1244,7 +1244,7 @@ flagged as data quality, before the false call-out rate is acceptable.
   Without the weather the healthy prediction's daily error grows by 16 %
   (transformer), 51 % (generator) and 43 % (gearbox), median over turbines.
   On ENGIE's oil-cooled gearbox bearing the weather adds almost nothing; the
-  README now says both, so neither reads as "the weather does not matter".
+  README states both.
 * **Lead time and the cost of waiting.** For each logged failure: did the
   triage confirm real excess heat on the same component in the 60 days before,
   and how long did the turbine stand still in wind (≥ 5 m/s) from 2 days before
@@ -1252,12 +1252,11 @@ flagged as data quality, before the false call-out rate is acceptable.
   before, 113.2 h (normally 7.7 h). T07 transformer cooling repaired
   (2016-08-23): 51 days before, 91.8 h (normally 11.2 h). Not every failure was
   warned: T07's generator bearings (2017-08-20) cost 136.8 h with no confirmed
-  alarm. This shows when a repair could have been planned, not that it would
-  have prevented the failure.
+  alarm.
 * **The README now has a generated Conclusion** (between CONCLUSION markers,
   every figure from results/, held to the same test as the other generated
-  sections): what it is, what the results support, what they do not show, and
-  where it sits beside commercial monitoring and Vervlimmeren et al. (2025).
+  sections): what it is, what the results support, its scope, and where it
+  sits beside commercial monitoring and Vervlimmeren et al. (2025).
   New generated results sections: the EDP alarm value and CARE Farms B and C.
 * **Wording to keep consistent elsewhere.** The R80711 anomaly span is set by
   this project from its siblings; the ENGIE release has no fault label, and the
@@ -1270,11 +1269,10 @@ flagged as data quality, before the false call-out rate is acceptable.
 
 The README now tells one story: (1) a model sees slow degradation a fixed limit
 misses, and (2) it must be retrained every month; plus (3) every alarm can be
-explained, why it matters, and what it does not show. The new step counts, on
+explained, why it matters, and its scope. The new step counts, on
 R80711's abnormal period (115 days checked), the days each rule flagged: both
 36, model only 12, limit only 6; in the ten weeks before, the model flagged 18
 hot days and the limit 9 of them. On the model-only days the bearing averaged
 73.8 °C, 3.0 K above its healthy prediction. The limit also catches days the
-model does not, so the claim is "adds what the limit cannot see", not
-"replaces the limit". The old framing "fewer false call-outs than the fixed
+model does not, so the model adds what the limit cannot see. The old framing "fewer false call-outs than the fixed
 limit" is gone: on ENGIE's healthy turbines both are near zero.

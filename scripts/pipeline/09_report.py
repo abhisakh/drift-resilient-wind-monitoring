@@ -1769,16 +1769,14 @@ def section_conclusion() -> str:
                         f"of standstill in wind (normally {fmt(f['normal_h_same_length'], 1)} h)." for f in warned)
             + " Detecting the problem that early gives time to act before it degrades further, "
             "and to plan the repair for calm weather with parts and crew ready.\n")
-    out.append("### What it does not show\n")
-    out.append("- It does not cut the operators' false alarms: most of their fixed-limit temperature "
-               "alarms were real heat, and the limit stays useful beside the model.")
-    out.append("- The ENGIE abnormal period is set by this project from the sibling turbines; the "
-               "release has no fault label.")
-    out.append(
-        f"- It sees heat only. On CARE's offshore farms it caught {b['faults']['caught_on_own_component']} "
-        f"of {b['faults']['total']} (Farm B) and {c['faults']['caught_on_own_component']} of "
-        f"{c['faults']['total']} (Farm C) faults on their own component; most were pitch, electrical "
-        f"or mechanical.")
+    out.append("### Scope\n")
+    out.append("- **Temperature-related faults.** The model watches heat. On CARE's offshore farms, "
+               f"where most labelled faults are pitch, electrical or mechanical, it caught "
+               f"{b['faults']['caught_on_own_component']} of {b['faults']['total']} (Farm B) and "
+               f"{c['faults']['caught_on_own_component']} of {c['faults']['total']} (Farm C) on their "
+               f"own component; those faults need their own signals.")
+    out.append("- **The ENGIE abnormal period** used in claim 1 is defined in this project from the "
+               "sibling turbines; the ENGIE release has no fault label.")
     out.append(
         "\n**Where it sits.** Normal-behaviour monitoring exists commercially and in research "
         "(Vervlimmeren et al., *Wind Energy Science*, 2025). This project adds the explicit load / "

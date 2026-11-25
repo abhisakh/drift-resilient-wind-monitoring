@@ -45,11 +45,10 @@ Each alarm is split into typical temperature + load + weather + **excess heat**.
 
 A trusted alarm is one a crew acts on. On T06 the model confirmed real heat 54 days before "Generator replaced", which then cost 113.2 h of standstill in wind (normally 7.7 h). On T07 the model confirmed real heat 51 days before "High temperature transformer. Transformer refrigeration repaired", which then cost 91.8 h of standstill in wind (normally 11.2 h). Detecting the problem that early gives time to act before it degrades further, and to plan the repair for calm weather with parts and crew ready.
 
-### What it does not show
+### Scope
 
-- It does not cut the operators' false alarms: most of their fixed-limit temperature alarms were real heat, and the limit stays useful beside the model.
-- The ENGIE abnormal period is set by this project from the sibling turbines; the release has no fault label.
-- It sees heat only. On CARE's offshore farms it caught 2 of 6 (Farm B) and 2 of 27 (Farm C) faults on their own component; most were pitch, electrical or mechanical.
+- **Temperature-related faults.** The model watches heat. On CARE's offshore farms, where most labelled faults are pitch, electrical or mechanical, it caught 2 of 6 (Farm B) and 2 of 27 (Farm C) on their own component; those faults need their own signals.
+- **The ENGIE abnormal period** used in claim 1 is defined in this project from the sibling turbines; the ENGIE release has no fault label.
 
 **Where it sits.** Normal-behaviour monitoring exists commercially and in research (Vervlimmeren et al., *Wind Energy Science*, 2025). This project adds the explicit load / weather / excess split, the monthly retraining with rules against learning a fault, and a check against an operator's own records, on public data anyone can rerun.
 
