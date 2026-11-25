@@ -72,7 +72,22 @@ CARE = Source(
     sha256="ca61379e98956d891041ad45c885109bd8a14199fde0688d0184a11c2d4194f1",
 )
 
-SOURCES = (ENGIE, ERA5, CARE)
+EDP = Source(
+    name="edp_onshore_portugal",
+    url="https://data.mendeley.com/public-api/zip/zjxjnjp3xs/download/2",
+    filename="edp_v2.zip",
+    licence="CC BY 4.0",
+    note=(
+        "Mendeley Data v2, DOI 10.17632/zjxjnjp3xs.2 (EDP open data, onshore wind "
+        "farm in Portugal, 2016-2017): SCADA of T01, T06, T07, T11, the met mast, "
+        "the failure logbook and the turbines' event log. CARE Wind Farm A is "
+        "built from this farm. 174 MB."
+    ),
+    unpack="zip",
+    sha256="c65e2dc7d990de512f83ee4d1aacbf73aab508fe71b1533df51918b91873adb1",
+)
+
+SOURCES = (ENGIE, ERA5, CARE, EDP)
 
 #: Where each source's archive is extracted, relative to `data/raw/`.
 #:
@@ -81,6 +96,7 @@ SOURCES = (ENGIE, ERA5, CARE)
 #: the scripts do not look, and everything fails at run time.
 EXTRACT_DIRS = {
     "care_to_compare": "care_extracted",
+    "edp_onshore_portugal": "edp_extracted",
 }
 
 

@@ -324,3 +324,15 @@ def test_the_sibling_normal_learns_a_wind_direction_offset():
     assert blind[day_] > 1.5
     assert dc.sibling_call_outs(aware, 1.0, "A", {}) == []
     assert dc.sibling_call_outs(blind, 1.0, "A", {})
+
+
+def test_recorded_maintenance_blanks_the_model_like_a_stand_in():
+    """A repair from a failure logbook starts the model over, as a long stop does."""
+    sim = dc.simulate(_turbine(150), "T", tolerance=1.0, spans={},
+                      maintenance_extra=[pd.Timestamp("2016-03-05", tz="UTC")])
+    models = {m["month"]: m for m in sim["months"]}
+    assert models["2016-04"]["model"] == "blank"
+    assert models["2016-05"]["model"] == "trained"
+    assert models["2016-05"]["train_start"] >= "2016-03-05"
+    hold = [d for d in sim["days"] if d.get("reason") == "maintenance"]
+    assert hold and all(d["maintenance"] == "2016-03-05" for d in hold)

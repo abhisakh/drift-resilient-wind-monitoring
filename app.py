@@ -278,6 +278,8 @@ FONT_SIZES = {
     "widget": 28,      # widget labels: dropdowns, sliders, checkboxes
     "button": 28,      # button captions
     "selectbox": 26,   # the value shown inside a dropdown
+    "menu": 26,        # the options in an open dropdown list
+    "tag": 22,         # the chips of a multi-select (the chosen turbines)
     "slider": 30,      # the value above a slider's thumb
     "table": 20,       # the reference tables
     "alert": 28,       # st.info / st.success / st.warning / st.error
@@ -393,6 +395,32 @@ def _style():
            can still size. */
         .stApp [data-testid="stSelectbox"] input,
         .stApp [data-testid="stSelectbox"] div[role="combobox"] {
+            font-size: __selectbox__px !important;
+        }
+
+        /* The open dropdown list. Streamlit draws it in a popover outside
+           the widget, so it is sized here on its own, or it falls back to
+           the 14px default. */
+        /* Every element of the list is sized, not only the <li>: the
+           option text sits in nested elements that carry their own size. */
+        [role="listbox"], [role="listbox"] *,
+        [role="option"], [role="option"] *,
+        [data-testid="stSelectboxVirtualDropdown"],
+        [data-testid="stSelectboxVirtualDropdown"] *,
+        [data-baseweb="menu"], [data-baseweb="menu"] *,
+        [data-baseweb="popover"] ul, [data-baseweb="popover"] ul * {
+            font-size: __menu__px !important;
+            line-height: 1.25 !important;
+        }
+
+        /* A multi-select: its chosen chips, and what is typed into it. */
+        .stApp [data-testid="stMultiSelect"] [data-baseweb="tag"],
+        .stApp [data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+            font-size: __tag__px !important;
+            height: auto !important; max-width: none !important;
+            padding-top: .15rem; padding-bottom: .15rem;
+        }
+        .stApp [data-testid="stMultiSelect"] input {
             font-size: __selectbox__px !important;
         }
 
@@ -693,11 +721,11 @@ def _style():
         .kpi div[style*="font-size"] { font-size: __kpi_delta__px !important; }
         .kpi.status-monitoring {border-left: 5px solid #2EAD6B;}
         .kpi.status-frozen {border-left: 5px solid #E05263;}
-        .kpi.status-hold {border-left: 5px solid #E0A526;}
+        .kpi.status-hold {border-left: 5px solid #8B7CF6;}
         .kpi.status-none {border-left: 5px solid #6B7280;}
         .hold-bar {height: 8px; border-radius: 4px; margin: 8px 0;
-                   background: rgba(224,165,38,0.18);}
-        .hold-bar > div {height: 8px; border-radius: 4px; background: #E0A526;}
+                   background: rgba(139,124,246,0.18);}
+        .hold-bar > div {height: 8px; border-radius: 4px; background: #8B7CF6;}
         .note {border: 1px solid var(--border); border-left: 4px solid var(--accent);
                background: var(--surface); border-radius: var(--radius);
                padding: 14px 20px; color: #c9d4df; margin: 6px 0 10px 0;
@@ -2814,8 +2842,19 @@ def load_daily_series() -> dict | None:
 
 
 def _daily_view():
+    """The page rules. Streamlit re-runs app.py on every change but keeps
+    modules it imported from src/ in memory, so a running dashboard would
+    keep the old rules after an edit; reload the module when its file is
+    newer than the copy in memory."""
+    import importlib
+    import os
+
     _ensure_src()
     from windmill import daily_view
+    stamp = os.path.getmtime(daily_view.__file__)
+    if getattr(daily_view, "_loaded_mtime", None) != stamp:
+        daily_view = importlib.reload(daily_view)
+        daily_view._loaded_mtime = stamp
     return daily_view
 
 
@@ -2825,7 +2864,34 @@ C_FORECAST = "#A78BFA"   # the same model fed the forecast issued days before
 C_HOT = "#E05263"
 
 
-def _three_line_figure(df, tolerance: float, lead: int, title: str):
+def _y_range(frames, tolerance: float, lead: int) -> list[float]:
+    """One temperature range for several charts, so the same tolerance band
+    is drawn the same height on each of them."""
+    vals = []
+    for df in frames:
+        chk = df[df["status"] == "checked"]
+        for c in ("actual", "pred", f"f{lead}"):
+            if c in chk:
+                vals += [v for v in chk[c].tolist() if v == v]
+        if "pred" in chk:
+            vals += [v + d for v in chk["pred"].tolist() if v == v
+                     for d in (tolerance, -tolerance)]
+    if not vals:
+        return None
+    return [min(vals) - 1.0, max(vals) + 1.0]
+
+
+def _window_alarms(series: dict, turbine: str, sensor: str, start: str,
+                   end: str, tolerance: float):
+    """The alarms of one turbine inside a window, found on the whole record so
+    a hot spell that began before the window is not counted again."""
+    dv = _daily_view()
+    a = dv.alarms(dv.frame(series, turbine, sensor), tolerance)
+    return a[(a["day"] >= pd.Timestamp(start)) & (a["day"] <= pd.Timestamp(end))]
+
+
+def _three_line_figure(df, tolerance: float, lead: int, title: str,
+                       y_range=None, alarms=None):
     """The forecast, the on-day prediction and the sensor, one point per day,
     with the tolerance as a band around the on-day prediction."""
     import plotly.graph_objects as go
@@ -2854,18 +2920,39 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str):
         x=chk["day"], y=chk["actual"], mode="lines+markers",
         name="sensor (daily mean)", line=dict(width=2.6, color=C_ACTUAL),
         marker=dict(size=7)))
-    hot = chk[chk["diff"] > tolerance]
+    dv = _daily_view()
+    hot = chk[dv.lights(chk, tolerance) == "hot"]
     if len(hot):
+        # The same language as the daily grid: orange says the sensor ran hot,
+        # only an alarm marker says whether the call-out was real.
         fig.add_trace(go.Scatter(
-            x=hot["day"], y=hot["actual"], mode="markers", name="call-out day",
-            marker=dict(size=16, color=C_HOT, symbol="circle-open",
-                        line=dict(width=3, color=C_HOT))))
+            x=hot["day"], y=hot["actual"], mode="markers",
+            name="hotter than predicted",
+            marker=dict(size=13, color=dv.LIGHT_COLOURS["hot"], symbol="square")))
+    if alarms is not None and len(alarms):
+        on = chk.set_index("day")["actual"]
+        for real, name, marker in (
+                (True, "alarm: real, fault found",
+                 dict(symbol="circle", size=22, color="rgba(0,0,0,0)",
+                      line=dict(width=4, color=dv.ALARM_COLOURS["real"]))),
+                (False, "alarm: false, nothing found",
+                 dict(symbol="circle-open", size=22,
+                      color=dv.ALARM_COLOURS["false"],
+                      line=dict(width=3, color=dv.ALARM_COLOURS["false"])))):
+            sel = alarms[alarms["real"] == real]
+            sel = sel[sel["day"].isin(on.index)]
+            if len(sel):
+                fig.add_trace(go.Scatter(
+                    x=sel["day"], y=on.reindex(sel["day"]).to_numpy(),
+                    mode="markers", name=name, marker=marker))
     fig.update_layout(
         title=title, height=560, hovermode="x unified",
         margin=dict(l=10, r=10, t=30, b=150),
         legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                     x=0, xanchor="left"))
     fig.update_yaxes(title_text="°C")
+    if y_range:
+        fig.update_yaxes(range=y_range)
     return fig
 
 
@@ -2903,13 +2990,22 @@ def page_demo(series: dict | None) -> None:
                             options=series["leads"], value=demo["lead"],
                             key="demo_lead")
     window = f"{demo['start']} to {demo['end']}"
-    for role, label in (("healthy", "healthy"), ("faulty", "developing a fault")):
+    roles = (("healthy", "healthy"), ("faulty", "developing a fault"))
+    frames = {r: dv.frame(series, demo[r], series["primary"], demo["start"],
+                          demo["end"]) for r, _ in roles}
+    # Both charts on one temperature scale: the same ±tolerance band, drawn
+    # the same height, so the two turbines are compared like for like.
+    y_range = _y_range(frames.values(), tol, lead)
+    for role, label in roles:
         t = demo[role]
-        df = dv.frame(series, t, series["primary"], demo["start"], demo["end"])
+        df = frames[role]
         card = dv.demo_summary(df, tol, lead)
         _chart(_three_line_figure(
             df, tol, lead,
-            f"{t}, {label}: gearbox bearing temperature, {window}"),
+            f"{t}, {label}: gearbox bearing temperature, {window} "
+            f"(tolerance ±{tol:g} K on both)", y_range=y_range,
+            alarms=_window_alarms(series, t, series["primary"], demo["start"],
+                                  demo["end"], tol)),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
     st.markdown(
@@ -2924,28 +3020,66 @@ def _month_of_readings(series: dict) -> int:
     return int(series.get("month_of_readings", 30 * 144))
 
 
-def _strip_figure(rows, tolerance: float, dv):
-    """The traffic light: one square per day per turbine."""
+def _strip_figure(rows, tolerance: float, dv, alarms=None):
+    """The traffic light: one square per day per turbine, and under each row
+    a circle on every alarm (the first day of a run of hot days, when the
+    technician is called out): filled red when the alarm was real, open
+    amber when it was false."""
     import plotly.graph_objects as go
 
+    alarms = alarms or {}
+    n = len(rows)
+    ypos = {t: n - 1 - i for i, (t, _) in enumerate(rows)}   # first row on top
     fig = go.Figure()
     for kind in dv.LIGHTS:
         xs, ys = [], []
         for t, df in rows:
             sel = df[dv.lights(df, tolerance) == kind]
             xs += list(sel["day"])
-            ys += [t] * len(sel)
+            ys += [ypos[t]] * len(sel)
         if xs:
             fig.add_trace(go.Scatter(
                 x=xs, y=ys, mode="markers", name=dv.LIGHT_LABELS[kind],
+                legendgroup="day", legendgrouptitle_text="The day",
+                hovertemplate="%{x|%d %b %Y}<extra>" + dv.LIGHT_LABELS[kind] + "</extra>",
                 marker=dict(symbol="square", size=22, color=dv.LIGHT_COLOURS[kind])))
+    real_c, false_c = dv.ALARM_COLOURS["real"], dv.ALARM_COLOURS["false"]
+    for real, name, marker in (
+            (True, "real: fault found",
+             dict(symbol="circle", size=16, color=real_c,
+                  line=dict(width=2, color=real_c))),
+            (False, "false: nothing found",
+             dict(symbol="circle-open", size=16, color=false_c,
+                  line=dict(width=3, color=false_c)))):
+        xs, ys = [], []
+        for t, _ in rows:
+            a = alarms.get(t)
+            if a is not None and len(a):
+                sel = a[a["real"] == real]
+                xs += list(sel["day"])
+                ys += [ypos[t] - 0.42] * len(sel)
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode="markers", name=name, marker=marker,
+            legendgroup="alarm", legendgrouptitle_text="Alarm (call-out)",
+            hovertemplate="%{x|%d %b %Y}<extra>alarm, " + name + "</extra>"))
+
+    def label(t):
+        a = alarms.get(t)
+        if a is None:
+            return t
+        r = int(a["real"].sum())
+        f = int(len(a) - r)
+        return f"<b>{t}</b><br>{len(a)} alarm{'s' if len(a) != 1 else ''}: {r} real, {f} false"
+
     fig.update_layout(
-        title="Every day of every turbine", height=170 + 60 * len(rows),
-        margin=dict(l=10, r=10, t=30, b=120),
+        title="Every day of every turbine, and every alarm",
+        height=200 + 95 * n,
+        margin=dict(l=10, r=10, t=30, b=130),
         legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                     x=0, xanchor="left"))
-    fig.update_yaxes(type="category", categoryorder="array",
-                     categoryarray=[t for t, _ in rows][::-1])
+    fig.update_yaxes(tickmode="array", tickvals=[ypos[t] for t, _ in rows],
+                     ticktext=[label(t) for t, _ in rows],
+                     range=[-0.75, n - 0.5], showgrid=False, zeroline=False)
     return fig
 
 
@@ -2978,7 +3112,21 @@ def page_explore(series: dict | None) -> None:
     start = f"{month}-01"
     end = str((pd.Timestamp(start) + pd.offsets.MonthEnd(0)).date())
     rows = [(t, dv.frame(series, t, sensor, start, end)) for t in chosen]
-    _chart(_strip_figure(rows, tol, dv), width="stretch")
+    # Alarms are found on the whole record and then cut to the month, so a
+    # run of hot days that began last month is not counted as a new alarm.
+    alarms = {}
+    for t in chosen:
+        a = dv.alarms(dv.frame(series, t, sensor), tol)
+        alarms[t] = a[(a["day"] >= pd.Timestamp(start)) & (a["day"] <= pd.Timestamp(end))]
+    _chart(_strip_figure(rows, tol, dv, alarms), width="stretch")
+    st.markdown(
+        "<div class='note'>The squares say what the sensor did: orange is a day "
+        "hotter than predicted. The circles under a row are the alarms: the first "
+        "hot day of a run, when a technician is called out. Only the circle says "
+        "whether it was real: <b>filled red</b>, a fault was there (the day lies in "
+        "the documented fault period); <b>open white</b>, nothing was found. The "
+        "data have no inspection records, so the documented fault period stands in "
+        "for what the inspection would find.</div>", unsafe_allow_html=True)
 
     cols = st.columns(len(chosen))
     for col, t in zip(cols, chosen):
@@ -3006,8 +3154,13 @@ def page_explore(series: dict | None) -> None:
                                 value=leads[0], key="ex_lead")
     df = dict(rows)[focus]
     if (df["status"] == "checked").any():
+        # The scale of all the chosen turbines this month, so switching the
+        # plotted turbine never changes how big the tolerance looks.
+        y_range = _y_range([d for _, d in rows], tol, lead)
         _chart(_three_line_figure(df, tol, lead,
-                                  f"{focus}: {names[sensor]}, {month}"),
+                                  f"{focus}: {names[sensor]}, {month} "
+                                  f"(tolerance ±{tol:g} K)", y_range=y_range,
+                                  alarms=alarms.get(focus)),
                width="stretch")
     else:
         st.info(f"{focus} has no checked day in {month}.")

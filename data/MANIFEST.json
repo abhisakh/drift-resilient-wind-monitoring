@@ -31,5 +31,16 @@
     "bytes": 5503439673,
     "sha256": "ca61379e98956d891041ad45c885109bd8a14199fde0688d0184a11c2d4194f1",
     "sha256_verified": true
+  },
+  "edp_onshore_portugal": {
+    "url": "https://data.mendeley.com/public-api/zip/zjxjnjp3xs/download/2",
+    "licence": "CC BY 4.0",
+    "note": "Mendeley Data v2, DOI 10.17632/zjxjnjp3xs.2 (EDP open data, onshore wind farm in Portugal, 2016-2017): SCADA of T01, T06, T07, T11, the met mast, the failure logbook and the turbines' event log. CARE Wind Farm A is built from this farm. 174 MB.",
+    "extract_dir": "edp_extracted",
+    "expected_sha256": "c65e2dc7d990de512f83ee4d1aacbf73aab508fe71b1533df51918b91873adb1",
+    "present": true,
+    "bytes": 182900149,
+    "sha256": "c65e2dc7d990de512f83ee4d1aacbf73aab508fe71b1533df51918b91873adb1",
+    "sha256_verified": true
   }
 }

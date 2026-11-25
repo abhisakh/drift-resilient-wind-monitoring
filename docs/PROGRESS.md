@@ -928,6 +928,180 @@ year, the live monthly loop and its cost), Evidence & method (the earlier tabs).
 The view rules (traffic light, status card, demo card) are in
 `src/windmill/daily_view.py` with their own tests.
 
+#### Step 10: CARE Farm A against EDP's own records (alarm log and failure logbook)
+
+Goal: a real reference for "false alarm". ENGIE has no alarm or failure
+records; CARE Farm A comes from EDP's open data, and EDP publishes its turbine
+event log (alarms) and a logbook of confirmed failures.
+
+Data added: EDP onshore wind farm, Portugal, 2016-2017 (Mendeley Data,
+doi 10.17632/zjxjnjp3xs.2, CC BY 4.0, 174 MB), in `data/raw/edp/` (zip,
+sha256 c65e2dc7...adb1) and `data/raw/edp_extracted/`. It holds SCADA for T01,
+T06, T07, T11 (not T09), the on-site met mast, the failure logbook (28 rows)
+and the event log (256,401 rows). Not yet in `MANIFEST.json`. All the work
+below was done with throwaway scripts, kept (not committed) in
+`data/external/care_farm_a_scratch/`; nothing is in the pipeline yet.
+
+**Integrity of CARE Farm A.**
+* The 22 event files are copies of one record per turbine: where they overlap
+  (1.4 million timestamp pairs) every reading is identical.
+* Each CARE turbine is one EDP turbine, reading for reading (gearbox
+  temperature, ambient, wind and power identical on 99.98-100 % of 38,000 to
+  48,000 shared timestamps): CARE 11 = T01, 21 = T06, 0 = T07, 13 = T11;
+  10 = T09 (through the logbook only). CARE power is power / 2,050 kW.
+* CARE's anonymisation moved each file by a fixed number of days so that it
+  starts on the same calendar date in 2022: 2,191 days, or 2,192 for files 40
+  and 71, which start before the leap day of 29 February 2016. That is the
+  one-day slip found first; nothing was altered.
+* The five turbines see the same weather at the same moment (daily anomalies
+  r = 0.99), share the same farm-wide data gaps, and follow their power curves
+  (0.25-1.8 % of readings off the curve). Ambient and component temperatures
+  are recorded in whole degrees.
+* EDP's met mast (independent, on site) agrees with each turbine's ambient
+  sensor at r = 0.99 (turbines 0.7-1.2 K warmer) and wind at r = 0.92-0.96.
+* CARE Farm A's status column is NOT an operational record: every "downtime"
+  block is exactly 14 days ending at a logbook failure (26 of 28 failures;
+  the other two lie outside the data), every "service" block exactly 3 days,
+  and the turbine produced power during 35-84 % of "downtime". Power, not
+  status, is used to find stops.
+
+**How a fault is labelled "real".** EDP's logbook is 28 manual records of
+confirmed component failures (a repair or replacement). CARE's anomaly events
+are windows ending at a logbook failure (all 12 within 10 minutes; events 51
+and 72 are the same T06 gearbox failure). Nobody judged the turbine alarms;
+overheating that tripped a turbine without a repair is not in the logbook. In
+this work an alarm is "real" when a logged failure of the same component
+follows within 30 days (my rule, not EDP's or CARE's).
+
+**The turbines' own alarms (T01, T06, T07, T11).** Temperature and hydraulic
+warnings grouped into alarm spells (consecutive alarm days): 56 spells, 16 real
+and 40 false (71 %) by the 30-day rule; they warned before 10 of the 21 logged
+failures on these turbines.
+
+**Weather source.** The model uses the met mast's measured temperature, and the
+turbine's power. Swapping in the turbine's own ambient sensor changes the daily
+error by under 0.1 K (T07: gearbox 0.70 K, generator stator 2.63 K, transformer
+4.39 K, hydraulic oil 3.53 K); dropping weather makes it worse (gearbox
+0.98 K, stator 3.93 K). Weather is not the bottleneck; the transformer and the
+generator are driven by cooling fans the model does not know about.
+
+**Our model as a veto on those alarms.**
+* As built: a verdict on only 19 of 56 spells. The model was blank on most
+  alarm days: 18 after a logged repair of the component (new healthy month),
+  4 with no healthy month left after flagged days (the anti-poisoning rule),
+  7 at the start of the record, 6 days with too little running, 2 with no data.
+* With two coverage fixes (a provisional model on two weeks of healthy data
+  after a repair, and a sibling comparison while there is no model): a verdict
+  on 50 of 56, but the veto suppressed real alarms as often as false ones
+  (3 K: 20 of 40 false and 8 of 16 real; 5 K: 26 of 40 and 9 of 16). Several
+  "real" failures are not heat (the T01 gearbox oil pump, a transformer fan,
+  oil leaks), so a normal temperature says nothing about them.
+* With the rule "never suppress a real alarm" (temperature alarms only, both
+  references normal for 95 % of the day): nothing is suppressed, false or real.
+
+**Temperature only.** Temperature alarms ("Hot HV trafo", "Hot generator",
+"High temperature Gen", "High temp. Gen bearing", "High gear temp") and
+failures where heat is the cause or the symptom (7 on these turbines). 41
+alarms, 9 followed by a temperature failure of the component within 30 days.
+
+On Farm A's 41 temperature alarms, the model says:
+
+| Model's verdict | Alarms |
+|---|---|
+| Real excess heat: peaked more than 5 K above the healthy prediction | 34 |
+| Explained by load and weather | 5 |
+| No verdict (no healthy reference that day) | 2 |
+
+* The alarms are short, genuine heat peaks: the hottest readings ran a median
+  14 K (real) and 16 K (false) above the healthy prediction, while the daily
+  mean was only 6 K and 4 K above. Real and "false" peaks overlap almost
+  completely, so temperature cannot say which will end in a failure. Below
+  3 K, 3 false alarms and no real one are explained by load and weather; one
+  real alarm (T07 transformer, a week before its high-temperature failure)
+  peaked only 3 K above healthy.
+* Every "Hot HV trafo" (19,845) and "Hot generator" entry records 0 kW, the
+  generator ones at 145-204 C: protective trips. While windy (5 m/s or more)
+  the turbines stood still 3.1 h a day during "false" alarm spells, 1.1 h a
+  day in the 30 days after, against 0.5 h a day normally (alarms followed by a
+  failure: 4.2 and 2.2 h a day). The "false" alarms cost production and were
+  followed by more stopping. Some stops may have other causes (curtailment).
+* Case: T01's transformer had 13 alarms in summer 2016 (9 real heat by the
+  model), all "false" by the 30-day rule; the logbook records "Transformer fan
+  damaged" on T01 in August 2017. T07's transformer: 14 alarms, all real heat
+  by the model; 6 followed by a high-temperature failure within 30 days, 8
+  within 90.
+
+**Reading.** The model behaves as designed: trained on healthy data with the
+weather, it confirms real excess heat. Most of the turbines' "false"
+temperature alarms on Farm A were real overheating that tripped the turbine;
+the logbook does not list them because no part was repaired. The model cannot
+judge faults that are not heat (pumps, fans, leaks, pressure): it has no such
+signals here. Framing for the project: alarm triage (real excess heat:
+inspect; explained by load and weather: set aside), not "false alarm
+suppression" on Farm A. On ENGIE, where the fixed 80 C limit fires on hot
+high-load days, the model does suppress weather-made alarms.
+
+**Which data have non-thermal signals.** ENGIE and CARE Farm A: none (Farm A
+has fan, pump and pressure only as text events in EDP's log). Farm B:
+drivetrain and tower vibration; its 6 faults are transformer-cell heat (3) and
+rotor or main bearing damage (3). Farm C: 238 sensors including hydraulic
+pressures, pump and fan motor currents, flow rates, oil levels, vibration;
+its 27 faults are largely non-thermal (pitch, gear-oil pump coupling, rotor
+brake and hydraulics, oil leak, cooling valve, transformer overpressure).
+Farm C is therefore treated separately: what the same method detects when
+those signals are present.
+
+Code change: `daily_check.simulate` takes `maintenance_extra`, recorded
+repairs that start the model over exactly as a long stop does (one new test).
+
+**Saved as a pipeline step** (`make care-a`, `scripts/pipeline/20_care_farm_a.py`
+-> `results/care_farm_a.json`; code in `src/windmill/edp.py` and
+`src/windmill/triage.py`; 10 tests in `tests/test_care_farm_a.py`; EDP added
+to `acquire.py` and `MANIFEST.json`, checksum verified; README section from
+the result). The triage is now the same accounting for every alarm: at the
+alarm day's hottest 5 % of readings, reading = typical + load + weather +
+excess, by the component's healthy reference; the verdict follows the excess
+(own model or siblings, 95th percentile above 5 K). Result: 34 real excess
+heat, 5 explained by load, 0 explained by weather, 2 no verdict, as in the
+table above. On the real-excess-heat alarms the hottest readings averaged
+113 C: typical 74 C, load +30 K, weather +1.5 K, excess +7.8 K. Load, not
+weather, is what explains the rest. Counting "followed by a failure" with the
+exact 30-day window (fractional days) gives 8 of the 41, not 9 as in the
+first throwaway count; the verdicts are unchanged.
+
+**Decisions.** Farms B and C are checked for integrity (siblings, physics,
+gaps around faults) without locating them: their operators anonymised them on
+purpose. Farm C is reported separately, as what the method could detect
+if pressure, pump, fan and flow signals were available everywhere. Next: save Farm A as a pipeline step with tests (true-date mapping,
+integrity, triage), add EDP to the manifest, then farms B and C.
+
+#### Step 11: the same triage on ENGIE's fixed-limit alarms
+
+`make engie-triage` (`scripts/pipeline/21_engie_triage.py` ->
+`results/engie_triage.json`). ENGIE publishes no alarm log, so the alarms are
+the project's own fixed rule: gearbox bearing 2 at 80 C or more for an hour,
+consecutive days as one spell. Same accounting as Farm A (ERA5 weather; own
+frozen monthly model and the siblings).
+
+* Only R80711 ever hit the limit: 27 spells. 26 real excess heat, 1 explained
+  by load (November 2016), 0 by weather, 0 without a verdict.
+* 19 of the 26 lie in the documented fault period; the other 7 are June to
+  early August 2017, the months before it (the candidate early warning seen
+  in the daily check).
+* At the hottest readings of the real-heat spells: typical 70 C, load
+  +9.4 K, weather -0.2 K, excess +3.6 K. The siblings see the excess too
+  (95th percentile 6-9 K above their normal gap).
+
+**What this changes.** On both farms the fixed-limit alarms that fired were
+mostly real excess heat, and the weather explained almost none of them (Farm
+A +1.5 K, ENGIE -0.2 K). The claim "fixed limits fire because of the weather"
+is not supported by these data. What the data support: a fixed limit cannot
+say whether the heat is load or something wrong; the model can, and it
+confirms the real excess; on ENGIE it also flags fault days below the limit
+(48 of 115 checked fault days in the daily check). The pitch deck's slide on
+why alarms happen was worded around hot afternoons and must say this
+instead.
+
 ## Open questions
 
 * What should the project claim now? The honest candidates are: keep the
@@ -943,3 +1117,149 @@ The view rules (traffic light, status card, demo card) are in
 * "False dispatch" in the dashboard's monthly loop is an alarm episode with no
   row above 80 C inside it; the curve counts every dispatch on a healthy
   window instead. The two definitions should be reconciled.
+
+#### Step 12: the daily check on CARE Farms B and C
+
+`scripts/pipeline/22_care_farms_bc.py` → `results/care_farms_bc.json` (`make care-bc`).
+
+Every CARE dataset of Farms B (15) and C (58) runs the same monthly policy as
+on ENGIE (healthy model per sensor, at least a month of healthy data, frozen for
+the month, never trained on flagged days), with the site's own outside-air
+sensor in place of ERA5 (the farms stay anonymised). Sensors are grouped into
+components; outside air, hub and cabinet sensors are left out.
+
+**A fixed 2 K tolerance does not carry over.** Farm B's gearbox bearings are
+held at 64–67 °C by their oil cooling and miss their healthy prediction by about
+0.4 K a day, like ENGIE's. Its transformers (core near 107 °C), generator and
+rotor bearings and pitch motors lag their load by hours and miss by 3–5 K on
+ordinary days. At 2 K, healthy Farm B turbines got about 50 call-outs per
+component-year. So the tolerance is now learned too: each component is judged
+as one signal (the mean miss of its sensors), against median + 4 robust SDs of
+its own last 90 healthy days, never below 2 K. Only past days are used.
+
+| Healthy datasets, call-outs per component-year | Monthly model | Frozen model |
+|---|---|---|
+| Farm B (9 datasets, 5 components each) | 2.98 | 2.73 |
+| Farm C (31 datasets, ~7 components each) | 2.91 | 4.26 |
+
+The monthly refresh cuts false call-outs by about a third on Farm C and not at
+all on Farm B. With a learned tolerance the frozen model partly adapts too (its
+tolerance follows the median), so this is a smaller gap than ENGIE's
+26.37 % vs 0.57 % of readings, which compared fixed tolerances.
+
+**Faults caught on their own component:**
+- Farm B, 0 of 6. The three "high temperature in transformer cell" events got
+  hotter with load (e.g. event 7: 64 → 71 °C as power rose 0.19 → 0.28 of
+  rated); the healthy model explains that heat as load, so no excess and no
+  call-out. The three rotor/main-bearing damages show no heat signature (one
+  turbine was standing still, so nothing was checked).
+- Farm C, 2 of 27 (both hydraulics: events 47 and 28). 8 faults have no
+  temperature sensor on their component (communication, wiring, converter
+  fuse, yaw grease pump, own-consumption measurement); of the other 19, 11
+  fault windows were never checked: the turbine stood still around the fault,
+  the model treated the stop as maintenance and was waiting for a new healthy
+  month. Most of Farm C's faults are pitch faults (electronics, batteries,
+  encoders), which temperature does not see.
+
+**What this means for the claim.** The method's benefit is clearest where a
+component's temperature is regulated or fast (ENGIE and Farm B gearbox
+bearings). Across Farms B and C a temperature-only check catches few of the
+labelled faults; the farms' faults are mostly mechanical, electrical or pitch
+faults. Coverage after standstills is the main technical gap: a stop of 3 days
+or more resets the model for a month, so a fault that stops the turbine is
+seldom checked. Next: a shorter restart path (re-use the last model after a
+stop that was not maintenance), and vibration/pressure signals for Farm C.
+
+**Maintenance only when it is logged (follow-up).** On ENGIE a stop of 3 days
+or more stands in for maintenance because no log exists. Farm C logs service
+(CARE status 3), so it now also runs with the rule: a stop of 3 days or more is
+maintenance only if service was logged during it; any other stop keeps the
+model (after the 12-hour warm-up). Short service visits are not maintenance:
+Farm C logs 22 service periods of 6 h or more per turbine-year (tried first as
+the maintenance rule, it reset the model so often that checked days fell from
+23,472 to 4,364). Farm B logs no service status, so it keeps the stand-in rule.
+
+| Farm C | Stand-in rule | Logged-maintenance rule |
+|---|---|---|
+| Healthy: false call-outs per component-year | 2.91 | 2.95 |
+| Healthy: checked component-days | 23,472 | 24,393 |
+| Faults caught on own component | 2 of 19 | 2 of 19 |
+| Fault windows never checked | 11 | 11 |
+
+One fault gained coverage (event 67, transformer overpressure: 1 → 30 of 59
+days checked, no call-out). The 11 unchecked windows each have a stop of 3 days
+or more with service logged at or just before the fault, very likely the repair
+visit itself; the model rightly waits for a new healthy month after it. Farm C's
+headline now uses the logged rule.
+
+**Thermal memory and per-sensor judging (follow-up).**
+
+*Thermal memory* (scratch test on Farm B, not in the pipeline): the healthy
+model was given a "remembered load", an exponentially weighted average of power
+with a half-life of 0 (as built), 1, 2, 4 or 8 hours. Median robust SD of the
+daily miss on healthy datasets:
+
+| Component | 0 h | 1 h | 2 h | 4 h | 8 h |
+|---|---|---|---|---|---|
+| gearbox | 0.30 | 0.30 | 0.36 | 0.38 | 0.39 |
+| generator | 2.12 | 2.31 | 2.46 | 2.96 | 3.24 |
+| transformer | 3.61 | 3.06 | **2.84** | 3.38 | 4.63 |
+| rotor bearing | 3.24 | 2.82 | 2.82 | 2.69 | **2.22** |
+
+A modest gain for the transformer (−21 % at 2 h) and rotor bearing (−31 % at
+8 h), a loss for the generator, none needed for the gearbox. No Farm B fault
+was caught by memory alone. Not adopted.
+
+*Averaging hid the transformer faults.* The three Farm B faults are "high
+temperature in transformer **cell**". On the cell sensor alone they stand out
+(event 19: +12.2 K mean in the window, +0.6 K before; event 7: +5.3 K vs
+−2.2 K; event 34: +2.6 K vs +1.4 K), while the seven winding sensors beside it
+stayed normal; the component average hid them. The earlier "explained by load"
+reading of these faults was wrong. Each sensor is now judged against its own
+learned tolerance (median + 4 robust SDs of its last 90 healthy days, never
+below 2 K); a component is hot when any of its sensors is.
+
+| | Farm B, averaged | Farm B, per sensor | Farm C, averaged | Farm C, per sensor |
+|---|---|---|---|---|
+| Faults caught on own component | 0 of 6 | **2 of 6** | 2 of 19 | 2 of 19 |
+| False call-outs per component-year (healthy) | 2.98 | 6.66 | 2.95 | 6.24 |
+| Frozen model, same rule | 2.73 | 6.97 | 4.26 | 7.23 |
+
+Caught on Farm B: event 19 (transformer cell) and event 53 (rotor bearing 2
+damage), each on single hot days; requiring two days in a row would lose both.
+The extra false call-outs come from a few noisy sensors: Farm B's generator
+(26.9 per year: generator bearing 1 jumps 10–15 K month to month on some
+turbines; the slip ring follows nacelle air), Farm C's pitch (14.8) and
+hydraulics (9.5). Gearbox (1.4–1.5), rotor bearing (0.3–0.9) and Farm B pitch
+(0.6) stay low. Open decision: per-sensor judging is the physically right rule
+(a fault shows on one sensor), but it needs noisy sensors handled, e.g.
+flagged as data quality, before the false call-out rate is acceptable.
+
+#### Step 13: the conclusion, and why a trusted alarm is worth acting on
+
+`scripts/pipeline/23_alarm_value.py` → `results/alarm_value.json` (`make alarm-value`).
+
+* **The weather term, on EDP.** The daily check on the four logged turbines,
+  with the met mast's outside temperature and with a constant in its place.
+  Without the weather the healthy prediction's daily error grows by 16 %
+  (transformer), 51 % (generator) and 43 % (gearbox), median over turbines.
+  On ENGIE's oil-cooled gearbox bearing the weather adds almost nothing; the
+  README now says both, so neither reads as "the weather does not matter".
+* **Lead time and the cost of waiting.** For each logged failure: did the
+  triage confirm real excess heat on the same component in the 60 days before,
+  and how long did the turbine stand still in wind (≥ 5 m/s) from 2 days before
+  to 14 days after. T06 "Generator replaced" (2016-10-27): confirmed 54 days
+  before, 113.2 h (normally 7.7 h). T07 transformer cooling repaired
+  (2016-08-23): 51 days before, 91.8 h (normally 11.2 h). Not every failure was
+  warned: T07's generator bearings (2017-08-20) cost 136.8 h with no confirmed
+  alarm. This shows when a repair could have been planned, not that it would
+  have prevented the failure.
+* **The README now has a generated Conclusion** (between CONCLUSION markers,
+  every figure from results/, held to the same test as the other generated
+  sections): what it is, what the results support, what they do not show, and
+  where it sits beside commercial monitoring and Vervlimmeren et al. (2025).
+  New generated results sections: the EDP alarm value and CARE Farms B and C.
+* **Wording to keep consistent elsewhere.** The R80711 anomaly span is set by
+  this project from its siblings; the ENGIE release has no fault label, and the
+  fixed 80 C limit fired on the same first day (2017-08-15). Say "the anomaly
+  span", not "the documented fault".

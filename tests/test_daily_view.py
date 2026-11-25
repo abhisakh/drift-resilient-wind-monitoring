@@ -80,3 +80,36 @@ def test_the_committed_series_holds_the_demo():
     assert h["days_hot"] == 0 and h["days_checked"] >= 15
     assert f["days_hot"] >= 8 and f["first_hot"] == "2017-08-15"
     assert SERIES.stat().st_size < 4e6
+
+
+def test_an_alarm_is_the_first_day_of_a_hot_run_and_says_if_it_was_real():
+    s = _series()
+    s["turbines"]["T"]["fault_period"] = [False, False, False, False, True, True]
+    df = dv.frame(s, "T", "Gb2t_avg")
+    a = dv.alarms(df, 2.0)
+    # 3 Jan is hot (false), 4 Jan breaks the run, 5 Jan is hot (in the fault).
+    assert list(a["day"].dt.strftime("%Y-%m-%d")) == ["2017-01-03", "2017-01-05"]
+    assert list(a["real"]) == [False, True]
+    assert dv.alarm_counts(df, 2.0) == {"alarms": 2, "real": 1, "false": 1}
+
+
+def test_a_run_of_hot_days_is_one_alarm():
+    s = _series()
+    col = s["turbines"]["T"]
+    col["status"][3] = "checked"
+    col["sensors"]["Gb2t_avg"]["actual"][3] = 69.0
+    col["sensors"]["Gb2t_avg"]["pred"][3] = 64.0
+    a = dv.alarms(dv.frame(s, "T", "Gb2t_avg"), 2.0)
+    assert len(a) == 1 and a["days"].iloc[0] == 3
+
+
+def test_the_committed_demo_month_has_six_real_alarms_on_r80711():
+    s = dv.load(SERIES)
+    if s is None:
+        return
+    full = dv.frame(s, "R80711", "Gb2t_avg")
+    a = dv.alarms(full, s["tolerance_k"])
+    win = a[(a["day"] >= "2017-08-15") & (a["day"] <= "2017-09-14")]
+    assert len(win) == 6 and win["real"].all()
+    healthy = dv.alarms(dv.frame(s, "R80721", "Gb2t_avg"), s["tolerance_k"])
+    assert len(healthy) == 0

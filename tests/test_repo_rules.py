@@ -37,6 +37,8 @@ def test_readme_has_the_generated_markers():
     assert "<!-- METHOD:END -->" in readme
     assert "<!-- GOAL:START -->" in readme
     assert "<!-- GOAL:END -->" in readme
+    assert "<!-- CONCLUSION:START -->" in readme
+    assert "<!-- CONCLUSION:END -->" in readme
 
 
 def test_readme_numbers_come_from_results():
@@ -53,6 +55,8 @@ def test_readme_numbers_come_from_results():
     body += readme.split("<!-- METHOD:START -->", 1)[1].split("<!-- METHOD:END -->", 1)[0]
     # The goal section is generated too, so it is held to the same rule.
     body += readme.split("<!-- GOAL:START -->", 1)[1].split("<!-- GOAL:END -->", 1)[0]
+    # So is the conclusion.
+    body += readme.split("<!-- CONCLUSION:START -->", 1)[1].split("<!-- CONCLUSION:END -->", 1)[0]
 
     artefacts = {}
     for p in (ROOT / "results").glob("*.json"):

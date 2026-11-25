@@ -1,0 +1,396 @@
+{
+ "generated": "2026-11-25",
+ "protocol": {
+  "windy_ms": 5.0,
+  "lookback_days": 60,
+  "standstill_window_days": [
+   -2,
+   14
+  ],
+  "load_only_constant_ambient_c": 10.0
+ },
+ "weather_term": {
+  "per_turbine": {
+   "T01": {
+    "TRANSFORMER": {
+     "with_weather": {
+      "days": 268,
+      "daily_mae_k": 4.77
+     },
+     "load_only": {
+      "days": 268,
+      "daily_mae_k": 4.99
+     }
+    },
+    "GENERATOR": {
+     "with_weather": {
+      "days": 268,
+      "daily_mae_k": 2.63
+     },
+     "load_only": {
+      "days": 268,
+      "daily_mae_k": 3.73
+     }
+    },
+    "GEARBOX": {
+     "with_weather": {
+      "days": 268,
+      "daily_mae_k": 0.76
+     },
+     "load_only": {
+      "days": 268,
+      "daily_mae_k": 1.1
+     }
+    }
+   },
+   "T06": {
+    "TRANSFORMER": {
+     "with_weather": {
+      "days": 207,
+      "daily_mae_k": 2.5
+     },
+     "load_only": {
+      "days": 207,
+      "daily_mae_k": 3.4
+     }
+    },
+    "GENERATOR": {
+     "with_weather": {
+      "days": 207,
+      "daily_mae_k": 2.07
+     },
+     "load_only": {
+      "days": 207,
+      "daily_mae_k": 3.25
+     }
+    },
+    "GEARBOX": {
+     "with_weather": {
+      "days": 207,
+      "daily_mae_k": 0.75
+     },
+     "load_only": {
+      "days": 207,
+      "daily_mae_k": 1.07
+     }
+    }
+   },
+   "T07": {
+    "TRANSFORMER": {
+     "with_weather": {
+      "days": 331,
+      "daily_mae_k": 4.38
+     },
+     "load_only": {
+      "days": 331,
+      "daily_mae_k": 4.46
+     }
+    },
+    "GENERATOR": {
+     "with_weather": {
+      "days": 331,
+      "daily_mae_k": 2.52
+     },
+     "load_only": {
+      "days": 331,
+      "daily_mae_k": 3.88
+     }
+    },
+    "GEARBOX": {
+     "with_weather": {
+      "days": 331,
+      "daily_mae_k": 0.69
+     },
+     "load_only": {
+      "days": 331,
+      "daily_mae_k": 0.99
+     }
+    }
+   },
+   "T11": {
+    "TRANSFORMER": {
+     "with_weather": {
+      "days": 325,
+      "daily_mae_k": 2.14
+     },
+     "load_only": {
+      "days": 325,
+      "daily_mae_k": 3.52
+     }
+    },
+    "GENERATOR": {
+     "with_weather": {
+      "days": 325,
+      "daily_mae_k": 2.3
+     },
+     "load_only": {
+      "days": 325,
+      "daily_mae_k": 3.54
+     }
+    },
+    "GEARBOX": {
+     "with_weather": {
+      "days": 325,
+      "daily_mae_k": 0.6
+     },
+     "load_only": {
+      "days": 325,
+      "daily_mae_k": 0.87
+     }
+    }
+   }
+  },
+  "median_over_turbines": {
+   "TRANSFORMER": {
+    "with_weather_k": 3.44,
+    "load_only_k": 3.99,
+    "error_increase_without_weather": 0.16
+   },
+   "GENERATOR": {
+    "with_weather_k": 2.41,
+    "load_only_k": 3.63,
+    "error_increase_without_weather": 0.508
+   },
+   "GEARBOX": {
+    "with_weather_k": 0.72,
+    "load_only_k": 1.03,
+    "error_increase_without_weather": 0.431
+   }
+  }
+ },
+ "failures": [
+  {
+   "turbine": "T11",
+   "date": "2016-03-03",
+   "family": "GENERATOR",
+   "remark": "Electric circuit error in generator",
+   "heat_related": false,
+   "windy_standstill_h": 0.8,
+   "days_with_data": 14,
+   "normal_h_same_length": 1.3,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-04-04",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Error in pitch regulation",
+   "heat_related": false,
+   "windy_standstill_h": 0.0,
+   "days_with_data": 0,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T07",
+   "date": "2016-04-30",
+   "family": "GENERATOR",
+   "remark": "High temperature in generator bearing (replaced sensor)",
+   "heat_related": false,
+   "windy_standstill_h": 12.0,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": 1
+  },
+  {
+   "turbine": "T07",
+   "date": "2016-07-10",
+   "family": "TRANSFORMER",
+   "remark": "High temperature transformer",
+   "heat_related": true,
+   "windy_standstill_h": 43.0,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": 7
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-07-11",
+   "family": "GENERATOR",
+   "remark": "Generator replaced",
+   "heat_related": false,
+   "windy_standstill_h": 14.2,
+   "days_with_data": 7,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T01",
+   "date": "2016-07-18",
+   "family": "GEARBOX",
+   "remark": "Gearbox pump damaged",
+   "heat_related": false,
+   "windy_standstill_h": 63.5,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.4,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-07-24",
+   "family": "GENERATOR",
+   "remark": "Generator temperature sensor failure",
+   "heat_related": false,
+   "windy_standstill_h": 16.0,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": 1
+  },
+  {
+   "turbine": "T07",
+   "date": "2016-08-23",
+   "family": "TRANSFORMER",
+   "remark": "High temperature transformer. Transformer refrigeration repaired",
+   "heat_related": true,
+   "windy_standstill_h": 91.8,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": 51
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-09-04",
+   "family": "GENERATOR",
+   "remark": "High temperature generator error",
+   "heat_related": true,
+   "windy_standstill_h": 16.3,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": 43
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-10-02",
+   "family": "GENERATOR",
+   "remark": "Refrigeration system and temperature sensors in generator replaced",
+   "heat_related": true,
+   "windy_standstill_h": 4.5,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": 29
+  },
+  {
+   "turbine": "T11",
+   "date": "2016-10-17",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Hydraulic group error in the brake circuit",
+   "heat_related": false,
+   "windy_standstill_h": 0.3,
+   "days_with_data": 16,
+   "normal_h_same_length": 1.3,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T06",
+   "date": "2016-10-27",
+   "family": "GENERATOR",
+   "remark": "Generator replaced",
+   "heat_related": false,
+   "windy_standstill_h": 113.2,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": 54
+  },
+  {
+   "turbine": "T11",
+   "date": "2017-04-26",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Hydraulic group error in the brake circuit",
+   "heat_related": false,
+   "windy_standstill_h": 9.0,
+   "days_with_data": 16,
+   "normal_h_same_length": 1.3,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T07",
+   "date": "2017-06-17",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Oil leakage in Hub",
+   "heat_related": false,
+   "windy_standstill_h": 22.3,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T01",
+   "date": "2017-08-11",
+   "family": "TRANSFORMER",
+   "remark": "Transformer fan damaged",
+   "heat_related": true,
+   "windy_standstill_h": 10.3,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.4,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T06",
+   "date": "2017-08-19",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Oil leakage in Hub",
+   "heat_related": false,
+   "windy_standstill_h": 7.7,
+   "days_with_data": 16,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T07",
+   "date": "2017-08-20",
+   "family": "GENERATOR",
+   "remark": "Generator bearings damaged",
+   "heat_related": true,
+   "windy_standstill_h": 136.8,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T07",
+   "date": "2017-08-21",
+   "family": "GENERATOR",
+   "remark": "Generator damaged",
+   "heat_related": false,
+   "windy_standstill_h": 136.8,
+   "days_with_data": 16,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T11",
+   "date": "2017-09-12",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Hydraulic group error in the brake circuit",
+   "heat_related": false,
+   "windy_standstill_h": 2.0,
+   "days_with_data": 4,
+   "normal_h_same_length": 1.3,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T06",
+   "date": "2017-10-17",
+   "family": "GEARBOX",
+   "remark": "Gearbox bearings damaged",
+   "heat_related": true,
+   "windy_standstill_h": 6.2,
+   "days_with_data": 7,
+   "normal_h_same_length": 7.7,
+   "confirmed_real_heat_lead_days": null
+  },
+  {
+   "turbine": "T07",
+   "date": "2017-10-19",
+   "family": "HYDRAULIC_GROUP",
+   "remark": "Oil leakage in Hub",
+   "heat_related": false,
+   "windy_standstill_h": 0.0,
+   "days_with_data": 6,
+   "normal_h_same_length": 11.2,
+   "confirmed_real_heat_lead_days": null
+  }
+ ],
+ "warned_failures": 7,
+ "logged_failures": 21
+}

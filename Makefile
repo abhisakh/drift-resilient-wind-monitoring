@@ -29,6 +29,12 @@
 #                        it; every sensor, a 7-day forecast and the sibling
 #                        comparison; writes the dashboard's daily series
 #                        (about 6 min)
+#   make care-a          CARE Farm A against EDP's own records: true dates,
+#                        integrity, and triage of the turbines' temperature alarms
+#                        into real excess heat, load or weather (about 2 min)
+#   make engie-triage    the same triage of ENGIE's fixed 80 C limit alarms
+#   make care-bc         the daily check on CARE Farms B and C, monthly vs frozen
+#   make alarm-value     EDP: the weather term, and alarm lead time vs standstill after failures
 #   make confirm         the historical confirmation: train on each month, predict
 #                        the next, and check it against what happened, over every
 #                        month of every turbine (about 5 to 10 min)
@@ -67,7 +73,7 @@ SCRIPTS := scripts/pipeline
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
         compare thermal-signal dashboard snapshot diagnostics lint clean clean-results \
-        backtest curve cost confirm daily
+        backtest curve cost confirm daily care-a engie-triage care-bc alarm-value
 
 help: ## list the available targets
 	@echo ""
@@ -131,6 +137,18 @@ backtest: ## run the evaluation suite: every claim, measured (results/backtest.j
 
 daily: ## the daily check, every sensor, the 7-day forecast and the siblings (results/daily_check.json, results/daily_series.json)
 	$(PY) $(SCRIPTS)/19_daily_check.py
+
+care-a: ## CARE Farm A vs EDP's logbook and alarm log: integrity and alarm triage (results/care_farm_a.json)
+	$(PY) $(SCRIPTS)/20_care_farm_a.py
+
+engie-triage: ## ENGIE's 80 C limit alarms split into real excess heat, load or weather (results/engie_triage.json)
+	$(PY) $(SCRIPTS)/21_engie_triage.py
+
+alarm-value: ## EDP: error without the weather term; confirmed-heat lead time and standstill after each failure (results/alarm_value.json)
+	$(PY) $(SCRIPTS)/23_alarm_value.py
+
+care-bc: ## the daily check on CARE Farms B and C: false call-outs, monthly vs frozen, and faults caught (results/care_farms_bc.json)
+	$(PY) $(SCRIPTS)/22_care_farms_bc.py
 
 confirm: ## train on last month, predict this month, check it: every month of every turbine (results/monthly_confirmation.json)
 	$(PY) $(SCRIPTS)/18_monthly_confirmation.py

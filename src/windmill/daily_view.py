@@ -23,16 +23,19 @@ import pandas as pd
 LIGHTS = ("within", "hot", "cold", "thin", "hold", "none")
 LIGHT_LABELS = {
     "within": "within the tolerance",
-    "hot": "hotter than predicted: call-out",
+    "hot": "hotter than predicted",
     "cold": "colder than predicted",
     "thin": "ran too little to check",
     "hold": "maintenance hold: collecting healthy data",
     "none": "no model yet",
 }
+#: A square says what the SENSOR did that day; only the circles under a row
+#: say whether an alarm was real, so no square is drawn in the alarm's red.
 LIGHT_COLOURS = {
-    "within": "#2EAD6B", "hot": "#E05263", "cold": "#5B8DEF",
-    "thin": "#6B7280", "hold": "#E0A526", "none": "#374151",
+    "within": "#2EAD6B", "hot": "#F28C38", "cold": "#5B8DEF",
+    "thin": "#6B7280", "hold": "#8B7CF6", "none": "#374151",
 }
+ALARM_COLOURS = {"real": "#E05263", "false": "#E5E7EB"}
 
 DEMO = {"healthy": "R80721", "faulty": "R80711",
         "start": "2017-08-15", "end": "2017-09-14", "lead": 7}
@@ -66,16 +69,25 @@ def frame(series: dict, turbine: str, sensor: str,
     df = df.reset_index(drop=True)
     if "actual" in df and "pred" in df:
         df["diff"] = df["actual"] - df["pred"]
+    # On the primary sensor at the run's own tolerance, the engine's own
+    # verdict is used, so the page counts exactly what the report counts
+    # (the rounded daily means could tip a day sitting on the tolerance).
+    if sensor == series.get("primary") and series.get("tolerance_k") is not None:
+        df["engine_flag"] = df["flag"]
+        df["engine_tol"] = float(series["tolerance_k"])
     return df
 
 
-def light(row, tolerance: float) -> str:
+def light(row, tolerance: float, engine: bool = False) -> str:
     """The traffic light for one day of one sensor."""
     status = row["status"]
     if status == "blank":
         return "hold" if row["reason"] == "maintenance" else "none"
     if status != "checked" or pd.isna(row.get("diff")):
         return "thin"
+    if engine:
+        f = row.get("engine_flag")
+        return f if f in ("hot", "cold") else "within"
     if row["diff"] > tolerance:
         return "hot"
     if row["diff"] < -tolerance:
@@ -84,7 +96,10 @@ def light(row, tolerance: float) -> str:
 
 
 def lights(df: pd.DataFrame, tolerance: float) -> pd.Series:
-    return df.apply(lambda r: light(r, tolerance), axis=1)
+    if not len(df):
+        return pd.Series([], dtype="object")
+    engine = bool("engine_tol" in df and (df["engine_tol"] == tolerance).all())
+    return df.apply(lambda r: light(r, tolerance, engine), axis=1)
 
 
 def badge(series: dict, turbine: str, day: str, month_of_readings: int) -> dict:
@@ -133,3 +148,31 @@ def demo_summary(df: pd.DataFrame, tolerance: float, lead: int) -> dict:
                          if len(both) else None),
         "max_diff": round(float(checked["diff"].max()), 2) if len(checked) else None,
     }
+
+
+def alarms(df: pd.DataFrame, tolerance: float) -> pd.DataFrame:
+    """The call-outs: the first day of each run of hot days, as dispatched.
+
+    A run is broken by any day that is not hot, checked or not, the same rule
+    as `daily_check.call_outs`. `real` is True when the day lies in the
+    documented fault period (the stand-in for the inspection), else the
+    call-out was a false alarm. Compute it on the whole series and then cut
+    the window, so a run that started before the window is not counted again.
+    """
+    hot = (lights(df, tolerance) == "hot").to_numpy()
+    first = hot & ~pd.Series(hot).shift(1, fill_value=False).to_numpy()
+    run_days = []
+    n = 0
+    for h in hot[::-1]:
+        n = n + 1 if h else 0
+        run_days.append(n)
+    out = df.loc[first, ["day", "fault_period"]].copy()
+    out["days"] = [run_days[::-1][i] for i in range(len(df)) if first[i]]
+    out["real"] = out["fault_period"].astype(bool)
+    return out.drop(columns="fault_period").reset_index(drop=True)
+
+
+def alarm_counts(df: pd.DataFrame, tolerance: float) -> dict:
+    a = alarms(df, tolerance)
+    return {"alarms": int(len(a)), "real": int(a["real"].sum()),
+            "false": int((~a["real"]).sum())}

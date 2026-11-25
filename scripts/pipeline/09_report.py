@@ -28,6 +28,8 @@ METHOD_END = "<!-- METHOD:END -->"
 #: the same module the dashboard's headline cards read.
 GOAL_START = "<!-- GOAL:START -->"
 GOAL_END = "<!-- GOAL:END -->"
+CONCLUSION_START = "<!-- CONCLUSION:START -->"
+CONCLUSION_END = "<!-- CONCLUSION:END -->"
 
 sys.path.insert(0, str(ROOT / "src"))
 from windmill import scorecard  # noqa: E402
@@ -1495,6 +1497,291 @@ def section_daily_check() -> str:
     return "\n".join(out)
 
 
+def section_care_farm_a() -> str:
+    """CARE Farm A against EDP's own records: integrity, and the triage of the
+    turbines' temperature alarms. Written from results/care_farm_a.json."""
+    d = load("care_farm_a.json")
+    if not d or not d.get("triage"):
+        return ""
+    i, t, ta = d["integrity"], d["triage"], d["turbine_alarms"]
+    tab = t["table"]
+    out = ["### CARE Farm A against the operator's own records\n"]
+    out.append(
+        "CARE's Wind Farm A is built from EDP's open data (an onshore farm in "
+        "Portugal), and EDP also publishes what CARE leaves out: the turbines' "
+        "event log (their own alarms) and a logbook of confirmed failures. That "
+        "makes it the one place where an alarm can be checked against what "
+        "actually broke.\n")
+    match = i["care_vs_edp_scada"]
+    out.append(
+        "**The data hold together.** CARE's overlapping files are identical on "
+        f"{i['overlapping_copies']['timestamp_pairs']:,} shared timestamps; each CARE "
+        "turbine matches its EDP turbine reading for reading ("
+        + ", ".join(f"{k} {_pct(v['identical_share'])} %" for k, v in match.items())
+        + f"); {i['anomaly_events_matching_logbook']} of CARE's "
+        f"{i['anomaly_events']} fault labels end within 30 minutes of a logged "
+        f"failure (the other is a second label of the same failure) and "
+        f"{i['normal_events_with_logbook_failure']} normal windows contain one. "
+        "CARE shifted each file by whole days to hide the year; the true dates "
+        "are 2016-2017. CARE's Farm A status column is rebuilt from the logbook "
+        "(14-day \"downtime\" blocks ending at each failure, with the turbine "
+        "producing during much of them), so stops are found from power.\n")
+    out.append(
+        f"**What counts as a real fault.** The logbook lists confirmed failures: "
+        f"a part repaired or replaced. An alarm is *followed by a failure* when a "
+        f"logged failure of the same component, where heat was the cause or the "
+        f"symptom, follows within 30 days. The turbines' alarm system raised "
+        f"{ta['spells']} alarm spells on the four logged turbines; "
+        f"{ta['followed_by_failure']} were followed by a failure of the component. "
+        "An alarm with no failure is not judged harmless: overheating that ended "
+        "without a repair is not in the logbook.\n")
+    out.append(
+        "**Triage of the temperature alarms.** At each alarm's hottest readings "
+        "the temperature is split into the component's typical value, what the "
+        "load adds, what the weather adds, and the excess its healthy model "
+        "cannot explain; the verdict follows the excess, by the component's own "
+        "healthy model and by its siblings at the same moment.\n")
+    out.append("| verdict | alarms | followed by a failure | no failure |")
+    out.append("|---|---|---|---|")
+    for v in ("real excess heat", "explained by load", "explained by weather", "no verdict", "all"):
+        r = tab[v]
+        out.append(f"| {v} | {r['alarms']} | {r['followed_by_failure']} | {r['no_failure']} |")
+    out.append("")
+    split = t["mean_split_k"].get("real excess heat")
+    if split:
+        out.append(
+            f"On the real-excess-heat alarms the hottest readings averaged "
+            f"{fmt(split['reading'], 0)} C: typical {fmt(split['typical'], 0)} C, "
+            f"load +{fmt(split['load'], 0)} K, weather {fmt(split['weather'], 1)} K, "
+            f"excess +{fmt(split['excess'], 1)} K.\n")
+    st = t["stops"]
+    out.append(
+        "**They cost production.** While windy, the turbines stood still "
+        f"{fmt(st['no_failure']['stop_h_during'], 1)} h a day during alarms with no "
+        f"later failure and {fmt(st['no_failure']['stop_h_next30'], 1)} h a day in the "
+        f"30 days after, against {fmt(st['no_failure']['stop_h_normal'], 1)} h normally "
+        f"(alarms followed by a failure: {fmt(st['followed_by_failure']['stop_h_during'], 1)} "
+        f"and {fmt(st['followed_by_failure']['stop_h_next30'], 1)} h). The turbines' "
+        "own entries record 0 kW at these alarms: protective trips.\n")
+    eng = load("engie_triage.json")
+    if eng and eng.get("triage"):
+        et = eng["triage"]["table"]
+        es = eng["triage"]["mean_split_k"].get("real excess heat")
+        out.append(
+            "**The same triage on ENGIE**, of the fixed rule this project uses as "
+            "its baseline (gearbox bearing at 80 C for an hour; ENGIE publishes no "
+            f"alarm log): {et['all']['alarms']} alarm spells, all on R80711; "
+            f"{et['real excess heat']['alarms']} real excess heat, "
+            f"{et['explained by load']['alarms']} explained by load, "
+            f"{et['explained by weather']['alarms']} by weather. "
+            f"{et['real excess heat']['followed_by_failure']} of the real-heat spells "
+            "lie in the documented fault period; the others came in the months "
+            "before it."
+            + (f" At their hottest readings: typical {fmt(es['typical'], 0)} C, load "
+               f"+{fmt(es['load'], 1)} K, weather {fmt(es['weather'], 1)} K, excess "
+               f"+{fmt(es['excess'], 1)} K." if es else "") + "\n")
+    out.append(
+        "**Reading.** The model, trained on healthy data with the weather, "
+        "confirms real excess heat where the turbines alarmed; it does not "
+        "suppress those alarms, nor should it. It cannot judge faults that are "
+        "not heat (pumps, fans, leaks, pressure): Farm A has no such signals.\n")
+    return "\n".join(out)
+
+
+def section_alarm_value() -> str:
+    """The weather term and the cost of waiting, on EDP's records.
+    Written from results/alarm_value.json."""
+    d = load("alarm_value.json")
+    if not d:
+        return ""
+    out = ["### Why a trusted alarm is worth acting on (EDP)\n"]
+    wx = d["weather_term"]["median_over_turbines"]
+    if wx:
+        out.append(
+            "**The weather term is needed to tell weather heat from fault heat.** "
+            "The daily check was run on the four logged EDP turbines with the met "
+            "mast's outside temperature as its weather input, and again with a "
+            "constant in its place. Without the weather the daily error of the "
+            "healthy prediction grows (median over the turbines):\n")
+        out.append("| component | with weather | load only | error increase |")
+        out.append("|---|---|---|---|")
+        for fam, v in wx.items():
+            out.append(f"| {fam.lower()} | {fmt(v['with_weather_k'], 2)} K | "
+                       f"{fmt(v['load_only_k'], 2)} K | +{round(100 * v['error_increase_without_weather'])} % |")
+        out.append(
+            "\nOn ENGIE's gearbox bearing, held near its operating temperature by "
+            "its oil cooling, the weather adds almost nothing (see the goal "
+            "section); on EDP's components it does. Measured with the weather "
+            "in, the weather explained little of the alarms that fired (the "
+            "triage above), so those alarms were mostly real heat.\n")
+    warned = sorted([f for f in d["failures"] if f["confirmed_real_heat_lead_days"]
+                     and f["confirmed_real_heat_lead_days"] >= 30],
+                    key=lambda f: -f["windy_standstill_h"])
+    if warned:
+        out.append(
+            f"**Confirmed alarms came well before costly failures.** For each of "
+            f"the {d['logged_failures']} logged failures on these turbines: did the "
+            f"triage confirm real excess heat on the same component in the "
+            f"{d['protocol']['lookback_days']} days before, and how long did the "
+            f"turbine then stand still while the wind blew (from "
+            f"{-d['protocol']['standstill_window_days'][0]} days before to "
+            f"{d['protocol']['standstill_window_days'][1]} days after)?\n")
+        out.append("| turbine | failure | logged | confirmed heat, days before | windy standstill | normally |")
+        out.append("|---|---|---|---|---|---|")
+        for f in warned:
+            out.append(f"| {f['turbine']} | {f['remark']} | {f['date']} | "
+                       f"{f['confirmed_real_heat_lead_days']} | {fmt(f['windy_standstill_h'], 1)} h | "
+                       f"{fmt(f['normal_h_same_length'], 1)} h |")
+        big_missed = [f for f in d["failures"] if f["confirmed_real_heat_lead_days"] is None
+                      and f["heat_related"] and f["windy_standstill_h"] >= 50]
+        out.append(
+            "\nA month or more of warning is time to plan a repair for calm "
+            "weather. What this does not show is that acting on the alarm would "
+            "have prevented the failure; that is the plausible benefit, not a "
+            "measured one."
+            + (f" Nor does every failure come with a warning: "
+               + "; ".join(f"{f['turbine']} {f['remark'].lower()} ({f['date']}, "
+                           f"{fmt(f['windy_standstill_h'], 1)} h)" for f in big_missed)
+               + " had no confirmed alarm before it." if big_missed else "") + "\n")
+    return "\n".join(out)
+
+
+def section_care_farms_bc() -> str:
+    """The daily check on CARE Farms B and C. From results/care_farms_bc.json."""
+    d = load("care_farms_bc.json")
+    if not d or "farm_B" not in d or "farm_C" not in d:
+        return ""
+    out = ["### The daily check on CARE Farms B and C (offshore, anonymised)\n"]
+    out.append(
+        "Every dataset of CARE's Farms B and C runs the same monthly policy as on "
+        "ENGIE, with the site's own outside-temperature sensor in place of ERA5 "
+        "(the farms stay anonymised). Sensors are grouped into components; each "
+        "sensor is judged against a tolerance learned from its own last 90 "
+        "healthy days (median + 4 robust SDs, never below 2 K), and a component "
+        "is hot when any of its sensors is. A fixed 2 K does not carry over: "
+        "Farm B's transformers lag their load by hours and miss their "
+        "prediction by several kelvin on ordinary days. Farm C logs service, so "
+        "there a long stop is maintenance only when service was logged during "
+        "it; Farm B logs none and keeps the 3-day stand-in.\n")
+    out.append("| | Farm B | Farm C |")
+    out.append("|---|---|---|")
+    b, c = d["farm_B"]["summary"], d["farm_C"]["summary"]
+    out.append(f"| healthy datasets | {b['healthy']['datasets']} | {c['healthy']['datasets']} |")
+    out.append(f"| false call-outs per component-year, monthly model | "
+               f"{fmt(b['healthy']['monthly_per_component_year'], 2)} | {fmt(c['healthy']['monthly_per_component_year'], 2)} |")
+    out.append(f"| the same, model frozen once | "
+               f"{fmt(b['healthy']['frozen_per_component_year'], 2)} | {fmt(c['healthy']['frozen_per_component_year'], 2)} |")
+    out.append(f"| labelled faults | {b['faults']['total']} | {c['faults']['total']} |")
+    out.append(f"| on a component with temperature sensors | {b['faults']['on_a_component_with_temperature_sensors']} | "
+               f"{c['faults']['on_a_component_with_temperature_sensors']} |")
+    out.append(f"| caught on their own component | {b['faults']['caught_on_own_component']} | "
+               f"{c['faults']['caught_on_own_component']} |")
+    out.append(f"| fault window never checked | {b['faults']['own_component_window_never_checked']} | "
+               f"{c['faults']['own_component_window_never_checked']} |")
+    caught = [f"{r['event_id']} ({r['description']})" for farm in ("farm_B", "farm_C")
+              for r in d[farm]["datasets"] if r["label"] == "anomaly" and r["caught_own"]]
+    out.append(
+        "\n**Reading.** Caught: " + "; ".join(caught) + ". Most of Farm C's faults "
+        "are pitch, electrical or communication faults that temperature does not "
+        "see; most unchecked fault windows follow a long stop with service logged, "
+        "after which the model waits for a new healthy month. The false call-outs "
+        "come mainly from a few noisy sensors (Farm B's generator, Farm C's pitch "
+        "and hydraulics); gearbox and rotor-bearing sensors stay low. Refreshing "
+        "the model every month helps less here than on ENGIE, because a learned "
+        "tolerance partly adapts the frozen model too.\n")
+    return "\n".join(out)
+
+
+def section_conclusion() -> str:
+    """What the project shows, what it does not, and where it sits.
+    Every figure is read from results/*.json."""
+    dc_ = load("daily_check.json")
+    fa = load("care_farm_a.json")
+    en = load("engie_triage.json")
+    av = load("alarm_value.json")
+    bc = load("care_farms_bc.json")
+    if not (dc_ and fa and en and av and bc):
+        return ""
+    two = dc_["fleet"]["2"]
+    tab = fa["triage"]["table"]
+    et = en["triage"]["table"]
+    wsplit = fa["triage"]["mean_split_k"]["real excess heat"]["weather"]
+    wx = av["weather_term"]["median_over_turbines"]
+    lo = min(v["error_increase_without_weather"] for v in wx.values())
+    hi = max(v["error_increase_without_weather"] for v in wx.values())
+    warned = sorted([f for f in av["failures"] if (f["confirmed_real_heat_lead_days"] or 0) >= 30],
+                    key=lambda f: -f["windy_standstill_h"])
+    b, c = bc["farm_B"]["summary"], bc["farm_C"]["summary"]
+    out = ["## Conclusion\n"]
+    out.append(
+        "**What it is.** A decision aid for temperature alarms on components whose "
+        "faults show as heat. For each component it learns, from a month of healthy "
+        "data only, what the temperature should be at the turbine's load and the "
+        "day's weather; it refreshes that model every month and never learns from "
+        "flagged days. Every alarm is then split into typical temperature, load, "
+        "weather and the excess heat nothing explains, so a crew can be sent for "
+        "real heat and held back for load or weather.\n")
+    out.append("**What the results support.**\n")
+    out.append(
+        f"- *Fewer false call-outs as turbines drift.* On ENGIE's gearbox bearing "
+        f"the three healthy siblings raised {fmt(two['siblings_false_call_outs_per_year'], 2)} "
+        f"false call-outs per turbine-year at a 2 K tolerance. On CARE Farm C, "
+        f"refreshing the model monthly gave {fmt(c['healthy']['monthly_per_component_year'], 2)} "
+        f"false call-outs per component-year against {fmt(c['healthy']['frozen_per_component_year'], 2)} "
+        f"for a model frozen once.")
+    out.append(
+        f"- *The operator's own alarms, explained.* On EDP's farm, {tab['real excess heat']['alarms']} "
+        f"of the turbines' {tab['all']['alarms']} temperature alarms were real excess heat and "
+        f"{tab['explained by load']['alarms']} were explained by load; on ENGIE's fixed 80 C "
+        f"limit, {et['real excess heat']['alarms']} of {et['all']['alarms']}. The weather "
+        f"term is what makes that verdict possible: without it the healthy prediction's "
+        f"error grows by {round(100 * lo)}-{round(100 * hi)} % on EDP's components. Measured "
+        f"with it, the weather added {fmt(wsplit, 1)} K at the real-heat alarms.")
+    if warned:
+        out.append(
+            "- *A trusted alarm buys time.* "
+            + "; ".join(f"{f['turbine']}: real heat confirmed {f['confirmed_real_heat_lead_days']} "
+                        f"days before \"{f['remark']}\", which then cost "
+                        f"{fmt(f['windy_standstill_h'], 1)} h of standstill in wind "
+                        f"(normally {fmt(f['normal_h_same_length'], 1)} h)" for f in warned[:2]) + ".")
+    out.append(
+        f"- *The data can be trusted.* CARE's Farm A matches EDP's original data "
+        f"reading for reading, and each of its fault labels lines up with a failure in "
+        f"EDP's failure logbook.")
+    out.append("\n**What it does not show.**\n")
+    out.append(
+        "- *It does not halve the operators' false alarms.* Most of their fixed-limit "
+        "temperature alarms were real heat; the saving is against a monitoring model "
+        "that is not kept current, and in the alarms that can be held back.")
+    out.append(
+        f"- *It is not a general fault detector.* On CARE Farm B it caught "
+        f"{b['faults']['caught_on_own_component']} of {b['faults']['total']} faults on "
+        f"their own component, on Farm C {c['faults']['caught_on_own_component']} of "
+        f"{c['faults']['total']}; most of those faults are pitch, electrical, "
+        f"communication or mechanical, and {c['faults']['own_component_window_never_checked']} "
+        f"of Farm C's fault windows were never checked: they followed logged maintenance, "
+        f"after which the model waits for a month of new healthy data.")
+    out.append(
+        "- *The savings are not measured.* The data has no costs; the lead times show "
+        "when a repair could have been planned, not that it would have prevented the "
+        "failure.")
+    out.append(
+        "- *The ENGIE case is unlabelled.* R80711's anomaly span is set by this project "
+        "from its siblings; the fixed 80 C limit fired on the same first day.")
+    out.append(
+        "- *A few noisy sensors raise most false call-outs on the offshore farms* "
+        "(Farm B's generator, Farm C's pitch and hydraulics). Telling a sensor problem "
+        "from a component problem is the next step.")
+    out.append(
+        "\n**Where it sits.** Normal-behaviour monitoring with smart alarms is sold "
+        "commercially and published (Vervlimmeren et al., Wind Energy Science, 2025, "
+        "filter alerts against the fleet median). This project adds an explicit "
+        "load / weather / excess split of every alarm, a healthy model kept current "
+        "with rules against learning a fault, and a check against an operator's own "
+        "alarm log and failure logbook, on public data that anyone can rerun.\n")
+    return "\n".join(out)
+
+
 def section_confirmation() -> str:
     """The historical confirmation: train on last month, predict this month.
 
@@ -1833,11 +2120,15 @@ def section_goal() -> str:
                   paired.get("load+ambient+wind vs load+ambient") or {})
     if lc and lo and lw:
         out.append(
-            "- **The operating point does the work; the weather barely does.** "
+            "- **On ENGIE's gearbox bearing the operating point does the work and the weather adds little.** "
             "Conditioning on load cuts the median prediction error by "
             f"{fmt(abs(lc.get('median_delta')), 2)} K against a constant. Adding "
             f"ambient temperature changes it by {fmt(lo.get('median_delta'), 3)} K "
-            f"and wind speed by {fmt(lw.get('median_delta'), 3)} K on this channel.")
+            f"and wind speed by {fmt(lw.get('median_delta'), 3)} K on this channel, "
+            "which its oil cooling holds near its operating temperature. On EDP's "
+            "transformer, generator and gearbox the weather term does matter (the "
+            "EDP section), and it is what lets an alarm be split into load, "
+            "weather and real excess heat.")
     dep, lgb = summary.get("load+ambient"), summary.get("lightgbm")
     if dep and lgb:
         out.append(
@@ -1898,6 +2189,8 @@ def main() -> int:
     parts = [section_conditioning(), section_decomposition(),
              section_engie_multivariate(), section_scorability(),
              section_care(), section_backtest(), section_daily_check(),
+             section_care_farm_a(), section_alarm_value(),
+             section_care_farms_bc(),
              section_confirmation(),
              section_operating_curve(), section_cost()]
     body = "\n".join(p for p in parts if p.strip())
@@ -1921,6 +2214,12 @@ def main() -> int:
         ghead = new.split(GOAL_START)[0]
         gtail = new.split(GOAL_END)[1]
         new = f"{ghead}{GOAL_START}\n\n{goal}\n{GOAL_END}{gtail}"
+
+    conclusion = section_conclusion()
+    if conclusion and CONCLUSION_START in new and CONCLUSION_END in new:
+        chead = new.split(CONCLUSION_START)[0]
+        ctail = new.split(CONCLUSION_END)[1]
+        new = f"{chead}{CONCLUSION_START}\n\n{conclusion}\n{CONCLUSION_END}{ctail}"
 
     # The test count is generated too, so it cannot go stale.
     n_tests = _count_tests()

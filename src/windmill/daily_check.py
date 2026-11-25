@@ -272,17 +272,21 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
              warmup_hours: float = WARMUP_HOURS, spans: dict | None = None,
              channel: str = CHANNEL,
              maintenance_days: float = MAINTENANCE_DAYS,
-             channels=None, leads=()) -> dict:
+             channels=None, leads=(), maintenance_extra=()) -> dict:
     """Run the policy over a turbine's whole record, month by month, day by day.
 
     `channels` adds a healthy model and a daily check for each further sensor
     (the policy itself follows the primary `channel`); `leads` adds the
     forecast of each sensor that many days ahead. Returns the per-day results,
     the per-month state of the model, and the restarts that stood in for
-    maintenance.
+    maintenance. `maintenance_extra` adds maintenance that is RECORDED (a
+    failure logbook's repairs, where one exists): the model starts over after
+    it exactly as after a stand-in.
     """
     f, maintenance = mark_restarts(frame, warmup_hours=warmup_hours,
                                    maintenance_days=maintenance_days)
+    if len(maintenance_extra):
+        maintenance = sorted(set(maintenance) | {_utc(t) for t in maintenance_extra})
     chans = [channel] + [c for c in (channels or []) if c != channel and c in f.columns]
     usable_all = (f["running"] & ~f["warmup"]).to_numpy()
     cum_usable = np.cumsum(usable_all)
