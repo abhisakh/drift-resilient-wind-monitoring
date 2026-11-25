@@ -35,6 +35,7 @@
 #   make engie-triage    the same triage of ENGIE's fixed 80 C limit alarms
 #   make care-bc         the daily check on CARE Farms B and C, monthly vs frozen
 #   make alarm-value     EDP: the weather term, and alarm lead time vs standstill after failures
+#   make limit-vs-model  R80711: days the fixed 80 C limit and the daily check each flagged
 #   make confirm         the historical confirmation: train on each month, predict
 #                        the next, and check it against what happened, over every
 #                        month of every turbine (about 5 to 10 min)
@@ -73,7 +74,7 @@ SCRIPTS := scripts/pipeline
 .DEFAULT_GOAL := help
 .PHONY: help setup data pipeline report summary test demo audit audit-quick \
         compare thermal-signal dashboard snapshot diagnostics lint clean clean-results \
-        backtest curve cost confirm daily care-a engie-triage care-bc alarm-value
+        backtest curve cost confirm daily care-a engie-triage care-bc alarm-value limit-vs-model
 
 help: ## list the available targets
 	@echo ""
@@ -143,6 +144,9 @@ care-a: ## CARE Farm A vs EDP's logbook and alarm log: integrity and alarm triag
 
 engie-triage: ## ENGIE's 80 C limit alarms split into real excess heat, load or weather (results/engie_triage.json)
 	$(PY) $(SCRIPTS)/21_engie_triage.py
+
+limit-vs-model: ## R80711: the fixed 80 C limit against the daily check, day by day (results/limit_vs_model.json)
+	$(PY) $(SCRIPTS)/24_limit_vs_model.py
 
 alarm-value: ## EDP: error without the weather term; confirmed-heat lead time and standstill after each failure (results/alarm_value.json)
 	$(PY) $(SCRIPTS)/23_alarm_value.py

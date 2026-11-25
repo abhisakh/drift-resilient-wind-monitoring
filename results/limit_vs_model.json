@@ -1,0 +1,21 @@
+{
+ "turbine": "R80711",
+ "tolerance_k": 2.0,
+ "limit_rule": "80 C held for 6 ten-minute readings",
+ "anomaly_span": {
+  "days_checked": 115,
+  "model_hot_days": 48,
+  "limit_days": 42,
+  "both": 36,
+  "model_only": 12,
+  "limit_only": 6,
+  "model_only_daily_mean_c_median": 73.8,
+  "model_only_excess_k_median": 3.0
+ },
+ "before_span": {
+  "from": "2017-06-01",
+  "to": "2017-08-15",
+  "model_hot_days": 18,
+  "of_them_limit_days": 9
+ }
+}

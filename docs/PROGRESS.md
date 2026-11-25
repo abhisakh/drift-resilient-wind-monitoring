@@ -1263,3 +1263,18 @@ flagged as data quality, before the false call-out rate is acceptable.
   this project from its siblings; the ENGIE release has no fault label, and the
   fixed 80 C limit fired on the same first day (2017-08-15). Say "the anomaly
   span", not "the documented fault".
+
+#### Step 14: the README rebuilt around two claims
+
+`scripts/pipeline/24_limit_vs_model.py` → `results/limit_vs_model.json` (`make limit-vs-model`).
+
+The README now tells one story: (1) a model sees slow degradation a fixed limit
+misses, and (2) it must be retrained every month; plus (3) every alarm can be
+explained, why it matters, and what it does not show. The new step counts, on
+R80711's abnormal period (115 days checked), the days each rule flagged: both
+36, model only 12, limit only 6; in the ten weeks before, the model flagged 18
+hot days and the limit 9 of them. On the model-only days the bearing averaged
+73.8 °C, 3.0 K above its healthy prediction. The limit also catches days the
+model does not, so the claim is "adds what the limit cannot see", not
+"replaces the limit". The old framing "fewer false call-outs than the fixed
+limit" is gone: on ENGIE's healthy turbines both are near zero.
