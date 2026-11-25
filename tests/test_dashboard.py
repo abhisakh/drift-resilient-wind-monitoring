@@ -95,7 +95,13 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     # And the numbers must be the project's, read from the artefacts.
     body = "\n".join(m.value for m in at.markdown)
     assert "86.64" in body, "the R80711 peak is missing from the cloud render"
-    assert "0.5028" in body, "the CARE score is missing from the cloud render"
+    # The project's first claim, from results/limit_vs_model.json: the days
+    # only the model flagged. (The CARE score used to be checked here; it was
+    # shown in the "does and does not claim" box, which is gone.)
+    lv = json.loads((ROOT / "results" / "limit_vs_model.json").read_text())
+    assert "flagged by the model only" in body, (
+        "the fixed-limit comparison is missing from the cloud render")
+    assert str(lv["anomaly_span"]["model_only"]) in body
 
 
 def test_app_renders_in_live_mode_when_the_raw_data_is_present():
@@ -639,45 +645,8 @@ def test_the_forecast_tab_renders_the_prediction():
     assert len(at.get("plotly_chart")) >= 4, "the forecast charts are missing"
 
 
-def test_the_cross_check_tab_has_the_monthly_loop_and_the_costs():
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    body = "\n".join(m.value for m in at.markdown)
-    assert "Monthly Operational Loop" in body, "the monthly loop is missing"
-    assert "Cost-Savings Impact" in body, "the cost section is missing"
-    assert "Target month" in [s.label for s in at.selectbox], (
-        "the monthly loop has no month selector"
-    )
 
 
-def test_the_cost_assumptions_are_adjustable():
-    """The dispatch cost is the reader's to set; the arithmetic is exact.
-
-    The cost bar only appears once the monthly loop has run, because there
-    is nothing to price before then.
-    """
-    at = _app_test()
-    at.run()
-    run = [b for b in at.button if "monthly cross-check" in b.label.lower()]
-    assert run, "there is no button to run the monthly cross-check"
-    run[0].click().run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    cost_slider = [s for s in at.slider if "dispatch" in s.label.lower()]
-    assert cost_slider, "the cost assumptions bar is missing"
-    assert cost_slider[0].value == 2000
-    assert cost_slider[0].min == 500
-    assert cost_slider[0].max == 5000
-
-    # And the saving must follow the assumption.
-    before = "\n".join(m.value for m in at.markdown)
-    cost_slider[0].set_value(5000).run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    after = "\n".join(m.value for m in at.markdown)
-    assert before != after, (
-        "changing the dispatch cost did not change the reported saving"
-    )
 
 
 def test_the_benchmark_tab_holds_the_model_comparison():
@@ -693,41 +662,6 @@ def test_the_benchmark_tab_holds_the_model_comparison():
     )
 
 
-def test_the_monthly_loop_runs_in_cloud_mode(tmp_path):
-    """THE CLOUD TEST FOR THE MONTHLY LOOP.
-
-    The monthly cross-check is the operational centrepiece, and it has to
-    work on Streamlit Community Cloud, where there is no data/raw/. It runs
-    on the committed sample CSV, so it must work without the 19 GB -- and
-    the point of the test is that it is exercised in a copy of the
-    repository with no data/ at all, because a developer always has the
-    data and would never find out.
-    """
-    from streamlit.testing.v1 import AppTest
-
-    cloud = _cloud_copy(tmp_path)
-    at = AppTest.from_file(str(cloud / "app.py"), default_timeout=300)
-    at.run()
-    assert not at.exception, f"the app raised in cloud mode: {at.exception}"
-
-    months = [s for s in at.selectbox if s.label == "Target month"]
-    assert months, "the monthly loop has no month selector in cloud mode"
-    assert "2017-09" in list(months[0].options)
-
-    run = [b for b in at.button if "monthly cross-check" in b.label.lower()]
-    assert run, "there is no button to run the monthly cross-check"
-    run[0].click().run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    banners = [s.value for s in at.success]
-    assert banners, "the monthly loop produced no live-fit proof"
-    assert "Trained live on" in banners[-1], banners[-1]
-    assert "clean rows" in banners[-1], banners[-1]
-    assert "s" in banners[-1], f"no runtime in the proof: {banners[-1]}"
-
-    body = "\n".join(m.value for m in at.markdown)
-    assert "Avoided false dispatches" in body, "the cost cards are missing"
-    assert "Cost saved" in body or "cost saved" in body.lower()
 
 
 # ------------------------------------------- the demo checkpoints on tab 1
@@ -1075,186 +1009,24 @@ def test_switching_everything_off_still_plots_the_actual_output():
     assert "MAE — frozen 1-year-back" not in body
 
 
-def _monthly_chart_traces(at):
-    """The monthly loop chart's traces and their `visible` flag.
-
-    `visible` is read raw, so an unset flag comes back as None and the
-    test below insists on an explicit True.
-    """
-    import json
-    for el in at.get("plotly_chart"):
-        spec = json.loads(el.proto.spec)
-        names = [tr.get("name") for tr in spec.get("data", [])]
-        if "weather-conditioned residual" in names:
-            return {tr.get("name"): tr.get("visible")
-                    for tr in spec.get("data", [])}
-    return {}
 
 
-def test_the_cross_check_tab_opens_with_the_monthly_loop():
-    """The static R80711 snapshot is gone: the tab opens on the loop."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    body = "\n".join(m.value for m in at.markdown)
-    assert "R80711, September 2017" not in body, (
-        "the static case-study block is still at the top of the tab"
-    )
-    assert "Monthly Operational Loop" in body, "the monthly loop is missing"
-
-    # And the block is gone from the source, not merely hidden.
-    src = (ROOT / "app.py").read_text()
-    assert "tab_case_study" not in src, "the static block is still in app.py"
-    assert "The case study: R80711, September 2017" not in src
 
 
-def test_the_monthly_loop_runs_on_arrival():
-    """A reviewer opens the tab and the cross-check is already there --
-    no button press between them."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    banners = [s.value for s in at.success]
-    assert banners, "the monthly loop did not run on arrival"
-    assert "Trained live on" in banners[-1], banners[-1]
-
-    body = "\n".join(m.value for m in at.markdown)
-    assert "Monthly Operational Loop" in body
-    assert "Avoided false dispatches" in body, "the cost cards are missing"
-    # The saving on screen is the engine's own count for the month on arrival
-    # (September 2017, R80711, z above 3) at the slider's default of 2,000 a
-    # dispatch. It is computed here rather than pinned, because it depends on
-    # the training rule (at least a month of healthy data), which is a choice.
-    if str(ROOT / "src") not in sys.path:
-        sys.path.insert(0, str(ROOT / "src"))
-    from windmill import live
-
-    mod = _import_app()
-    source = "engie" if mod.live_available() else "sample"
-    prov = live.monthly_cross_check("2017-09", ROOT / "data", source=source,
-                                    turbine="R80711",
-                                    z_threshold=3.0)["provenance"]
-    avoided = prov["naive_false_dispatches"] - prov["conditioned_false_dispatches"]
-    assert avoided > 0, prov
-    assert f"€{avoided * 2000:,}" in body, "the cost saving is not on screen on arrival"
 
 
-def test_the_monthly_chart_shows_the_model_curves():
-    """The actual temperature, the model's expected temperature and the
-    cross-check residual must all be VISIBLE on the first render -- a
-    reviewer should not have to click a legend entry to see the model."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    # The ten-minute view.
-    _granularity(at).set_value("10-Minute Telemetry").run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    traces = _monthly_chart_traces(at)
-    assert traces, "the monthly loop chart is missing"
-    for name in ("actual gearbox bearing 2",
-                 "weather-conditioned prediction",
-                 "weather-conditioned residual"):
-        assert name in traces, f"{name} is not on the chart"
-        assert traces[name] is True, (
-            f"{name} is hidden on the first render (visible={traces[name]!r})"
-        )
-        assert traces[name] != "legendonly", f"{name} is legend-only"
 
 
-def _granularity(at):
-    """The day/telemetry toggle on the monthly loop."""
-    radios = [r for r in at.radio if r.label == "Temperature granularity"]
-    assert radios, "there is no granularity toggle on the monthly loop"
-    return radios[0]
 
 
-def _traces_named(at, *names):
-    """The traces with those names, searched across every chart."""
-    import json
-    for el in at.get("plotly_chart"):
-        spec = json.loads(el.proto.spec)
-        found = {tr.get("name"): tr for tr in spec.get("data", [])}
-        if all(n in found for n in names):
-            return found
-    return {}
 
 
-def test_the_monthly_loop_offers_a_daily_view_by_default():
-    """The day is what an O&M planner reads, so it is the default."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    radio = _granularity(at)
-    assert list(radio.options) == [
-        "Daily Temperature Prediction (1-Day Summary)", "10-Minute Telemetry"
-    ], radio.options
-    assert radio.value == "Daily Temperature Prediction (1-Day Summary)", (
-        radio.value
-    )
 
 
-def test_the_daily_view_plots_the_model_against_the_actual():
-    """The three curves the daily view exists for, all visible on the
-    first render, in the colours the forecast tab uses."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-
-    traces = _traces_named(at, "Actual daily bearing temp (°C)",
-                           "Model-predicted bearing temp (°C)",
-                           "Daily cross-check residual (max, K)")
-    assert traces, "the daily view is not on screen"
-
-    actual = traces["Actual daily bearing temp (°C)"]
-    predicted = traces["Model-predicted bearing temp (°C)"]
-    residual = traces["Daily cross-check residual (max, K)"]
-    for name, trace in (("actual", actual), ("predicted", predicted),
-                        ("residual", residual)):
-        assert trace.get("visible") is True, (
-            f"the {name} trace is hidden on the first render "
-            f"(visible={trace.get('visible')!r})"
-        )
-        assert trace.get("visible") != "legendonly"
-
-    assert actual["line"]["color"].lower() == "#e5e7eb", actual["line"]
-    assert actual["line"].get("dash") in (None, "solid"), actual["line"]
-    assert predicted["line"]["color"].lower() == "#00d4aa", predicted["line"]
-    assert predicted["line"].get("dash") == "dash", predicted["line"]
 
 
-def test_the_ten_minute_view_is_one_click_away():
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    _granularity(at).set_value("10-Minute Telemetry").run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    traces = _traces_named(at, "actual gearbox bearing 2",
-                           "weather-conditioned prediction")
-    assert traces, "the ten-minute view is missing"
-    assert _traces_named(at, "Actual daily bearing temp (°C)") == {}, (
-        "the daily view is still on screen after switching to telemetry"
-    )
 
 
-def test_the_cross_check_residual_spikes_above_the_threshold():
-    """The whole point of the bottom panel: during the September overheat
-    the residual leaves the band, and the model still raises the alarm."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    body = "\n".join(m.value for m in at.markdown)
-    assert "rows above 80 °C in the month" in body, (
-        "the overheating rows are not reported"
-    )
-    # The conditioned arm alarms far less than the naive one, and the
-    # genuine fault is still caught.
-    assert "Weather-conditioned model alarms" in body
-    assert "Real fault protection value" in body, (
-        "the genuine-fault protection is not reported"
-    )
 
 
 def test_the_reference_switch_works_without_the_raw_release():
@@ -1338,19 +1110,6 @@ def test_the_typography_is_sized_for_reading():
     )
 
 
-def test_the_cost_view_says_the_saving_is_a_calibration_effect():
-    """The static baseline is judged on the conditioned model's scale, so a
-    saving measured against it is mostly calibration. The view must say so,
-    and must show the same arm recalibrated on its own residuals."""
-    at = _app_test()
-    at.run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    body = "\n".join(m.value for m in at.markdown)
-    assert "calibration effect" in body, "the saving is not qualified"
-    assert "recalibrated" in body.lower(), "no recalibrated baseline is shown"
-    assert "operating curve" in body.lower(), "the fair comparison is not pointed to"
-    # And the old, misleading explanation is gone.
-    assert "not refreshed for the month's conditions" not in body
 
 
 def test_the_tabs_are_a_navigation_bar_not_body_text():
@@ -1376,27 +1135,17 @@ def test_the_tabs_are_a_navigation_bar_not_body_text():
         assert not re.search("[\U0001F300-\U0001FAFF☀-➿]", label), label
 
 
-def test_the_cost_view_prices_the_operating_curve_on_equal_footing():
-    """Every arm is shown at its own most profitable setting, with the prices
-    as sliders the reader can move."""
+
+
+def test_the_performance_page_shows_what_only_the_model_sees():
+    """The project's first claim, on screen: the days the fixed 80 C limit
+    missed and the model flagged, read from results/limit_vs_model.json."""
+    lv = RESULTS / "limit_vs_model.json"
+    if not lv.exists():
+        pytest.skip("artefact missing")
     at = _app_test()
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "What the operating curve is worth" in body
-    labels = [s.label for s in at.slider]
-    assert any("Faults per turbine-year" in s for s in labels), labels
-    assert any("Value of catching a fault early" in s for s in labels), labels
-    # The existing cost slider is still found by its own label.
-    assert [s for s in at.slider if "dispatch" in s.label.lower()]
-
-    def economics_tables():
-        return [t.value.to_csv() for t in at.table
-                if "net value / turbine-year" in t.value.columns]
-
-    before = economics_tables()
-    assert before, "no economics table is on screen"
-    faults = [s for s in at.slider if "Faults per turbine-year" in s.label][0]
-    faults.set_value(0.2).run()
-    assert not at.exception, f"the app raised: {at.exception}"
-    assert economics_tables() != before, "moving the fault rate changed nothing"
+    assert "The fixed 80 °C limit against the model, day by day" in body
+    assert "flagged by the model only" in body

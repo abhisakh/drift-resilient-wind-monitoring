@@ -16,7 +16,6 @@ No data is needed: everything here runs on plain numbers.
 from __future__ import annotations
 
 import inspect
-import re
 import sys
 from pathlib import Path
 
@@ -158,15 +157,6 @@ def test_the_defaults_agree_with_the_existing_cost_view():
     params = inspect.signature(live.cost_impact).parameters
     assert (params["early_intervention_value"].default
             == cost.DEFAULT_EARLY_INTERVENTION_VALUE)
-
-
-def test_the_default_dispatch_cost_is_the_dashboards_slider_default():
-    """The dashboard's slider opens on 2,000 and `test_dashboard` asserts it;
-    the model's default must be the same number."""
-    tests_src = (ROOT / "tests" / "test_dashboard.py").read_text()
-    m = re.search(r"cost_slider\[0\]\.value == (\d+)", tests_src)
-    assert m, "the dashboard test no longer pins the slider default"
-    assert float(m.group(1)) == cost.DEFAULT_DISPATCH_COST
 
 
 def test_the_grid_axes_include_the_defaults():

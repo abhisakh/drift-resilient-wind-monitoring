@@ -1276,3 +1276,17 @@ hot days and the limit 9 of them. On the model-only days the bearing averaged
 73.8 °C, 3.0 K above its healthy prediction. The limit also catches days the
 model does not, so the model adds what the limit cannot see. The old framing "fewer false call-outs than the fixed
 limit" is gone: on ENGIE's healthy turbines both are near zero.
+
+#### Step 15: the dashboard aligned with the story
+
+* Header line: "A healthy-turbine model, retrained every month, that flags a
+  component running hot for its conditions before it reaches the alarm limit,
+  and explains every alarm". Sidebar data list adds EDP.
+* Performance opens with the fixed 80 °C limit against the model, day by day
+  (results/limit_vs_model.json): both, model only, limit only, and the ten
+  weeks before.
+* Removed: the monthly loop with its "naive static baseline" cards and both
+  cost views (they measured conditioning and modelled costs, not the story),
+  the historical confirmation with the older hourly test, and the "does and
+  does not claim" box on the model comparison; 12 tests for them removed, one
+  added for the new view. app.py is about 680 lines shorter.
