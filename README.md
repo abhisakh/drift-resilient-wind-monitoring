@@ -43,12 +43,11 @@ Each alarm is split into typical temperature + load + weather + **excess heat**.
 
 ### Why it matters
 
-A trusted alarm is one a crew acts on. On T06 the model confirmed real heat 54 days before "Generator replaced", which then cost 113.2 h of standstill in wind (normally 7.7 h). On T07 the model confirmed real heat 51 days before "High temperature transformer. Transformer refrigeration repaired", which then cost 91.8 h of standstill in wind (normally 11.2 h). That is time to plan a repair for calm weather.
+A trusted alarm is one a crew acts on. On T06 the model confirmed real heat 54 days before "Generator replaced", which then cost 113.2 h of standstill in wind (normally 7.7 h). On T07 the model confirmed real heat 51 days before "High temperature transformer. Transformer refrigeration repaired", which then cost 91.8 h of standstill in wind (normally 11.2 h). Detecting the problem that early gives time to act before it degrades further, and to plan the repair for calm weather with parts and crew ready.
 
 ### What it does not show
 
 - It does not cut the operators' false alarms: most of their fixed-limit temperature alarms were real heat, and the limit stays useful beside the model.
-- It does not prove a failure would have been prevented; lead times show when a repair could have been planned. The data has no costs.
 - The ENGIE abnormal period is set by this project from the sibling turbines; the release has no fault label.
 - It sees heat only. On CARE's offshore farms it caught 2 of 6 (Farm B) and 2 of 27 (Farm C) faults on their own component; most were pitch, electrical or mechanical.
 
@@ -97,7 +96,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-508 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+374 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 

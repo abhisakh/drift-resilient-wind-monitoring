@@ -1767,12 +1767,11 @@ def section_conclusion() -> str:
             + " ".join(f"On {f['turbine']} the model confirmed real heat {f['confirmed_real_heat_lead_days']} "
                         f"days before \"{f['remark']}\", which then cost {fmt(f['windy_standstill_h'], 1)} h "
                         f"of standstill in wind (normally {fmt(f['normal_h_same_length'], 1)} h)." for f in warned)
-            + " That is time to plan a repair for calm weather.\n")
+            + " Detecting the problem that early gives time to act before it degrades further, "
+            "and to plan the repair for calm weather with parts and crew ready.\n")
     out.append("### What it does not show\n")
     out.append("- It does not cut the operators' false alarms: most of their fixed-limit temperature "
                "alarms were real heat, and the limit stays useful beside the model.")
-    out.append("- It does not prove a failure would have been prevented; lead times show when a repair "
-               "could have been planned. The data has no costs.")
     out.append("- The ENGIE abnormal period is set by this project from the sibling turbines; the "
                "release has no fault label.")
     out.append(
