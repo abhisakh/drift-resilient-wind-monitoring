@@ -248,7 +248,7 @@ def test_the_snapshot_artefact_has_the_series_the_dashboard_plots():
     # The peak must be the measured one: 86.64 C on R80711. Cross-check it
     # against the README rather than hard-coding it here, so the dashboard and
     # the documentation cannot drift apart.
-    readme = (ROOT / "README.md").read_text()
+    readme = _docs_text()
     assert f"{snap['kpis']['r80711_max_c']} °C" in readme or \
            f"{snap['kpis']['r80711_max_c']} °C" in readme.replace("\u00a0", " "), (
         "the README does not quote the snapshot's peak temperature"
@@ -279,6 +279,12 @@ def test_the_snapshot_artefact_has_the_series_the_dashboard_plots():
     assert snap["kpis"]["peer_rows_over_80c"] == 0
 
 
+def _docs_text() -> str:
+    """The README and the full report it links to, read together: the
+    headline numbers may sit in either."""
+    return (ROOT / "README.md").read_text() + (ROOT / "docs" / "RESULTS.md").read_text()
+
+
 def test_the_headline_ratio_is_stated_the_same_way_everywhere():
     """46.5x, not 46x and not 47x.
 
@@ -293,7 +299,7 @@ def test_the_headline_ratio_is_stated_the_same_way_everywhere():
     ratio = s["frozen_2014"]["mean_rate_pct"] / s["rolling_30d"]["mean_rate_pct"]
     stated = f"{ratio:.1f}"
 
-    readme = (ROOT / "README.md").read_text()
+    readme = _docs_text()
     assert f"{stated}×" in readme or f"{stated}x" in readme, (
         f"the README does not state the ratio as {stated}x"
     )
@@ -321,7 +327,7 @@ def test_dashboard_and_readme_agree_on_the_headline_numbers():
     det_roll = s["rolling_30d"]["mean_rate_pct"]
     ratio = det_frozen / det_roll
 
-    body = readme.read_text()
+    body = _docs_text()
     assert f"{det_roll:.2f}" in body, "the README does not quote the rolling rate"
     assert f"{det_frozen:.2f}" in body, "the README does not quote the frozen rate"
     assert f"{ratio:.0f}" in body, "the README does not quote the ratio"

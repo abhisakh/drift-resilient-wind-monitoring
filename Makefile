@@ -111,7 +111,7 @@ pipeline: ## run every artifact-producing step, in order
 	$(MAKE) report
 	$(MAKE) summary
 
-report: ## regenerate README.md from results/ (single source of truth)
+report: ## regenerate README.md and docs/RESULTS.md from results/ (single source of truth)
 	$(PY) $(SCRIPTS)/09_report.py
 
 summary: ## write results/summary.json -- one table across every arm

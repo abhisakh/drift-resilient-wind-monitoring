@@ -30,15 +30,16 @@ RESULTS = ROOT / "results"
 
 # --- Rule 1: README.md is generated ----------------------------------------
 def test_readme_has_the_generated_markers():
+    """The short README carries the results at a glance; the full report in
+    docs/RESULTS.md carries the goal, the method and every results section."""
     readme = (ROOT / "README.md").read_text()
-    assert "<!-- RESULTS:START -->" in readme
-    assert "<!-- RESULTS:END -->" in readme
-    assert "<!-- METHOD:START -->" in readme
-    assert "<!-- METHOD:END -->" in readme
-    assert "<!-- GOAL:START -->" in readme
-    assert "<!-- GOAL:END -->" in readme
     assert "<!-- CONCLUSION:START -->" in readme
     assert "<!-- CONCLUSION:END -->" in readme
+    assert "docs/RESULTS.md" in readme, "the README must link to the full report"
+    report = (ROOT / "docs" / "RESULTS.md").read_text()
+    for m in ("RESULTS", "METHOD", "GOAL"):
+        assert f"<!-- {m}:START -->" in report
+        assert f"<!-- {m}:END -->" in report
 
 
 def test_readme_numbers_come_from_results():
@@ -48,14 +49,13 @@ def test_readme_numbers_come_from_results():
     this rule exists to prevent.
     """
     readme = (ROOT / "README.md").read_text()
-    # Only the GENERATED section is under this rule. The prose above it is
-    # written by hand and is checked by eye; the numbers in it that come
+    report = (ROOT / "docs" / "RESULTS.md").read_text()
+    # Only the GENERATED sections are under this rule. The prose around them
+    # is written by hand and is checked by eye; the numbers in it that come
     # from the literature live in data/README.md, which is included below.
-    body = readme.split("<!-- RESULTS:START -->", 1)[1].split("<!-- RESULTS:END -->", 1)[0]
-    body += readme.split("<!-- METHOD:START -->", 1)[1].split("<!-- METHOD:END -->", 1)[0]
-    # The goal section is generated too, so it is held to the same rule.
-    body += readme.split("<!-- GOAL:START -->", 1)[1].split("<!-- GOAL:END -->", 1)[0]
-    # So is the conclusion.
+    body = report.split("<!-- RESULTS:START -->", 1)[1].split("<!-- RESULTS:END -->", 1)[0]
+    body += report.split("<!-- METHOD:START -->", 1)[1].split("<!-- METHOD:END -->", 1)[0]
+    body += report.split("<!-- GOAL:START -->", 1)[1].split("<!-- GOAL:END -->", 1)[0]
     body += readme.split("<!-- CONCLUSION:START -->", 1)[1].split("<!-- CONCLUSION:END -->", 1)[0]
 
     artefacts = {}

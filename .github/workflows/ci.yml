@@ -67,10 +67,10 @@ jobs:
         run: |
           python scripts/pipeline/10_summary.py
           python scripts/pipeline/09_report.py
-          if ! git diff --quiet -- README.md results/summary.json; then
-            echo "::error::Re-running the report generator did not reproduce the committed README.md / results/summary.json. Run 'make pipeline' and commit the result."
+          if ! git diff --quiet -- README.md docs/RESULTS.md results/summary.json; then
+            echo "::error::Re-running the report generator did not reproduce the committed README.md / docs/RESULTS.md / results/summary.json. Run 'make pipeline' and commit the result."
             git --no-pager diff --stat
-            git --no-pager diff -- README.md results/summary.json
+            git --no-pager diff -- README.md docs/RESULTS.md results/summary.json
             # Name the most common cause. If the only difference is the test
             # count, then pytest is collecting a different number of tests
             # here than it did when the README was committed -- which happens
