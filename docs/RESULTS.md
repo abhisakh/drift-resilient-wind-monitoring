@@ -433,15 +433,15 @@ Each month a model is trained on at least a month of healthy readings from befor
 
 | tolerance | healthy siblings, false call-outs a year | R80711, false call-outs a year | R80711, first call-out on the fault | fault days hot, of those checked | siblings, cold days a year |
 |---|---|---|---|---|---|
-| 1 K | 1.5 | 8.8 | 2017-10-03 23:50 | 9 of 84 | 35.5 |
-| 1.5 K | 0.1 | 6.4 | 2017-08-15 23:50 | 63 of 114 | 24.4 |
-| 2 K | 0.1 | 4.8 | 2017-08-15 23:50 | 61 of 114 | 16.6 |
-| 3 K | 0.1 | 0.7 | 2017-09-13 23:50 | 4 of 115 | 7.5 |
+| 1 K | 1.5 | 9.0 | 2017-08-15 23:50 | 30 of 60 | 35.5 |
+| 1.5 K | 0.1 | 6.4 | 2017-08-15 23:50 | 64 of 114 | 24.4 |
+| 2 K | 0.1 | 4.6 | 2017-08-15 23:50 | 62 of 114 | 16.6 |
+| 3 K | 0.1 | 1.8 | 2017-08-15 23:50 | 45 of 115 | 7.5 |
 | plain 80 °C limit, held 1 h | 0.0 / 0.0 / 0.0 | 2.9 | 2017-08-15 11:10 | | |
 
 On healthy days the day's mean difference has a standard deviation of 1.00 to 1.19 K on the siblings, so a tolerance of 1 K sits inside the model's own day-to-day noise. Too tight a tolerance also starves the training: every flagged day is left out, and when too few healthy days remain the model goes blank.
 
-**R80711 before its fault (2 K).** Hot call-outs outside the fault period, by year: 2013: 1, 2015: 4, 2016: 2, 2017: 15. Hot days by month from 2017: 2017-05: 2, 2017-06: 6, 2017-07: 9, 2017-08: 7, 2017-09: 9, 2017-10: 14, 2017-11: 13, 2017-12: 14, 2018-01: 7. The bearing began running hotter than its own healthy reference from May 2017, months before the first sustained hot spell on 8 September. With no fault labels this is a candidate early warning, not a proven one: those days count as false alarms here.
+**R80711 before its fault (2 K).** Hot call-outs outside the fault period, by year: 2013: 1, 2015: 4, 2016: 1, 2017: 15. Hot days by month from 2017: 2017-05: 2, 2017-06: 6, 2017-07: 9, 2017-08: 7, 2017-09: 10, 2017-10: 14, 2017-11: 13, 2017-12: 15, 2018-01: 7. The bearing began running hotter than its own healthy reference from May 2017, months before the first sustained hot spell on 8 September. With no fault labels this is a candidate early warning, not a proven one: those days count as false alarms here.
 
 **What it costs in coverage (2 K):**
 
@@ -471,7 +471,7 @@ The model fed the day's actual weather is within 0.65 K of the sensor on average
 
 | turbine | bearing model alone | 2 of 4 gearbox sensors | siblings, per wind sector | siblings, one normal |
 |---|---|---|---|---|
-| R80711 | 4.8 / yr, fault 2017-08-15 | 6.2 / yr, fault 2017-08-15 | 3.6 / yr, fault 2017-09-09 | 4.4 / yr, fault 2017-08-18 |
+| R80711 | 4.6 / yr, fault 2017-08-15 | 5.9 / yr, fault 2017-08-15 | 3.6 / yr, fault 2017-09-09 | 4.4 / yr, fault 2017-08-18 |
 | R80721 | 0.0 / yr | 1.8 / yr | 0.5 / yr | 0.0 / yr |
 | R80736 | 0.4 / yr | 0.8 / yr | 0.3 / yr | 0.0 / yr |
 | R80790 | 0.0 / yr | 0.5 / yr | 0.3 / yr | 0.3 / yr |
@@ -1075,7 +1075,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-508 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+512 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

@@ -33,23 +33,22 @@ A fixed setting only fires once the signal crosses it. A problem that develops b
 
 ### 1. A model sees slow degradation that a fixed limit misses
 
-The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,313 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018). In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
+The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,313 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018). The fixed limit is part of the model's rule: a day on which the bearing held 80 °C for an hour is always a hot day, and so is a day more than 2 K above the healthy prediction on average. In that period:
 
 | | days |
 |---|---|
 | abnormal period, days checked | 114 |
-| flagged by both | 40 |
-| **flagged by the model only** | **21** |
-| flagged by the limit only | 1 |
+| the 80 °C limit fired: flagged by the model | 42 of 42 |
+| **flagged by the model below the limit** | **21** |
 | ten weeks before: model hot days (of them, limit days) | 18 (9) |
 
-On the model-only days the bearing averaged 72.6 °C, 2.9 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year, about as quiet as the limit. So the model does not replace the limit; it adds what the limit cannot see.
+On the days below the limit the bearing averaged 72.6 °C, 2.9 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year. The limit is part of the rule, so nothing it catches is lost; the model adds what the limit cannot see.
 
 ### 2. The model must be retrained every month
 
 Turbines drift: each ENGIE turbine's temperatures move by several kelvin between years. A reference frozen in 2014 alarmed on **26.37 %** of readings; one refreshed on the last 30 days, on **0.57 %** (46.5× fewer). A stale model buries the real signal in false alarms. The monthly model never learns from flagged days, so a fault cannot become the new normal.
 
-The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter and missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier; that caught 5 of the 6, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
+The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter, and its 2 K daily average alone missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier; that caught 5 of the 6, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
 
 ### 3. Every alarm can be explained
 
@@ -93,8 +92,8 @@ The dashboard ([live version](https://drift-resilient-wind-monitoring.streamlit.
 |---|---|
 | **Demo** | One month (15 August to 14 September 2017), two neighbouring ENGIE turbines in the same wind: healthy R80721 and R80711, whose gearbox bearing ran abnormally hot. It opens on the sensor and the fixed 80 °C limit; two boxes add the model's daily prediction (with its ±2 K band, the hot days and the model's call-outs) and the forecast up to 7 days ahead. |
 | **Explore** | Any month, any of the nine temperature sensors, the four turbines: a day-by-day strip (within tolerance, hot, too little running, maintenance hold) with the model's call-outs, a status card per turbine, the prediction against the sensor for one turbine, and the comparison with its siblings at the same moment. |
-| **Performance** | The fixed 80 °C limit against the model, day by day, on R80711; the daily check over the whole record at each tolerance against the plain limit; how the forecast error grows with lead time; the second opinions (other gearbox sensors, sibling turbines); R80711's year. |
-| **Evidence & method** | The research behind the pages before it: a live 7-day weather forecast and power prediction (Open-Meteo), the model comparison on the CARE benchmark, the engineering and data forensics (upstream data errors found, how the results are reproduced), and a data explorer that runs the detector on ENGIE, a CARE event or an uploaded turbine CSV. |
+| **Performance** | R80711's abnormal period: every 80 °C limit day flagged, and the days the model adds below the limit. Why a frozen summer model's daily average missed limit days in winter, and last year's same-month model as the fix, with a month chart that opens on the sensor and adds each model with a tick box. False call-outs over the whole record, and R80711's timeline from May 2017. |
+| **Evidence & method** | The research behind the pages before it: a live 7-day weather forecast and power prediction (Open-Meteo), the model comparison on the CARE benchmark, the engineering and data forensics (upstream data errors found, how the results are reproduced, the sibling and multi-sensor comparisons), forecast accuracy by lead time, and a data explorer that runs the detector on ENGIE, a CARE event or an uploaded turbine CSV. |
 
 ## Read more
 
@@ -116,7 +115,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-508 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+512 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 

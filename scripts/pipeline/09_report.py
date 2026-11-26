@@ -1753,12 +1753,12 @@ def section_conclusion() -> str:
     out.append(f"| **flagged by the model below the limit** | **{sp['model_only']}** |")
     out.append(f"| ten weeks before: model hot days (of them, limit days) | {bf['model_hot_days']} ({bf['of_them_limit_days']}) |")
     out.append(
-        f"\nOn the model-only days the bearing averaged {fmt(sp['model_only_daily_mean_c_median'], 1)} °C, "
+        f"\nOn the days below the limit the bearing averaged {fmt(sp['model_only_daily_mean_c_median'], 1)} °C, "
         f"{fmt(sp['model_only_excess_k_median'], 1)} K hotter than a healthy bearing at that day's power "
         f"and weather: too cool for the limit, too hot for the conditions. Over the "
         f"{fmt(rec['siblings_checked_years'], 1)} turbine-years checked on the three healthy "
         f"siblings the model raised {fmt(two['siblings_false_call_outs_per_year'], 2)} false call-outs "
-        f"per turbine-year, about as quiet as the limit. So the model does not replace the limit; it "
+        f"per turbine-year. The limit is part of the rule, so nothing it catches is lost; the model "
         f"adds what the limit cannot see.\n")
     out.append("### 2. The model must be retrained every month\n")
     out.append(

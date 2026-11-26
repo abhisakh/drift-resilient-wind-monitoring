@@ -174,22 +174,19 @@ def _frozen_fallback_view(ff: dict | None) -> None:
     miss = ff["limit_days_missed_by_frozen"]
     caught = set(miss["caught_by_last_year"])
     still = [d for d in miss["days"] if d not in caught]
-    wr = ff["winter_readings_judged"]
     trained = t["model_by_month"][next(iter(t["model_by_month"]))]["trained"]
     st.markdown("#### Why the daily average missed limit days, and the fix")
     st.markdown(
-        f"Without the limit in the rule, the 2 K daily average alone missed "
-        f"{len(miss['days'])} of R80711's limit days. After its fault was confirmed its model stayed frozen, so it "
-        f"could not learn the fault. That model was trained on "
-        f"{trained[0][:7]} to {trained[1][:7]}: a summer model judging winter "
-        f"days. In summer the turbine rarely runs at high power, so the model "
-        f"has no healthy reference for the windy winter hours, when the "
-        f"bearing is hottest. Those readings went unjudged, and the rest were "
-        f"judged a season out of date. The fix: while the model is frozen, "
-        f"judge each month with the turbine's own healthy model for the same "
-        f"month a year earlier, if it still predicts this year's healthy "
-        f"readings to within {ff['gate_k']:g} K.")
-    c1, c2, c3, c4 = st.columns(4)
+        f"The limit rule flags every limit day, but the {tol:g} K daily average "
+        f"alone missed {len(miss['days'])} of R80711's. After its fault was "
+        f"confirmed, its model stayed frozen on summer data "
+        f"({pd.Timestamp(trained[0]):%b}–{pd.Timestamp(trained[1]) - pd.Timedelta(days=1):%b %Y}). "
+        f"In summer the turbine rarely runs at high power, so that model could "
+        f"not judge the windy winter hours, when the bearing is hottest. The fix: "
+        f"while a model is frozen, judge each month with the turbine's own healthy "
+        f"model for the same month a year earlier, if it still predicts this "
+        f"year's healthy readings to within {ff['gate_k']:g} K.")
+    c1, c2, c3 = st.columns(3)
     with c1:
         kpi(f"{len(miss['days'])} → {len(still)}",
             "limit days the daily average missed",
@@ -203,52 +200,8 @@ def _frozen_fallback_view(ff: dict | None) -> None:
         kpi(f"{h['false_hot_days']['frozen']} → {h['false_hot_days']['last_year']}",
             "false hot days on the 3 healthy turbines",
             f"{h['days_judged']} days, each judged with its own last-year models")
-    with c4:
-        kpi(f"{wr['frozen']:,} → {wr['last_year']:,}",
-            "winter readings the model could judge",
-            f"R80711 from {wr['from'][:7]}")
     if ff.get("hourly"):
         _frozen_month_view(ff)
-    days = [d["day"] for d in ff["days"]]
-    fig = go.Figure()
-    for d in miss["days"]:
-        fig.add_vrect(x0=pd.Timestamp(d) - pd.Timedelta(hours=12),
-                      x1=pd.Timestamp(d) + pd.Timedelta(hours=12),
-                      fillcolor="rgba(224,82,99,0.22)", line_width=0)
-    fig.add_trace(go.Scatter(
-        x=days, y=[d["frozen_excess_k"] for d in ff["days"]], mode="lines+markers",
-        name="frozen summer model", line=dict(color="#7f8ea3", width=2.5),
-        marker=dict(size=6),
-        customdata=[[d["frozen_readings"]] for d in ff["days"]],
-        hovertemplate="%{x|%d %b %Y}: %{y:.1f} K above the frozen model "
-                      "(%{customdata[0]} readings judged)<extra></extra>"))
-    fig.add_trace(go.Scatter(
-        x=days, y=[d["last_year_excess_k"] for d in ff["days"]], mode="lines+markers",
-        name="last year's model for the same month", line=dict(color=C_MODEL, width=3),
-        marker=dict(size=6),
-        customdata=[[d["last_year_readings"]] for d in ff["days"]],
-        hovertemplate="%{x|%d %b %Y}: %{y:.1f} K above last year's model "
-                      "(%{customdata[0]} readings judged)<extra></extra>"))
-    fig.add_trace(go.Scatter(
-        x=[pd.Timestamp(d) for d in miss["days"]], y=[None] * len(miss["days"]),
-        mode="markers", name="the 80 °C limit fired, the frozen model did not",
-        marker=dict(symbol="square", size=14, color="rgba(224,82,99,0.5)")))
-    fig.add_hline(y=tol, line=dict(color=C_HOT, width=2, dash="dash"),
-                  annotation_text=f"tolerance +{tol:g} K")
-    fig.update_layout(
-        title="Every day from September to January: excess heat under each model",
-        height=520, margin=dict(l=10, r=10, t=30, b=120),
-        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
-                    x=0, xanchor="left"))
-    fig.update_yaxes(title_text="sensor − prediction, K")
-    _chart(fig, width="stretch")
-    note = (f"Both lines are the same daily check on the same days; only the "
-            f"model differs. A day above the dashed line is a hot day.")
-    if still:
-        note += (f" Still missed: {', '.join(pd.Timestamp(d).strftime('%d %b') for d in still)}, "
-                 f"when the bearing was hot for only a few hours and the daily "
-                 f"average stayed under the tolerance.")
-    st.markdown(f"<div class='note'>{note}</div>", unsafe_allow_html=True)
 
 
 def _frozen_month_view(ff: dict) -> None:
@@ -341,7 +294,7 @@ def _frozen_month_view(ff: dict) -> None:
                              marker=dict(size=7)), row=1, col=1)
     if any(x.startswith(month) for x in miss):
         fig.add_trace(go.Scatter(x=[cal[0]], y=[None], mode="markers",
-                                 name="the 80 °C limit fired, the frozen model did not",
+                                 name="the 80 °C limit fired, the frozen model's average did not",
                                  marker=dict(symbol="square", size=14,
                                              color="rgba(224,82,99,0.5)")), row=1, col=1)
     fig.add_hline(y=dck.HOT_C, line=dict(color=_daily_view().ALARM_COLOURS["real"], width=2,
@@ -368,7 +321,7 @@ def _frozen_month_view(ff: dict) -> None:
 
     gap = m["frozen_pred_c"].isna()
     n_gap = int(gap.sum())
-    note = ("Red shading: the fixed limit fired and the frozen model did not. "
+    note = ("Red shading: the fixed limit fired and the frozen model's daily average did not. "
             "A day is hot when its average is more than "
             f"{tol:g} K above the prediction.")
     if n_gap:
@@ -381,59 +334,48 @@ def _frozen_month_view(ff: dict) -> None:
              else " Last year's model predicts every hour.")
     left = sorted(x for x in miss if x.startswith(month) and x not in caught)
     if left:
-        note += (" Still missed by both: "
+        note += (" Under the average with either model: "
                  + ", ".join(pd.Timestamp(x).strftime("%d %b") for x in left)
-                 + ", hot for only a few hours, so the daily average stayed under the tolerance.")
+                 + ", hot for only a few hours; the limit rule flags it.")
     st.markdown(f"<div class='note'>{note}</div>", unsafe_allow_html=True)
 
 
 def _daily_check_view(dcj: dict | None) -> None:
-    """The daily check over the whole record, read from results/daily_check.json.
-
-    A frozen monthly model predicts the healthy sensor value each day; the
-    day's mean difference from the sensor is compared with a tolerance.
-    """
+    """The daily check over the whole record, read from results/daily_check.json:
+    false call-outs on the healthy siblings and the first call-out on R80711,
+    with the choice of the 2 K tolerance folded away."""
     if not dcj or not dcj.get("fleet"):
         return
-    st.markdown("#### The daily check: predicted healthy value against the sensor")
-    st.markdown(
-        "<div class='note'>Each month the model is trained on at least a month "
-        "of healthy data (no standstill, no warm-up after a restart, no flagged "
-        "day, nothing before the last maintenance) and then frozen. Every day it "
-        "predicts what a healthy sensor should read from that day's power and "
-        "weather; a day whose mean is hotter than the tolerance is flagged. A "
-        "confirmed fault keeps the model frozen; after maintenance it is blank "
-        "for a month. Maintenance and inspections are stood in for, because the "
-        "data have no records.</div>", unsafe_allow_html=True)
-    rows = []
-    for tol in sorted(dcj["fleet"], key=float):
-        f = dcj["fleet"][tol]
-        rows.append({
-            "tolerance": f"{tol} K",
-            "healthy siblings, false call-outs / year":
-                f"{f['siblings_false_call_outs_per_year']:.1f}",
-            "R80711, false call-outs / year":
-                f"{f['case_false_call_outs_per_year']:.1f}",
-            "R80711, first call-out on the fault":
-                f["case_first_fault_call_out"] or "none",
-            "fault days flagged":
-                f"{f['case_fault_days_hot']} of {f['case_fault_days_checked']}",
-        })
-    case = next((r for r in dcj["by_turbine"] if r["turbine"] == "R80711"), None)
-    if case:
-        sib = [r["limit_false_call_outs_per_year"] for r in dcj["by_turbine"]
-               if r["turbine"] != "R80711" and r["tolerance"] == case["tolerance"]]
-        rows.append({
-            "tolerance": "plain 80 °C limit",
-            "healthy siblings, false call-outs / year":
-                " / ".join(f"{v:.1f}" for v in sib),
-            "R80711, false call-outs / year":
-                f"{case['limit_false_call_outs_per_year']:.1f}",
-            "R80711, first call-out on the fault":
-                case["limit_first_fault_call_out"] or "none",
-            "fault days flagged": "",
-        })
-    st.table(pd.DataFrame(rows))
+    two = dcj["fleet"]["2"]
+    st.markdown("#### False alarms over the whole record")
+    c1, c2 = st.columns(2)
+    with c1:
+        kpi(f"{two['siblings_false_call_outs_per_year']:.2f}",
+            "false call-outs per turbine-year",
+            "the three healthy siblings, December 2012 to January 2018")
+    with c2:
+        first = pd.Timestamp(two["case_first_fault_call_out"]) if two["case_first_fault_call_out"] else None
+        kpi(first.strftime("%d %b %Y") if first is not None else "none",
+            "R80711: first call-out in the abnormal period",
+            "the day the abnormal period starts")
+    with st.expander("Why a 2 K tolerance?"):
+        rows = []
+        for tol in sorted(dcj["fleet"], key=float):
+            f = dcj["fleet"][tol]
+            rows.append({
+                "tolerance": f"{tol} K",
+                "healthy siblings, false call-outs / turbine-year":
+                    f"{f['siblings_false_call_outs_per_year']:.2f}",
+                "R80711, first call-out in the abnormal period":
+                    (f["case_first_fault_call_out"] or "none")[:10],
+                "abnormal-period days flagged":
+                    f"{f['case_fault_days_hot']} of {f['case_fault_days_checked']}",
+            })
+        st.table(pd.DataFrame(rows))
+        st.markdown(
+            "<div class='note'>Tighter than 2 K raises false call-outs on the healthy "
+            "turbines; looser flags fewer of the abnormal days and calls the fault "
+            "later.</div>", unsafe_allow_html=True)
 
 
 def live_available() -> bool:
@@ -2861,14 +2803,14 @@ def page_explore(series: dict | None) -> None:
 
 
 def page_performance(dcj: dict | None, series: dict | None, live: bool) -> None:
-    """Page 3: the record, every day of every turbine, and the monthly loop."""
+    """Page 3: what the model adds to the fixed limit, why a frozen model is
+    judged with last year's same month, the false alarms over the whole
+    record, and R80711's timeline."""
     st.subheader("Performance over the whole record")
     _limit_vs_model_view(load_limit_vs_model())
     _frozen_fallback_view(load_frozen_fallback())
     if dcj and dcj.get("fleet"):
         _daily_check_view(dcj)
-        _forecast_accuracy_view(dcj)
-        _sibling_view(dcj)
         _case_timeline(series)
 
 
@@ -2983,12 +2925,17 @@ def page_evidence(engie, care_score, multiv, lgbm, ae_audit, audit, thermal,
     _hero(engie, load_backtest(), load_snapshot(), load_operating_curve())
     e1, e2, e3, e4 = st.tabs(["Weather Forecast", "Benchmark Comparison",
                               "Engineering & Forensics", "Data Explorer"])
+    dcj = load_daily_check()
     with e1:
         tab_forecast()
+        if dcj and dcj.get("fleet"):
+            _forecast_accuracy_view(dcj)
     with e2:
         tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal)
     with e3:
         tab_forensics()
+        if dcj and dcj.get("fleet"):
+            _sibling_view(dcj)
     with e4:
         tab_explorer(live)
 

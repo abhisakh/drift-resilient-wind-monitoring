@@ -1360,3 +1360,18 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
 * results/limit_vs_model.json adds limit_days_all, limit_days_flagged,
   limit_days_over_the_average_too and limit_days_not_averaged.
 
+#### Step 19: the Performance page cut to the story
+
+* Kept, in order: the fixed limit and the model (claim 1); why the daily
+  average missed limit days under a frozen summer model, and last year's same
+  month as the fix (three cards and the month chart); false alarms over the
+  whole record (two cards, the tolerance table folded into "Why a 2 K
+  tolerance?"); R80711's timeline.
+* Removed: the September-to-January excess chart (the month chart shows the
+  same) and the winter-readings card (the bars under the month chart show it);
+  the 80 °C row of the tolerance table (the limit is now part of the rule).
+* Moved to Evidence & method: forecast accuracy by lead time (Weather
+  Forecast) and the sibling comparison with the 2-of-4 sensor rule
+  (Engineering & Forensics), experiments behind the method rather than the
+  result.
+
