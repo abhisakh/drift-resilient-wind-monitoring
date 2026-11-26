@@ -1201,6 +1201,6 @@ def test_the_explore_strip_keeps_names_and_alarm_counts_apart():
     ticks = list(fig.layout.yaxis.ticktext)
     assert all("<br>" not in t and "alarm" not in t for t in ticks), ticks
     texts = [a.text for a in fig.layout.annotations]
-    assert any("1 alarm" in t and "1 real, 0 false" in t for t in texts), texts
+    assert any("1 alarm" in t and "1 in the abnormal period" in t for t in texts), texts
     # One line each: two lines at the chart font ran into the next row.
     assert all("<br>" not in t for t in texts), texts

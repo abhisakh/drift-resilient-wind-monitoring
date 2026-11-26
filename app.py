@@ -2253,10 +2253,10 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str,
     if alarms is not None and len(alarms):
         on = chk.set_index("day")["actual"]
         for real, name, marker in (
-                (True, "alarm: real, fault found",
+                (True, "alarm in the abnormal period",
                  dict(symbol="circle", size=22, color="rgba(0,0,0,0)",
                       line=dict(width=4, color=dv.ALARM_COLOURS["real"]))),
-                (False, "alarm: false, nothing found",
+                (False, "alarm outside the abnormal period",
                  dict(symbol="circle-open", size=22,
                       color=dv.ALARM_COLOURS["false"],
                       line=dict(width=3, color=dv.ALARM_COLOURS["false"])))):
@@ -2387,10 +2387,10 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
                 marker=dict(symbol="square", size=22, color=dv.LIGHT_COLOURS[kind])))
     real_c, false_c = dv.ALARM_COLOURS["real"], dv.ALARM_COLOURS["false"]
     for real, name, marker in (
-            (True, "real: fault found",
+            (True, "in the abnormal period",
              dict(symbol="circle", size=16, color=real_c,
                   line=dict(width=2, color=real_c))),
-            (False, "false: nothing found",
+            (False, "outside the abnormal period",
              dict(symbol="circle-open", size=16, color=false_c,
                   line=dict(width=3, color=false_c)))):
         xs, ys = [], []
@@ -2413,8 +2413,7 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
         if a is None:
             return None
         r = int(a["real"].sum())
-        f = int(len(a) - r)
-        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}: {r} real, {f} false"
+        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}, {r} in the abnormal period"
 
     for t, _ in rows:
         text = count(t)
@@ -2476,8 +2475,8 @@ def page_explore(series: dict | None) -> None:
     st.markdown(
         "<div class='note'>The squares say what the sensor did: orange is a day "
         "hotter than predicted. The circles under a row are the alarms: the first "
-        "hot day of a run, when a technician is called out. Only the circle says "
-        "whether it was real: <b>filled red</b>, the day lies in the turbine's "
+        "hot day of a run, when a technician is called out. The circle's colour "
+        "says where it fell: <b>filled red</b>, the day lies in the turbine's "
         "abnormal period; <b>open white</b>, it does not. The data have no "
         "inspection records, so the abnormal period (set in this project from the "
         "sibling turbines) stands in for what an inspection would find.</div>",
