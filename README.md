@@ -85,7 +85,7 @@ make dashboard   # http://localhost:8501
 make test        # the test suite
 ```
 
-The dashboard opens on **Demo**: one month, two neighbouring turbines in the same wind, the healthy prediction against the sensor, with the hot days marked. **Performance** has the daily check over the whole record against the plain 80 °C limit.
+The dashboard opens on <br> **Demo**: one month, two neighbouring turbines in the same wind, the healthy prediction against the sensor, with the hot days marked.<br> **Performance** has the daily check over the whole record against the plain 80 °C limit.
 
 ## Read more
 

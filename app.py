@@ -422,6 +422,51 @@ def _style():
             white-space: normal !important;
         }
 
+        /* The Demo's two chart switches: a highlighted panel with large tick
+           boxes, so a viewer sees at once where to click. The panel is
+           st.container(key="demo_controls"), which Streamlit renders with
+           the class st-key-demo_controls. */
+        .st-key-demo_controls {
+            border: 3px solid #00D4AA;
+            border-radius: 14px;
+            padding: 18px 24px 12px 24px;
+            background: rgba(0, 212, 170, 0.10);
+        }
+        /* The tick box itself, on every checkbox in the dashboard. Streamlit
+           draws it as the first plain <div> inside the checkbox label, 16 px
+           and dark on dark by default. Here it is 56 px and light, so it
+           stands out on the black page; ticked, it fills teal with a large
+           dark tick. */
+        .stApp [data-testid="stCheckbox"] label {
+            align-items: center !important;
+            gap: 16px;
+        }
+        .stApp [data-testid="stCheckbox"] label > div:not([data-testid]) {
+            width: 56px !important;
+            height: 56px !important;
+            min-width: 56px !important;
+            border: 4px solid #FFFFFF !important;
+            border-radius: 10px !important;
+            background-color: #F4F6F8 !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        .stApp [data-testid="stCheckbox"] label:has(input:checked) > div:not([data-testid]) {
+            background-color: #00D4AA !important;
+            border-color: #FFFFFF !important;
+        }
+        .stApp [data-testid="stCheckbox"] label > div:not([data-testid]) svg {
+            width: 70% !important;
+            height: 70% !important;
+            stroke: #0B1220 !important;
+            stroke-width: 2.4 !important;
+            fill: none !important;
+        }
+        .st-key-demo_controls [data-testid="stCheckbox"] label p {
+            font-weight: 600;
+        }
+
         /* The value shown inside a dropdown. It is an <input>, which CSS
            can still size. */
         .stApp [data-testid="stSelectbox"] input,
@@ -2317,18 +2362,21 @@ def page_demo(series: dict | None) -> None:
         f"weather and predicts what a healthy bearing should read. If the sensor "
         f"runs more than **{tol:g} K** hotter, a technician is called out that day. "
         f"Days ahead, the same model fed the **weather forecast** says what to expect.")
-    c1, c2 = st.columns(2)
-    with c1:
-        show_pred = st.checkbox("Show the daily prediction (actual weather)",
-                                value=False, key="demo_show_pred")
-    with c2:
-        show_fc = st.checkbox("Show the forecast prediction (up to 7 days ahead)",
-                              value=False, key="demo_show_forecast")
-    lead = demo["lead"]
-    if show_fc:
-        lead = st.select_slider("Forecast issued how many days before",
-                                options=series["leads"], value=demo["lead"],
-                                key="demo_lead")
+    with st.container(key="demo_controls"):
+        st.markdown("**Show on both charts:** tick a box to compare the sensor "
+                    "with the model")
+        c1, c2 = st.columns(2)
+        with c1:
+            show_pred = st.checkbox("Show the daily prediction (actual weather)",
+                                    value=False, key="demo_show_pred")
+        with c2:
+            show_fc = st.checkbox("Show the forecast prediction (up to 7 days ahead)",
+                                  value=False, key="demo_show_forecast")
+        lead = demo["lead"]
+        if show_fc:
+            lead = st.select_slider("Forecast issued how many days before",
+                                    options=series["leads"], value=demo["lead"],
+                                    key="demo_lead")
     window = f"{demo['start']} to {demo['end']}"
     roles = (("healthy", "healthy"), ("faulty", "developing a fault"))
     frames = {r: dv.frame(series, demo[r], series["primary"], demo["start"],
@@ -2547,6 +2595,12 @@ def page_explore(series: dict | None) -> None:
                         x=0, xanchor="left"))
         fig.update_yaxes(title_text="K")
         _chart(fig, width="stretch")
+        st.markdown(
+            "<div class='note'>A gap in a line is a day with nothing to compare: the "
+            "turbine and its siblings did not run at similar power at the same "
+            "moment for at least 6 hours, usually because the wind was too low or a "
+            "turbine was stopped. They are mostly the days shown grey (ran too little to "
+            "check) in the strip above.</div>", unsafe_allow_html=True)
 
 
 def page_performance(dcj: dict | None, series: dict | None, live: bool) -> None:
