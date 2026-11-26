@@ -48,7 +48,7 @@ On the days below the limit the bearing averaged 72.6 °C, 2.9 K hotter than a h
 
 Turbines drift: each ENGIE turbine's temperatures move by several kelvin between years. A reference frozen in 2014 alarmed on **26.37 %** of readings; one refreshed on the last 30 days, on **0.57 %** (46.5× fewer). A stale model buries the real signal in false alarms. The monthly model never learns from flagged days, so a fault cannot become the new normal.
 
-The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter, and its 2 K daily average alone missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier: R80711's hot days from September to January rose from 43 to 57 (+33 %), 5 of the 6 missed limit days were caught, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
+The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter, and its 2 K daily average alone missed 6 days the limit caught, all of them close to the edge of the tolerance band, where a summer model's season-old prediction and the windy winter hours it could not judge decide the day. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier: R80711's hot days from September to January rose from 43 to 57 (+33 %), 5 of the 6 missed limit days were caught, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
 
 ### 3. Every alarm can be explained
 

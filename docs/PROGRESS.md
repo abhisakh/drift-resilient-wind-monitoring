@@ -1393,3 +1393,16 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   alarm rate of claim 2 (a reference frozen in 2014: 26 % of readings); the
   difference between them is the rule, not the data.
 
+#### Step 21: why the frozen model's daily average missed limit days, corrected
+
+* Step 17 put the misses down to the hours the summer model could not judge.
+  Day by day (results/frozen_fallback.json) every missed day sat close to the
+  band's edge, 0.4 to 1.7 K above the frozen prediction: days far above the
+  band were flagged by either model. Near the edge two things tip the day:
+  the summer model's prediction a season out of date (12 Dec: 71.0 °C against
+  69.5 °C from last December's model, with 132 of 137 readings judged) and
+  the windiest hours it cannot judge (27 Nov: 84 of 144 readings).
+* The month chart no longer shows the unjudged hours as bars (the largest
+  bars sat on days flagged anyway, so they misled); the red shading on the
+  missed days now shows (it was lost in the two-panel layout).
+

@@ -1773,9 +1773,9 @@ def section_conclusion() -> str:
         out.append(
             f"\nThe same holds for a model frozen after a confirmed fault. R80711's, trained in "
             f"summer, judged the winter, and its {fmt(lv['tolerance_k'], 0)} K daily average alone "
-            f"missed {len(m['days'])} days the limit caught: it had "
-            f"no healthy reference for the high power of windy winter days, when the bearing is "
-            f"hottest. Each frozen month is now judged with the turbine's own healthy model for "
+            f"missed {len(m['days'])} days the limit caught, all of them close to the edge of the "
+            f"tolerance band, where a summer model's season-old prediction and the windy winter "
+            f"hours it could not judge decide the day. Each frozen month is now judged with the turbine's own healthy model for "
             f"the same month a year earlier: R80711's hot days from September to January rose from "
             f"{ff['turbines']['R80711']['hot_days']['frozen']} to "
             f"{ff['turbines']['R80711']['hot_days']['last_year']} (+{ff['hot_days_increase_pct']} %), "
