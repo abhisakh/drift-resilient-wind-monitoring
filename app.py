@@ -2402,22 +2402,31 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
             legendgroup="alarm", legendgrouptitle_text="Alarm (call-out)",
             hovertemplate="%{x|%d %b %Y}<extra>alarm, " + name + "</extra>"))
 
-    def label(t):
+    def count(t):
+        """The row's alarm count, as its own label right of the row. Kept out
+        of the axis label: a two-line tick label is drawn with its lines on top
+        of each other at the dashboard's font size."""
         a = alarms.get(t)
         if a is None:
-            return t
+            return None
         r = int(a["real"].sum())
         f = int(len(a) - r)
-        return f"<b>{t}</b><br>{len(a)} alarm{'s' if len(a) != 1 else ''}: {r} real, {f} false"
+        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}<br>{r} real, {f} false"
 
+    for t, _ in rows:
+        text = count(t)
+        if text:
+            fig.add_annotation(xref="paper", x=1.0, xanchor="left", xshift=12,
+                               y=ypos[t], yref="y", text=text, showarrow=False,
+                               align="left")
     fig.update_layout(
         title="Every day of every turbine, and every alarm",
         height=200 + 95 * n,
-        margin=dict(l=10, r=10, t=30, b=130),
+        margin=dict(l=10, r=260 if alarms else 10, t=30, b=130),
         legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                     x=0, xanchor="left"))
     fig.update_yaxes(tickmode="array", tickvals=[ypos[t] for t, _ in rows],
-                     ticktext=[label(t) for t, _ in rows],
+                     ticktext=[f"<b>{t}</b>" for t, _ in rows],
                      range=[-0.75, n - 0.5], showgrid=False, zeroline=False)
     return fig
 

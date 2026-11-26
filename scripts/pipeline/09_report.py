@@ -1724,12 +1724,26 @@ def section_conclusion() -> str:
     warned = sorted([f for f in av["failures"] if (f["confirmed_real_heat_lead_days"] or 0) >= 30],
                     key=lambda f: -f["windy_standstill_h"])[:2]
     b, c = bc["farm_B"]["summary"], bc["farm_C"]["summary"]
+    import datetime as _dt
+
+    def day(iso: str) -> str:
+        d = _dt.date.fromisoformat(iso)
+        return f"{d.day} {d:%B %Y}"
+
+    rec = lv["record"]
     out = ["## What the project shows\n"]
     out.append("### 1. A model sees slow degradation that a fixed limit misses\n")
     out.append(
-        f"On ENGIE's R80711, whose gearbox bearing ran abnormally hot from August 2017, "
-        f"the fixed limit (80 °C held for an hour) and the model (a day more than "
-        f"{fmt(lv['tolerance_k'], 0)} K above the healthy prediction) were compared day by day:\n")
+        f"The model ran over ENGIE's whole record, from {day(rec['from'])} to "
+        f"{day(rec['to'])}, on all four turbines, and checked {rec['checked_days']['R80711']:,} "
+        f"days on R80711 and {rec['siblings_checked_days']:,} on its three healthy siblings "
+        f"({fmt(rec['siblings_checked_years'], 1)} turbine-years); the other days had too "
+        f"little running data or fell in the wait for a new healthy month after a long stop. "
+        f"R80711's gearbox bearing "
+        f"ran abnormally hot from {day(sp['from'])} to the end of the record "
+        f"({day(sp['to'])}). In that period the fixed limit (80 °C held for an hour) and "
+        f"the model (a day more than {fmt(lv['tolerance_k'], 0)} K above the healthy "
+        f"prediction) were compared day by day:\n")
     out.append("| | days |")
     out.append("|---|---|")
     out.append(f"| abnormal period, days checked | {sp['days_checked']} |")
@@ -1740,7 +1754,8 @@ def section_conclusion() -> str:
     out.append(
         f"\nOn the model-only days the bearing averaged {fmt(sp['model_only_daily_mean_c_median'], 1)} °C, "
         f"{fmt(sp['model_only_excess_k_median'], 1)} K hotter than a healthy bearing at that day's power "
-        f"and weather: too cool for the limit, too hot for the conditions. On the three healthy "
+        f"and weather: too cool for the limit, too hot for the conditions. Over the "
+        f"{fmt(rec['siblings_checked_years'], 1)} turbine-years checked on the three healthy "
         f"siblings the model raised {fmt(two['siblings_false_call_outs_per_year'], 2)} false call-outs "
         f"per turbine-year, about as quiet as the limit. So the model does not replace the limit; it "
         f"adds what the limit cannot see.\n")

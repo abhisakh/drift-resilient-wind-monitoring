@@ -590,12 +590,14 @@ def test_the_demo_shows_a_healthy_and_a_faulty_turbine_on_the_same_month():
     boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("demo_show")}
     assert set(boxes) == {"demo_show_pred", "demo_show_forecast"}
     assert not any(b.value for b in boxes.values()), "the demo must open on the sensor only"
-    assert not any(s.label.startswith("Forecast issued") for s in at.select_slider)
+    # By key: the Explore page has a slider with the same label, and the test
+    # renders every page at once.
+    assert not any(s.key == "demo_lead" for s in at.select_slider)
     boxes["demo_show_pred"].check().run()
     boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("demo_show")}
     boxes["demo_show_forecast"].check().run()
     assert not at.exception, f"the app raised: {at.exception}"
-    assert any(s.label.startswith("Forecast issued") for s in at.select_slider)
+    assert any(s.key == "demo_lead" for s in at.select_slider)
 
 
 def test_the_explore_page_offers_turbines_month_and_sensor():
@@ -1180,3 +1182,23 @@ def test_the_demo_charts_draw_the_fixed_limit_as_a_dashed_line():
     names = {t.name for t in fig.data}
     assert "sensor (daily mean)" in names
     assert "predicted on the day (actual weather)" not in names
+
+
+def test_the_explore_strip_keeps_names_and_alarm_counts_apart():
+    """The turbine name is the row label; the alarm count is its own label
+    right of the row. As one two-line tick label they were drawn on top of
+    each other."""
+    import pandas as pd
+
+    mod = _import_app()
+    dv = mod._daily_view()
+    df = pd.DataFrame({"day": ["2017-09-01", "2017-09-02"], "status": ["checked", "checked"],
+                       "reason": [None, None], "diff": [0.0, 4.0],
+                       "actual": [70.0, 75.0], "pred": [70.0, 71.0],
+                       "fault_period": [False, False]})
+    alarms = {"R80711": pd.DataFrame({"day": ["2017-09-02"], "real": [True]})}
+    fig = mod._strip_figure([("R80711", df), ("R80721", df)], 2.0, dv, alarms=alarms)
+    ticks = list(fig.layout.yaxis.ticktext)
+    assert all("<br>" not in t and "alarm" not in t for t in ticks), ticks
+    texts = [a.text for a in fig.layout.annotations]
+    assert any("1 alarm" in t and "1 real, 0 false" in t for t in texts), texts

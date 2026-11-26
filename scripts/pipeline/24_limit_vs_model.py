@@ -56,10 +56,23 @@ def main() -> int:
     only = span[span["day"].isin(m - lim)]
     before = checked[(checked["day"] >= BEFORE[0]) & (checked["day"] < BEFORE[1])]
     mb = model_days & set(before["day"])
+    # How much the model checked, so the counts can be weighed: the record,
+    # the abnormal period's dates, and the checked days on every turbine.
+    record_from = min(series["turbines"][t]["day"][0] for t in series["turbines"])
+    record_to = max(series["turbines"][t]["day"][-1] for t in series["turbines"])
+    span_from, span_to = series["anomaly_spans"][TURBINE][0]
+    checked_days = {t: sum(1 for x in v["status"] if x == "checked")
+                    for t, v in series["turbines"].items()}
+    siblings = {t: n for t, n in checked_days.items() if t != TURBINE}
     out = {
+        "record": {"from": record_from, "to": record_to,
+                   "checked_days": checked_days,
+                   "siblings_checked_days": sum(siblings.values()),
+                   "siblings_checked_years": round(sum(siblings.values()) / 365.25, 1)},
         "turbine": TURBINE, "tolerance_k": series["tolerance_k"],
         "limit_rule": f"{dc.HOT_C:g} C held for {dc.LIMIT_HOLD} ten-minute readings",
         "anomaly_span": {
+            "from": span_from, "to": min(span_to, record_to),
             "days_checked": int(len(span)), "model_hot_days": len(m), "limit_days": len(lim),
             "both": len(m & lim), "model_only": len(m - lim), "limit_only": len(lim - m),
             "model_only_daily_mean_c_median": round(float(only["actual"].median()), 1),

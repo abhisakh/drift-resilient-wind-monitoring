@@ -1,8 +1,22 @@
 {
+ "record": {
+  "from": "2012-12-31",
+  "to": "2018-01-12",
+  "checked_days": {
+   "R80711": 1314,
+   "R80721": 1081,
+   "R80736": 1179,
+   "R80790": 944
+  },
+  "siblings_checked_days": 3204,
+  "siblings_checked_years": 8.8
+ },
  "turbine": "R80711",
  "tolerance_k": 2.0,
  "limit_rule": "80 C held for 6 ten-minute readings",
  "anomaly_span": {
+  "from": "2017-08-15",
+  "to": "2018-01-12",
   "days_checked": 115,
   "model_hot_days": 48,
   "limit_days": 42,

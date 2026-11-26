@@ -33,7 +33,7 @@ A fixed setting only fires once the signal crosses it. A problem that develops b
 
 ### 1. A model sees slow degradation that a fixed limit misses
 
-On ENGIE's R80711, whose gearbox bearing ran abnormally hot from August 2017, the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
+The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,314 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018). In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
 
 | | days |
 |---|---|
@@ -43,7 +43,7 @@ On ENGIE's R80711, whose gearbox bearing ran abnormally hot from August 2017, th
 | flagged by the limit only | 6 |
 | ten weeks before: model hot days (of them, limit days) | 18 (9) |
 
-On the model-only days the bearing averaged 73.8 °C, 3.0 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. On the three healthy siblings the model raised 0.14 false call-outs per turbine-year, about as quiet as the limit. So the model does not replace the limit; it adds what the limit cannot see.
+On the model-only days the bearing averaged 73.8 °C, 3.0 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year, about as quiet as the limit. So the model does not replace the limit; it adds what the limit cannot see.
 
 ### 2. The model must be retrained every month
 
@@ -107,7 +107,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-362 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+364 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 
