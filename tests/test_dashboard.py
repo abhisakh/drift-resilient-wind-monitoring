@@ -585,6 +585,16 @@ def test_the_demo_shows_a_healthy_and_a_faulty_turbine_on_the_same_month():
     body = "\n".join(m.value for m in at.markdown)
     assert "R80721, healthy" in body and "R80711, developing a fault" in body
     assert "2017-08-15 to 2017-09-14" in body
+    # The demo opens on the real data alone; the prediction and the forecast
+    # are one tick away, and the lead-time slider comes with the forecast.
+    boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("demo_show")}
+    assert set(boxes) == {"demo_show_pred", "demo_show_forecast"}
+    assert not any(b.value for b in boxes.values()), "the demo must open on the sensor only"
+    assert not any(s.label.startswith("Forecast issued") for s in at.select_slider)
+    boxes["demo_show_pred"].check().run()
+    boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("demo_show")}
+    boxes["demo_show_forecast"].check().run()
+    assert not at.exception, f"the app raised: {at.exception}"
     assert any(s.label.startswith("Forecast issued") for s in at.select_slider)
 
 

@@ -2204,31 +2204,36 @@ def _window_alarms(series: dict, turbine: str, sensor: str, start: str,
 
 
 def _three_line_figure(df, tolerance: float, lead: int, title: str,
-                       y_range=None, alarms=None):
+                       y_range=None, alarms=None, show_pred: bool = True,
+                       show_forecast: bool = True):
     """The forecast, the on-day prediction and the sensor, one point per day,
-    with the tolerance as a band around the on-day prediction."""
+    with the tolerance as a band around the on-day prediction. The sensor is
+    always drawn; the prediction (with its band) and the forecast can be
+    switched off, so a presenter can show the real data first."""
     import plotly.graph_objects as go
 
     fc = f"f{lead}"
     chk = df[df["status"] == "checked"]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=chk["day"], y=chk["pred"] + tolerance, mode="lines",
-        line=dict(width=0), hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(
-        x=chk["day"], y=chk["pred"] - tolerance, mode="lines",
-        line=dict(width=0), fill="tonexty", fillcolor="rgba(0,212,170,0.12)",
-        name=f"tolerance ±{tolerance:g} K", hoverinfo="skip"))
-    if fc in df:
+    if show_pred:
+        fig.add_trace(go.Scatter(
+            x=chk["day"], y=chk["pred"] + tolerance, mode="lines",
+            line=dict(width=0), hoverinfo="skip", showlegend=False))
+        fig.add_trace(go.Scatter(
+            x=chk["day"], y=chk["pred"] - tolerance, mode="lines",
+            line=dict(width=0), fill="tonexty", fillcolor="rgba(0,212,170,0.12)",
+            name=f"tolerance ±{tolerance:g} K", hoverinfo="skip"))
+    if show_forecast and fc in df:
         fig.add_trace(go.Scatter(
             x=chk["day"], y=chk[fc], mode="lines+markers",
             name=f"forecast, issued {lead} day{'s' if lead > 1 else ''} before",
             line=dict(width=2, dash="dot", color=C_FORECAST),
             marker=dict(size=6), connectgaps=False))
-    fig.add_trace(go.Scatter(
-        x=chk["day"], y=chk["pred"], mode="lines+markers",
-        name="predicted on the day (actual weather)",
-        line=dict(width=2.4, dash="dash", color=C_MODEL), marker=dict(size=6)))
+    if show_pred:
+        fig.add_trace(go.Scatter(
+            x=chk["day"], y=chk["pred"], mode="lines+markers",
+            name="predicted on the day (actual weather)",
+            line=dict(width=2.4, dash="dash", color=C_MODEL), marker=dict(size=6)))
     fig.add_trace(go.Scatter(
         x=chk["day"], y=chk["actual"], mode="lines+markers",
         name="sensor (daily mean)", line=dict(width=2.6, color=C_ACTUAL),
@@ -2299,9 +2304,18 @@ def page_demo(series: dict | None) -> None:
         f"weather and predicts what a healthy bearing should read. If the sensor "
         f"runs more than **{tol:g} K** hotter, a technician is called out that day. "
         f"Days ahead, the same model fed the **weather forecast** says what to expect.")
-    lead = st.select_slider("Forecast issued how many days before",
-                            options=series["leads"], value=demo["lead"],
-                            key="demo_lead")
+    c1, c2 = st.columns(2)
+    with c1:
+        show_pred = st.checkbox("Show the daily prediction (actual weather)",
+                                value=False, key="demo_show_pred")
+    with c2:
+        show_fc = st.checkbox("Show the forecast prediction (up to 7 days ahead)",
+                              value=False, key="demo_show_forecast")
+    lead = demo["lead"]
+    if show_fc:
+        lead = st.select_slider("Forecast issued how many days before",
+                                options=series["leads"], value=demo["lead"],
+                                key="demo_lead")
     window = f"{demo['start']} to {demo['end']}"
     roles = (("healthy", "healthy"), ("faulty", "developing a fault"))
     frames = {r: dv.frame(series, demo[r], series["primary"], demo["start"],
@@ -2318,7 +2332,8 @@ def page_demo(series: dict | None) -> None:
             f"{t}, {label}: gearbox bearing temperature, {window} "
             f"(tolerance ±{tol:g} K on both)", y_range=y_range,
             alarms=_window_alarms(series, t, series["primary"], demo["start"],
-                                  demo["end"], tol)),
+                                  demo["end"], tol),
+            show_pred=show_pred, show_forecast=show_fc),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
     st.markdown(
