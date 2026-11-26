@@ -1287,6 +1287,9 @@ def test_the_demo_and_explore_offer_an_older_model():
         assert not at.exception, f"the app raised: {at.exception}"
         age = next(s for s in at.selectbox if s.key == f"{key}_old_age")
         assert list(age.options) == ["3-month-old model", "1-year-old model", "2-year-old model"]
+        if key == "demo":
+            body = "\n".join(m.value for m in at.markdown)
+            assert "prediction error on healthy days" in body
 
 
 def test_the_demo_and_explore_name_their_data():

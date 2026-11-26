@@ -2408,6 +2408,34 @@ def _older_label(age: int) -> str:
         age, f"{age}-month-old")
 
 
+def _older_error(series: dict, turbine: str, age: int):
+    """Mean prediction error on healthy days (checked, outside the abnormal
+    period), over the whole record: this month's model against the model
+    `age` months older, on the days both predicted. (own, old, days)."""
+    dv = _daily_view()
+    df = dv.frame(series, turbine, series["primary"])
+    col = f"o{age}"
+    if col not in df:
+        return None
+    d = df[(df["status"] == "checked") & ~df["fault_period"].astype(bool)
+           & df["pred"].notna() & df[col].notna()]
+    if not len(d):
+        return None
+    return (float((d["actual"] - d["pred"]).abs().mean()),
+            float((d["actual"] - d[col]).abs().mean()), len(d))
+
+
+def _older_error_card(series: dict, turbine: str, age: int) -> None:
+    e = _older_error(series, turbine, age)
+    if not e:
+        return
+    own, old, n = e
+    kpi(f"{own:.2f} K → {old:.2f} K",
+        f"{turbine}: prediction error on healthy days, this month's model → "
+        f"the {_older_label(age)} model",
+        f"whole record, the {n} days both predicted ({old / own:.1f}×)")
+
+
 def _older_model_control(series: dict, key: str):
     """A tick box and, when ticked, the age of the older model to show."""
     ages = series.get("older_model_ages") or []
@@ -2626,6 +2654,8 @@ def page_demo(series: dict | None) -> None:
             x_range=[pd.Timestamp(demo["start"]) - pd.Timedelta(hours=12), pd.Timestamp(demo["end"]) + pd.Timedelta(hours=12)]),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
+        if old_age:
+            _older_error_card(series, t, old_age)
     st.markdown(
         "<div class='note'>With the prediction shown, an orange square is a hot day "
         "(the sensor more than the tolerance above the healthy prediction) and a "
