@@ -1159,3 +1159,24 @@ def test_the_performance_page_shows_what_only_the_model_sees():
     body = "\n".join(m.value for m in at.markdown)
     assert "The fixed 80 °C limit against the model, day by day" in body
     assert "flagged by the model only" in body
+
+
+def test_the_demo_charts_draw_the_fixed_limit_as_a_dashed_line():
+    """The old rule on the same axis: a dashed horizontal line at 80 C, so a
+    viewer sees the days the bearing ran hot while still under the limit."""
+    import pandas as pd
+
+    mod = _import_app()
+    df = pd.DataFrame({"day": ["2017-08-15", "2017-08-16"], "status": ["checked", "checked"],
+                       "actual": [72.0, 75.0], "pred": [70.0, 71.0], "f1": [70.5, 71.5],
+                       "fault_period": [True, True]})
+    fig = mod._three_line_figure(df, 2.0, 1, "t", y_range=[60, 82], limit_c=80.0,
+                                 show_pred=False, show_forecast=False)
+    lines = [s for s in fig.layout.shapes if s.y0 == 80.0 and s.y1 == 80.0]
+    assert lines, "no horizontal line at the fixed limit"
+    assert lines[0].line.dash == "dash"
+    assert any("fixed alarm limit 80" in (a.text or "") for a in fig.layout.annotations)
+    # Without the boxes ticked only the sensor is drawn (plus its markers).
+    names = {t.name for t in fig.data}
+    assert "sensor (daily mean)" in names
+    assert "predicted on the day (actual weather)" not in names

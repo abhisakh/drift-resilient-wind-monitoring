@@ -2205,7 +2205,7 @@ def _window_alarms(series: dict, turbine: str, sensor: str, start: str,
 
 def _three_line_figure(df, tolerance: float, lead: int, title: str,
                        y_range=None, alarms=None, show_pred: bool = True,
-                       show_forecast: bool = True):
+                       show_forecast: bool = True, limit_c: float | None = None):
     """The forecast, the on-day prediction and the sensor, one point per day,
     with the tolerance as a band around the on-day prediction. The sensor is
     always drawn; the prediction (with its band) and the forecast can be
@@ -2268,6 +2268,12 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str,
         margin=dict(l=10, r=10, t=30, b=150),
         legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                     x=0, xanchor="left"))
+    if limit_c is not None:
+        # The old rule, on the same axis: what a fixed alarm limit would see.
+        fig.add_hline(y=limit_c, line=dict(color=_daily_view().ALARM_COLOURS["real"],
+                                           width=2, dash="dash"),
+                      annotation_text=f"fixed alarm limit {limit_c:g} °C",
+                      annotation_position="top left")
     fig.update_yaxes(title_text="°C")
     if y_range:
         fig.update_yaxes(range=y_range)
@@ -2323,6 +2329,11 @@ def page_demo(series: dict | None) -> None:
     # Both charts on one temperature scale: the same ±tolerance band, drawn
     # the same height, so the two turbines are compared like for like.
     y_range = _y_range(frames.values(), tol, lead)
+    _ensure_src()
+    from windmill import daily_check as dck
+    limit_c = dck.HOT_C          # the fixed-limit baseline, 80 C for an hour
+    if y_range:
+        y_range = [y_range[0], max(y_range[1], limit_c + 2.0)]
     for role, label in roles:
         t = demo[role]
         df = frames[role]
@@ -2333,7 +2344,7 @@ def page_demo(series: dict | None) -> None:
             f"(tolerance ±{tol:g} K on both)", y_range=y_range,
             alarms=_window_alarms(series, t, series["primary"], demo["start"],
                                   demo["end"], tol),
-            show_pred=show_pred, show_forecast=show_fc),
+            show_pred=show_pred, show_forecast=show_fc, limit_c=limit_c),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
     st.markdown(
