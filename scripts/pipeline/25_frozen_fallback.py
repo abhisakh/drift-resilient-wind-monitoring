@@ -30,6 +30,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +61,41 @@ def limit_days(f: pd.DataFrame) -> set:
     return set(f.loc[run >= dc.LIMIT_HOLD, "ts"].dt.tz_convert(None).dt.strftime("%Y-%m-%d"))
 
 
+def hourly(f: pd.DataFrame, sims: dict) -> dict:
+    """R80711 hour by hour over the judged months: the sensor and each run's
+    prediction, from the model that run judged the month with. An hour the
+    model has no healthy reference for (a load band it never saw) has no
+    prediction: that is the frozen summer model's blind spot in winter."""
+    g, _ = dc.mark_restarts(f)
+    g = g[(g["ts"] >= pd.Timestamp(FROM, tz="UTC")) & (g["ts"] < pd.Timestamp(TO, tz="UTC"))
+          & g["running"] & ~g["warmup"]].copy()
+    month = g["ts"].dt.strftime("%Y-%m")
+    cols = {}
+    for name, sim in sims.items():
+        pred = pd.Series(np.nan, index=g.index)
+        for m, model in sim["models"].items():
+            sel = (month == m).to_numpy()
+            if model is None or not sel.any() or dc.CHANNEL not in model["refs"]:
+                continue
+            pred[sel] = dc.predict(model["refs"][dc.CHANNEL], g.loc[sel, "P_norm"],
+                                   g.loc[sel, "era5_temp_2m"])
+        cols[name] = pred
+    hour = g["ts"].dt.tz_convert(None).dt.floor("h")
+    frame_ = pd.DataFrame({"actual": g[dc.CHANNEL].astype("float64"), "load": g["P_norm"],
+                           **{k: v for k, v in cols.items()}})
+    agg = frame_.groupby(hour.values).mean()
+    # An hour is predicted only if the model covered most of its readings.
+    cover = frame_[list(cols)].notna().groupby(hour.values).mean()
+    for k in cols:
+        agg.loc[cover[k] < 0.5, k] = np.nan
+
+    def r(v):
+        return [None if pd.isna(x) else round(float(x), 2) for x in v]
+    return {"hour": [t.strftime("%Y-%m-%d %H:%M") for t in agg.index],
+            "actual_c": r(agg["actual"]), "load": r(agg["load"]),
+            **{f"{k}_pred_c": r(agg[k]) for k in cols}}
+
+
 def checked(sim: dict) -> dict:
     return {d["day"]: d for d in sim["days"]
             if FROM <= d["day"] < TO and d.get("status") == "checked"}
@@ -72,9 +108,10 @@ def main() -> int:
            "judged": [FROM, "2018-01-31"], "turbines": {}}
     for t in TURBINES:
         f = frame(t)
-        off = dc.simulate(f, t, TOL, last_year_when_frozen=False)
+        off = dc.simulate(f, t, TOL, last_year_when_frozen=False, keep_models=t == FAULTY)
         on = dc.simulate(f, t, TOL, last_year_when_frozen=True,
-                         last_year_months=() if t == FAULTY else JUDGED)
+                         last_year_months=() if t == FAULTY else JUDGED,
+                         keep_models=t == FAULTY)
         a, b = checked(off), checked(on)
         days = sorted(set(a) & set(b))
         frz = {m["month"]: m for m in off["months"]}
@@ -91,6 +128,7 @@ def main() -> int:
         }
         if t == FAULTY:
             lim = limit_days(f)
+            out["hourly"] = hourly(f, {"frozen": off, "last_year": on})
             out["days"] = [{"day": d, "actual_c": a[d]["actual_k"],
                             "frozen_pred_c": a[d]["pred_k"], "last_year_pred_c": b[d]["pred_k"],
                             "frozen_excess_k": a[d]["mean_k"], "last_year_excess_k": b[d]["mean_k"],

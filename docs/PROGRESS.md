@@ -1332,4 +1332,12 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   the healthy turbines).
 * CARE Farms B and C keep the plain frozen model (the switch is off by
   default there), so their published numbers are unchanged.
+* Performance page: one month of R80711 hour by hour (a month slider, December
+  2017 first), opening on the sensor and the 80 °C limit; one tick box adds the
+  frozen summer model with its ±2 K band, the other last year's model for the
+  same month. The frozen model's line has gaps where it has no healthy
+  reference: in December 2017, 95 of 559 hours, when the bearing averaged
+  82.2 °C against 70.9 °C in the rest; last year's December model predicts
+  every hour. `simulate(..., keep_models=True)` returns the model each month
+  was judged with, so the hourly lines come from exactly those models.
 

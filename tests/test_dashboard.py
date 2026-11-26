@@ -1248,3 +1248,21 @@ def test_the_performance_page_shows_the_frozen_model_and_its_fix():
     assert "Why the limit caught days the model missed, and the fix" in body
     assert f"{len(miss['days'])} → {left}" in body
     assert "last year" in body
+
+
+def test_the_frozen_model_month_opens_on_the_sensor_and_adds_each_model():
+    """The month chart on the Performance page: the sensor alone first, then
+    the frozen model and last year's model one tick box each."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("perf_show")}
+    assert set(boxes) == {"perf_show_frozen", "perf_show_last_year"}
+    assert not any(b.value for b in boxes.values()), "the month must open on the sensor only"
+    assert any(s.key == "perf_ff_month" for s in at.select_slider)
+    boxes["perf_show_frozen"].check().run()
+    boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("perf_show")}
+    boxes["perf_show_last_year"].check().run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "has no prediction for" in body

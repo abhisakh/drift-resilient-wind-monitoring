@@ -319,7 +319,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
              maintenance_days: float = MAINTENANCE_DAYS,
              channels=None, leads=(), maintenance_extra=(),
              last_year_when_frozen: bool | None = None,
-             last_year_months=()) -> dict:
+             last_year_months=(), keep_models: bool = False) -> dict:
     """Run the policy over a turbine's whole record, month by month, day by day.
 
     `channels` adds a healthy model and a daily check for each further sensor
@@ -336,6 +336,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     model for the same month a year earlier, when there is one and it passes
     `last_year_ok`. `last_year_months` does the same in the months named
     whatever the state (the control: a healthy turbine judged that way).
+    `keep_models` adds "models": the model each month was judged with.
     """
     if last_year_when_frozen is None:
         last_year_when_frozen = LAST_YEAR_WHEN_FROZEN
@@ -358,6 +359,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     frozen_since = None
     state_by_month: dict = {}
     trained_by_month: dict = {}
+    used_by_month: dict = {}
     model_month = None
     days_out: list[dict] = []
     months_out: list[dict] = []
@@ -407,6 +409,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
         inside = [t for t in maintenance if m_start <= t < m_end]
         cut = min(inside) if inside else None
         state_by_month[month] = (used, cut)
+        used_by_month[month] = used
         load = mm["P_norm"].to_numpy(dtype="float64")
         amb = mm["era5_temp_2m"].to_numpy(dtype="float64")
         after_cut = ((mm["ts"] >= cut).to_numpy() if cut is not None
@@ -526,10 +529,13 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
             trained_since_maint = False
         elif flagged_fault:
             confirmed = True
-    return {"turbine": turbine, "tolerance": tolerance,
-            "warmup_hours": warmup_hours, "days": days_out,
-            "months": months_out,
-            "maintenance": [str(t)[:16] for t in maintenance]}
+    out = {"turbine": turbine, "tolerance": tolerance,
+           "warmup_hours": warmup_hours, "days": days_out,
+           "months": months_out,
+           "maintenance": [str(t)[:16] for t in maintenance]}
+    if keep_models:
+        out["models"] = used_by_month
+    return out
 
 
 def call_outs(days: list[dict], flag: str = "hot", key=None) -> list[dict]:
