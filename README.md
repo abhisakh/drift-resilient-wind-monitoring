@@ -33,7 +33,7 @@ A fixed setting only fires once the signal crosses it. A problem that develops b
 
 ### 1. A model sees slow degradation that a fixed limit misses
 
-The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,314 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. ** R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018)**. In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
+The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,314 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. **R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018)**. In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
 
 | | days |
 |---|---|
