@@ -43,69 +43,65 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------------- artefacts
+@st.cache_data(show_spinner=False)
+def _load_cached(name: str, mtime: float) -> dict | None:
+    """The parsed file, cached by name AND modification time: a result file
+    that changes (a new commit on the deployed app) is read again, instead of
+    a cached copy of the old one being served."""
+    try:
+        return json.loads((RESULTS / name).read_text())
+    except json.JSONDecodeError:
+        return None
+
+
 def _load(name: str) -> dict | None:
     """Read one result artefact. Missing files degrade, never crash."""
     path = RESULTS / name
     if not path.exists():
         return None
-    try:
-        return json.loads(path.read_text())
-    except json.JSONDecodeError:
-        return None
+    return _load_cached(name, path.stat().st_mtime)
 
 
-@st.cache_data(show_spinner=False)
 def load_snapshot() -> dict | None:
     return _load("demo_r80711.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_engie() -> dict | None:
     return _load("engie_multivariate.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_multivariate() -> dict | None:
     return _load("multivariate.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_lightgbm() -> dict | None:
     return _load("lightgbm_nbm.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_care_score() -> dict | None:
     return _load("care_score.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_ae_audit() -> dict | None:
     return _load("ae_audit.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_audit() -> dict | None:
     return _load("farm_a_audit.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_thermal() -> dict | None:
     return _load("thermal_signal.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_backtest() -> dict | None:
     return _load("backtest.json")
 
 
-@st.cache_data(show_spinner=False)
 def load_operating_curve() -> dict | None:
     return _load("operating_curve.json")
 
 
-@st.cache_data(show_spinner=False)
-@st.cache_data(show_spinner=False)
 def load_daily_check() -> dict | None:
     return _load("daily_check.json")
 
@@ -2374,7 +2370,6 @@ def tab_forensics():
 
 # ---------------------------------------------------------------- main
 # ------------------------------------------------- the daily pages (1, 2, 3)
-@st.cache_data(show_spinner=False)
 def load_daily_series() -> dict | None:
     return _load("daily_series.json")
 

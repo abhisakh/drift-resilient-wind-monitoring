@@ -1313,3 +1313,13 @@ def test_the_performance_page_shows_why_the_model_is_retrained():
         assert not box.value
         box.check().run()
         assert not at.exception, f"the app raised: {at.exception}"
+
+
+def test_result_files_are_cached_by_their_modification_time():
+    """A cached loader keyed only on its own code serves the old file after a
+    new commit on the deployed app. The cache must include the file's time."""
+    import re
+    src = (ROOT / "app.py").read_text()
+    assert "def _load_cached(name: str, mtime: float)" in src
+    assert not re.search(r"@st\.cache_data\(show_spinner=False\)\n"
+                         r"def load_\w+\(\) -> dict \| None:\n    return _load\(", src)
