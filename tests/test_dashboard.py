@@ -1201,6 +1201,29 @@ def test_the_explore_strip_keeps_names_and_alarm_counts_apart():
     ticks = list(fig.layout.yaxis.ticktext)
     assert all("<br>" not in t and "alarm" not in t for t in ticks), ticks
     texts = [a.text for a in fig.layout.annotations]
-    assert any("1 alarm" in t and "1 in the abnormal period" in t for t in texts), texts
+    assert any("1 model call-out" in t and "1 in the abnormal period" in t for t in texts), texts
     # One line each: two lines at the chart font ran into the next row.
     assert all("<br>" not in t for t in texts), texts
+
+
+
+def test_the_demo_shows_the_models_marks_only_with_its_prediction():
+    """A call-out below 80 C needs its reason on screen: the hot-day squares
+    and the model's call-out circles come with the prediction, not before."""
+    import pandas as pd
+
+    mod = _import_app()
+    df = pd.DataFrame({"day": ["2017-08-15", "2017-08-16"], "status": ["checked", "checked"],
+                       "reason": [None, None], "diff": [4.0, 4.0],
+                       "actual": [74.0, 75.0], "pred": [70.0, 71.0], "f1": [70.5, 71.5],
+                       "fault_period": [True, True]})
+    alarms = pd.DataFrame({"day": ["2017-08-15"], "real": [True]})
+    bare = mod._three_line_figure(df, 2.0, 1, "t", alarms=alarms, limit_c=80.0,
+                                  show_pred=False, show_forecast=False)
+    names = {t.name for t in bare.data}
+    assert names == {"sensor (daily mean)"}, names
+    full = mod._three_line_figure(df, 2.0, 1, "t", alarms=alarms, limit_c=80.0,
+                                  show_pred=True, show_forecast=False)
+    names = {t.name for t in full.data}
+    assert "hot day: over 2 K above the prediction" in names
+    assert "model call-out (first hot day of a run), in the abnormal period" in names

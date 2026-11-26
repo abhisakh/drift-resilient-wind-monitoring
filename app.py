@@ -2243,20 +2243,24 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str,
         marker=dict(size=7)))
     dv = _daily_view()
     hot = chk[dv.lights(chk, tolerance) == "hot"]
+    if not show_pred:
+        # The hot days and the call-outs are the model's verdicts: without
+        # the prediction on screen they would have no visible reason.
+        hot, alarms = hot.iloc[0:0], None
     if len(hot):
         # The same language as the daily grid: orange says the sensor ran hot,
         # only an alarm marker says whether the call-out was real.
         fig.add_trace(go.Scatter(
             x=hot["day"], y=hot["actual"], mode="markers",
-            name="hotter than predicted",
+            name=f"hot day: over {tolerance:g} K above the prediction",
             marker=dict(size=13, color=dv.LIGHT_COLOURS["hot"], symbol="square")))
     if alarms is not None and len(alarms):
         on = chk.set_index("day")["actual"]
         for real, name, marker in (
-                (True, "alarm in the abnormal period",
+                (True, "model call-out (first hot day of a run), in the abnormal period",
                  dict(symbol="circle", size=22, color="rgba(0,0,0,0)",
                       line=dict(width=4, color=dv.ALARM_COLOURS["real"]))),
-                (False, "alarm outside the abnormal period",
+                (False, "model call-out (first hot day of a run), outside the abnormal period",
                  dict(symbol="circle-open", size=22,
                       color=dv.ALARM_COLOURS["false"],
                       line=dict(width=3, color=dv.ALARM_COLOURS["false"])))):
@@ -2351,6 +2355,13 @@ def page_demo(series: dict | None) -> None:
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
     st.markdown(
+        "<div class='note'>With the prediction shown, an orange square is a hot day "
+        "(the sensor more than the tolerance above the healthy prediction) and a "
+        "circle is the model's call-out: the first hot day of a run, when a "
+        "technician is sent. The following hot days of the same run get no new "
+        "call-out. Both can fall below the fixed 80 °C limit.</div>",
+        unsafe_allow_html=True)
+    st.markdown(
         "<div class='note'>The weather forecast is simulated: ERA5 reanalysis plus "
         "an error that grows with lead time, because archived forecasts for the "
         "site are not in the data. The call-out is made on the day, from the "
@@ -2387,10 +2398,10 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
                 marker=dict(symbol="square", size=22, color=dv.LIGHT_COLOURS[kind])))
     real_c, false_c = dv.ALARM_COLOURS["real"], dv.ALARM_COLOURS["false"]
     for real, name, marker in (
-            (True, "in the abnormal period",
+            (True, "model call-out (first hot day of a run), in the abnormal period",
              dict(symbol="circle", size=16, color=real_c,
                   line=dict(width=2, color=real_c))),
-            (False, "outside the abnormal period",
+            (False, "model call-out (first hot day of a run), outside the abnormal period",
              dict(symbol="circle-open", size=16, color=false_c,
                   line=dict(width=3, color=false_c)))):
         xs, ys = [], []
@@ -2402,7 +2413,7 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
                 ys += [ypos[t] - 0.42] * len(sel)
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode="markers", name=name, marker=marker,
-            legendgroup="alarm", legendgrouptitle_text="Alarm (call-out)",
+            legendgroup="alarm", legendgrouptitle_text="Model call-out",
             hovertemplate="%{x|%d %b %Y}<extra>alarm, " + name + "</extra>"))
 
     def count(t):
@@ -2413,7 +2424,7 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
         if a is None:
             return None
         r = int(a["real"].sum())
-        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}, {r} in the abnormal period"
+        return f"{len(a)} model call-out{'s' if len(a) != 1 else ''}, {r} in the abnormal period"
 
     for t, _ in rows:
         text = count(t)
@@ -2474,8 +2485,9 @@ def page_explore(series: dict | None) -> None:
     _chart(_strip_figure(rows, tol, dv, alarms), width="stretch")
     st.markdown(
         "<div class='note'>The squares say what the sensor did: orange is a day "
-        "hotter than predicted. The circles under a row are the alarms: the first "
-        "hot day of a run, when a technician is called out. The circle's colour "
+        "hotter than predicted. The circles under a row are the model's call-outs: "
+        "the first hot day of a run, when a technician is called out, whatever the "
+        "temperature, so they can fall well below the fixed 80 °C limit. The circle's colour "
         "says where it fell: <b>filled red</b>, the day lies in the turbine's "
         "abnormal period; <b>open white</b>, it does not. The data have no "
         "inspection records, so the abnormal period (set in this project from the "
