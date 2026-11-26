@@ -967,8 +967,9 @@ below was done with throwaway scripts, kept (not committed) in
 
 **How a fault is labelled "real".** EDP's logbook is 28 manual records of
 confirmed component failures (a repair or replacement). CARE's anomaly events
-are windows ending at a logbook failure (all 12 within 10 minutes; events 51
-and 72 are the same T06 gearbox failure). Nobody judged the turbine alarms;
+are windows ending at a logbook failure: 11 of 12 end within 30 minutes of
+one (results/care_farm_a.json); the twelfth, event 51, is a second label for
+the same T06 gearbox failure as event 72 and ends about 7.5 hours after it. Nobody judged the turbine alarms;
 overheating that tripped a turbine without a repair is not in the logbook. In
 this work an alarm is "real" when a logged failure of the same component
 follows within 30 days (my rule, not EDP's or CARE's).
