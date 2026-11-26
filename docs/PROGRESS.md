@@ -1405,4 +1405,10 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
 * The month chart no longer shows the unjudged hours as bars (the largest
   bars sat on days flagged anyway, so they misled); the red shading on the
   missed days now shows (it was lost in the two-panel layout).
+* Performance page, "Why the model is retrained every month": one turbine and
+  month (R80711, March 2015 first) with this month's model and an older one,
+  one tick box each. R80711, March 2015: 1 hot day of 24 with the month's own
+  model, 12 with the 2-year-old one. R80711 outside its abnormal period, the
+  days both judged: 22 → 36 (3 months), 24 → 49 (1 year), 21 → 69 (2 years).
+  The healthy siblings: 0 to 3 at any age.
 

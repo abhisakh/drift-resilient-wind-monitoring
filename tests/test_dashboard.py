@@ -1296,3 +1296,17 @@ def test_the_demo_and_explore_name_their_data():
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
     assert body.count("ENGIE's La Haute Borne wind farm in France") >= 2
+
+
+def test_the_performance_page_shows_why_the_model_is_retrained():
+    """One turbine and month, this month's model against an older one."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Why the model is retrained every month" in body
+    for key in ("age_show_own", "age_show_old"):
+        box = next(b for b in at.checkbox if b.key == key)
+        assert not box.value
+        box.check().run()
+        assert not at.exception, f"the app raised: {at.exception}"

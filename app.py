@@ -596,7 +596,7 @@ def _style():
            boxes, so a viewer sees at once where to click. The panel is
            st.container(key="demo_controls"), which Streamlit renders with
            the class st-key-demo_controls. */
-        .st-key-demo_controls, .st-key-perf_controls {
+        .st-key-demo_controls, .st-key-perf_controls, .st-key-perf_age_controls {
             border: 3px solid #00D4AA;
             border-radius: 14px;
             padding: 18px 24px 12px 24px;
@@ -2841,9 +2841,90 @@ def page_performance(dcj: dict | None, series: dict | None, live: bool) -> None:
     st.subheader("Performance over the whole record")
     _limit_vs_model_view(load_limit_vs_model())
     _frozen_fallback_view(load_frozen_fallback())
+    _model_age_view(series)
     if dcj and dcj.get("fleet"):
         _daily_check_view(dcj)
         _case_timeline(series)
+
+
+def _model_age_view(series: dict | None) -> None:
+    """Why the model is retrained every month: one turbine and month with this
+    month's model and an older one (3 months, 1 year or 2 years), each fed the
+    same day's power and weather, and the hot days each would call. Read
+    from results/daily_series.json (columns o3, o12, o24)."""
+    if not series or not series.get("older_model_ages"):
+        return
+    dv = _daily_view()
+    tol = float(series["tolerance_k"])
+    ch = series["primary"]
+    ages = series["older_model_ages"]
+    turbines = list(series["turbines"])
+    st.markdown("#### Why the model is retrained every month")
+    st.markdown(
+        "Every month the model is retrained on the latest healthy month. To see "
+        "why, judge the same days with a model that was **not** retrained: "
+        "trained 3 months, 1 year or 2 years earlier, and fed the same day's "
+        "power and weather. Turbines drift slowly, so an old model's idea of "
+        "\"healthy\" falls behind, and it calls normal days hot.")
+    with st.container(key="perf_age_controls"):
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1:
+            t = st.selectbox("Turbine", turbines, index=turbines.index("R80711")
+                             if "R80711" in turbines else 0, key="age_turbine")
+        full = dv.frame(series, t, ch)
+        months = sorted(full["day"].dt.strftime("%Y-%m").unique())
+        with c2:
+            month = st.selectbox("Month", months,
+                                 index=months.index("2015-03") if "2015-03" in months else 0,
+                                 format_func=lambda m: pd.Timestamp(m + "-01").strftime("%B %Y"),
+                                 key="age_month")
+        with c3:
+            age = st.selectbox("Older model", ages, index=len(ages) - 1,
+                               format_func=lambda a: f"{_older_label(a)} model", key="age_age")
+        b1, b2 = st.columns(2)
+        with b1:
+            show_own = st.checkbox("This month's model (retrained), ±2 K", value=False,
+                                   key="age_show_own")
+        with b2:
+            show_old = st.checkbox(f"The {_older_label(age)} model (not retrained)",
+                                   value=False, key="age_show_old")
+    start = pd.Timestamp(month + "-01")
+    end = start + pd.offsets.MonthEnd(0)
+    df = dv.frame(series, t, ch, str(start.date()), str(end.date()))
+    chk = df[df["status"] == "checked"]
+    col = f"o{age}"
+    own_hot = int((chk["diff"] > tol).sum())
+    old_ok = chk[col].notna() if col in chk else pd.Series(False, index=chk.index)
+    old_hot = int(((chk["actual"] - chk[col]) > tol)[old_ok].sum()) if col in chk else 0
+    k1, k2 = st.columns(2)
+    with k1:
+        kpi(f"{own_hot} → {old_hot}", f"hot days in {start:%B %Y}",
+            f"this month's model → the {_older_label(age)} model, {len(chk)} days checked")
+    with k2:
+        # Over the whole record, outside the abnormal periods: every hot day
+        # here is a false one.
+        whole = dv.frame(series, t, ch)
+        w = whole[(whole["status"] == "checked") & ~whole["fault_period"]]
+        wo = w[w[col].notna()] if col in w else w.iloc[0:0]
+        kpi(f"{int((wo['diff'] > tol).sum())} → {int(((wo['actual'] - wo[col]) > tol).sum())}",
+            f"{t}: hot days outside its abnormal period",
+            f"whole record, the {len(wo)} days both models judged")
+    y_range = _y_range([df], tol, 1, age)
+    from windmill import daily_check as dck
+    if y_range:
+        y_range = [y_range[0], max(y_range[1], dck.HOT_C + 2.0)]
+    _chart(_three_line_figure(
+        df, tol, 1, f"{t}: gearbox bearing temperature, {start:%B %Y}",
+        y_range=y_range, show_pred=show_own, show_forecast=False,
+        limit_c=dck.HOT_C, old_age=age if show_old else None,
+        x_range=[start - pd.Timedelta(hours=12), end + pd.Timedelta(hours=12)]),
+        width="stretch")
+    st.markdown(
+        "<div class='note'>Orange squares: hot days under this month's model. Open amber "
+        "squares: hot days under the older model. A day is hot when its average is more "
+        "than 2 K above that model's prediction. On the healthy siblings an old model adds "
+        "few hot days under this daily rule; on R80711, two years of drift add many, for "
+        "example in March and April 2015.</div>", unsafe_allow_html=True)
 
 
 def _forecast_accuracy_view(dcj: dict) -> None:
