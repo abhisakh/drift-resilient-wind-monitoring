@@ -15,6 +15,19 @@ Wind turbines raise temperature alarms on fixed limits, such as 80 °C for a gea
 
 A learned model can fix both, but only if it stays current: a model trained once and left to age mistakes normal drift for faults.
 
+## Which sensors raise turbine alarms
+
+A turbine's control system watches many signals and raises an alarm when one crosses a fixed setting. In EDP's own event log (four turbines, 2016–2017) they include:
+
+- **Component temperatures:** the high-voltage transformer, the generator windings, bearings and slip ring, the gearbox oil and bearings, and the hydraulic oil.
+- **Pitch and hydraulics:** accumulator faults on the blade pitch axes, hydraulic pressure.
+- **Yaw:** the nacelle turning faster than allowed.
+- **Safety and grid:** an open emergency circuit, power cut-in and cut-out.
+
+CARE's offshore fault records add converter, cooling-water, communication and pitch-electronics faults.
+
+**This project focuses on component temperatures**, above all the **gearbox bearing temperature** on ENGIE's turbines, where a slowly developing problem shows as heat. On EDP's farm the same method is applied to the transformer, generator and gearbox temperature alarms.
+
 <!-- CONCLUSION:START -->
 
 ## What the project shows
@@ -95,7 +108,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-374 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+362 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 
