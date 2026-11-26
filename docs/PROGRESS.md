@@ -1290,3 +1290,19 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   the historical confirmation with the older hourly test, and the "does and
   does not claim" box on the model comparison; 12 tests for them removed, one
   added for the new view. app.py is about 680 lines shorter.
+
+#### Step 16: the dashboard cleaned up and made clearer
+
+* Demo: opens on the sensor and a dashed 80 °C limit line; two large,
+  highlighted boxes add the model's prediction (with its band, hot days and
+  call-outs) and the forecast. Legends name whose verdict each mark is:
+  "hot day: over 2 K above the prediction", "model call-out (first hot day of a
+  run), in / outside the abnormal period"; no "real" or "fault found" labels.
+* Explore: row labels and alarm counts no longer overlap; a note explains the
+  gaps in the sibling chart (days without 6 hours of comparable running).
+* Evidence & method: the header cards from the old goal (simulated ramps, the
+  old dispatch rule, the constant-median comparison) replaced by the
+  retraining evidence (false alarms at 3 months, 1 year, 2 years of model age)
+  and R80711's peak; the CARE scope section renamed; the CARE date shift and
+  the match with EDP's records added to the data forensics.
+* All checkboxes in the dashboard are large and high-contrast.

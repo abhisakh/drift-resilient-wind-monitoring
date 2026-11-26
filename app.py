@@ -2105,7 +2105,7 @@ def tab_benchmark(engie, care_score, multiv, lgbm, ae_audit, audit, thermal):
 
     # --- the scope limit ---------------------------------------------------
     if thermal:
-        st.markdown("#### Why a thermal-only detector cannot win this benchmark")
+        st.markdown("#### What a temperature model can see in CARE")
         c1, c2, c3 = st.columns(3)
         with c1:
             kpi(_fmt(thermal.get("max_z_median_in_event"), 4), "median z inside the event")
@@ -2170,6 +2170,12 @@ def tab_forensics():
          "gearbox bearing failure (R80721, 2015, 84.12 °C peak). The cleaned "
          "CSVs peak at 78.85 °C. A project that claimed to detect that event "
          "would have been claiming to detect data that is not there."),
+        ("**CARE's Farm A dates are shifted by six years**",
+         "To hide the year, CARE moved each Farm A file by 2,191 days (2,192 "
+         "before the 2016 leap day). Mapped back, the turbines match EDP's "
+         "original data reading for reading on about 170,000 shared "
+         "timestamps, and each CARE fault label ends within 10 minutes of a "
+         "failure in EDP's logbook. Only then were the labels used."),
         ("**The status column is the fault annotation**",
          "In Wind Farm A, `status_type_id` is built from the EDP failure "
          "logbook — the dataset authors say it is for filtering training data. "
@@ -2757,14 +2763,9 @@ def _header() -> None:
 
 
 def _hero(engie, backtest, snapshot, curve=None) -> None:
-    """The goal, stated as measurements, above the tabs.
-
-    The goal is fewer false maintenance call-outs and earlier warning of a
-    developing fault. Each card answers one half of it from the artefact
-    that measured it (see windmill.scorecard), so the first screen says
-    what the project is for and what it found. Every figure is read from
-    results/*.json; none is computed here.
-    """
+    """Above the evidence: why the healthy model must be retrained every
+    month, and the turbine the demo is built on. Every figure is read from
+    results/*.json through windmill.scorecard; none is computed here."""
     if str(ROOT / "src") not in sys.path:
         sys.path.insert(0, str(ROOT / "src"))
     from windmill import scorecard
@@ -2772,91 +2773,30 @@ def _hero(engie, backtest, snapshot, curve=None) -> None:
     card = scorecard.goal_scorecard(backtest, engie, snapshot, curve)
     ages = card["false_alarm"]["ratio_by_reference_age"]
     ratio = card["false_alarm"]["ratio_frozen_2014"]
-    det = card["detection"].get(scorecard.DEPLOYED_ARM) or {}
-    one, five = scorecard.lead_days(card)
-    learned_one, _ = scorecard.lead_days(card, scorecard.LEARNED_ARM)
     peak = card["r80711"]["peak_c"]
     peers = card["r80711"]["peer_max_c"]
 
-    st.markdown("<div class='eyebrow'>The goal: fewer false call-outs, "
-                "earlier warning</div>", unsafe_allow_html=True)
+    st.markdown("<div class='eyebrow'>Why the model is retrained every month: "
+                "false alarms grow with its age</div>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        year, two = ages.get("one_year"), ages.get("two_years")
-        kpi(f"{_fmt(year, 1)}×" if year else "—", "False-alarm reduction",
-            "fresh 30-day vs 1-year-old reference, same threshold rule"
-            + (f" · {_fmt(two, 1)}× at 2 years" if two else ""))
-    with c2:
-        op = (card.get("operating_point") or {}).get(scorecard.DEPLOYED_ARM)
-        if op and op.get("detection_rate") is not None:
-            sub = (f"median {_fmt(op['median_days'], 1)} days · chance level "
-                   f"{(op['chance_rate'] or 0) * 100:.0f} % · "
-                   f"{_fmt(op['false_dispatches_per_turbine_year'], 1)} "
-                   f"false call-outs a year")
-            kpi(f"{op['detection_rate'] * 100:.0f} %",
-                "Injected +4 K ramps caught", sub)
-        else:
-            rate, days = det.get("rate"), det.get("median_days")
-            kpi(f"{rate * 100:.0f} %" if rate is not None else "—",
-                "Injected +4 K ramps caught",
-                (f"median {_fmt(days, 1)} days to first alarm · "
-                 if days is not None else "") + "matched 1 % false-alarm rate")
-    with c3:
-        an = card.get("anomaly") or {}
-        std = (an.get("standing") or {}).get(scorecard.DEPLOYED_ARM)
-        if std is not None:
-            # The real anomaly, on the same dial as the simulation: when the
-            # deployed model's standing setting first dispatched, against the
-            # first sustained hot spell. Negative days mean it came AFTER.
-            d = std["days_before_hot_spell"]
-            if d is None:
-                lead = "no warning"
-            elif d >= 0:
-                lead = f"{d:.1f} days early"
-            else:
-                lead = f"{-d:.1f} days late"
-            ec = (an.get("early_clean_settings") or {}).get(
-                scorecard.DEPLOYED_ARM)
-            kpi(lead, "R80711 dispatch vs the first hot spell",
-                "deployed model, standing 1 % · 1 h setting"
-                + (f" · {ec[0]} of {ec[1]} settings warned early without a "
-                   f"false dispatch" if ec else ""))
-        else:
-            if one is None or five is None:
-                lead = "—"
-            elif one == five:
-                lead = f"{five:.0f} days"
-            else:
-                lead = f"{one:.0f}–{five:.0f} days"
-            kpi(lead, "R80711 lead time before 80 °C",
-                "at a 1 % to 5 % false-alarm rate"
-                + (f" · learned arm {learned_one:.0f} d at 1 %"
-                   if learned_one is not None else ""))
+    for col, key, label in ((c1, "three_months", "3 months old"),
+                            (c2, "one_year", "1 year old"),
+                            (c3, "two_years", "2 years old")):
+        with col:
+            v = ages.get(key)
+            kpi(f"{_fmt(v, 1)}×" if v else "—", f"False alarms, model {label}",
+                "against one refreshed on the last 30 days, same threshold rule")
     with c4:
         kpi(f"{peak:.2f} °C" if peak is not None else "—",
-            "R80711 bearing overheat",
-            "unlabelled"
-            + (f" · siblings peak at {peers:.2f} °C"
-               if peers is not None else ""))
+            "R80711 bearing peak, 2017",
+            (f"siblings peak at {peers:.2f} °C" if peers is not None else ""))
     if ratio:
         st.markdown(
-            f"<div class='note'>Against a reference frozen in 2014 the "
-            f"false-alarm rate is {_fmt(ratio, 1)}× higher — the same effect "
-            f"at its extreme. That figure lets each arm keep its own "
-            f"threshold rule; the cards above hold the rule fixed.</div>",
+            f"<div class='note'>A model frozen in 2014 raised {_fmt(ratio, 1)}× the "
+            f"false alarms of one refreshed monthly: the same effect at its "
+            f"extreme. That figure lets each model keep its own threshold rule; "
+            f"the cards above hold the rule fixed.</div>",
             unsafe_allow_html=True)
-    base = (card.get("operating_point") or {}).get("constant")
-    if base and base.get("detection_rate") is not None:
-        st.markdown(
-            f"<div class='note'>For comparison, a constant-median arm "
-            f"recalibrated the same way catches "
-            f"{base['detection_rate'] * 100:.0f} % of the same ramps (chance "
-            f"level {(base['chance_rate'] or 0) * 100:.0f} %) at "
-            f"{_fmt(base['false_dispatches_per_turbine_year'], 1)} false "
-            f"call-outs a year. The operating curve in the README gives every "
-            f"setting, a held-out check and a load-proportional fault.</div>",
-            unsafe_allow_html=True)
-
 
 def _footer() -> None:
     """Provenance and credit, at the foot of the page."""

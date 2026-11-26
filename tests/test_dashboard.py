@@ -526,25 +526,16 @@ def test_the_watermark_is_a_valid_inline_svg():
 
 # ---------------------------------------------- the headline cards
 def test_the_headline_cards_state_the_goal():
-    """The first screen says what the project is FOR, then what it found.
-
-    The cards are the goal's two halves (fewer false call-outs, earlier
-    warning) plus the case study, each read from the evaluation suite
-    through windmill.scorecard.
-    """
+    """Above the evidence: why the model is retrained every month, as the
+    false-alarm ratio at three ages of the model, and the R80711 case."""
     at = _app_test()
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "fewer false call-outs" in body, "the goal is not stated"
-    for card in ("False-alarm reduction", "Injected +4 K ramps caught",
-                 "R80711 bearing overheat"):
+    assert "Why the model is retrained every month" in body, "the point is not stated"
+    for card in ("False alarms, model 3 months old", "False alarms, model 1 year old",
+                 "False alarms, model 2 years old", "R80711 bearing peak, 2017"):
         assert card in body, f"the headline card {card!r} is missing"
-    # The third card reads the real-anomaly check when the curve carries it,
-    # and the older single-sample lead time otherwise.
-    assert ("R80711 dispatch vs the first hot spell" in body
-            or "R80711 lead time before 80 °C" in body), \
-        "the R80711 lead-time card is missing"
 
 
 def test_the_headline_cards_render_in_cloud_mode(tmp_path):
@@ -556,9 +547,7 @@ def test_the_headline_cards_render_in_cloud_mode(tmp_path):
     at.run()
     assert not at.exception, f"the app raised in cloud mode: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "Injected +4 K ramps caught" in body
-    assert ("dispatch vs the first hot spell" in body
-            or "lead time before 80" in body)
+    assert "False alarms, model 1 year old" in body
 
 
 # ---------------------------------------------- the four-tab layout

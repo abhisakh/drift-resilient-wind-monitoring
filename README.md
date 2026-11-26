@@ -85,7 +85,14 @@ make dashboard   # http://localhost:8501
 make test        # the test suite
 ```
 
-The dashboard opens on <br> **Demo**: one month, two neighbouring turbines in the same wind, the healthy prediction against the sensor, with the hot days marked.<br> **Performance** has the daily check over the whole record against the plain 80 °C limit.
+The dashboard ([live version](https://drift-resilient-wind-monitoring.streamlit.app)) has four pages:
+
+| Page | What it shows |
+|---|---|
+| **Demo** | One month (15 August to 14 September 2017), two neighbouring ENGIE turbines in the same wind: healthy R80721 and R80711, whose gearbox bearing ran abnormally hot. It opens on the sensor and the fixed 80 °C limit; two boxes add the model's daily prediction (with its ±2 K band, the hot days and the model's call-outs) and the forecast up to 7 days ahead. |
+| **Explore** | Any month, any of the nine temperature sensors, the four turbines: a day-by-day strip (within tolerance, hot, too little running, maintenance hold) with the model's call-outs, a status card per turbine, the prediction against the sensor for one turbine, and the comparison with its siblings at the same moment. |
+| **Performance** | The fixed 80 °C limit against the model, day by day, on R80711; the daily check over the whole record at each tolerance against the plain limit; how the forecast error grows with lead time; the second opinions (other gearbox sensors, sibling turbines); R80711's year. |
+| **Evidence & method** | The research behind the pages before it: a live 7-day weather forecast and power prediction (Open-Meteo), the model comparison on the CARE benchmark, the engineering and data forensics (upstream data errors found, how the results are reproduced), and a data explorer that runs the detector on ENGIE, a CARE event or an uploaded turbine CSV. |
 
 ## Read more
 
