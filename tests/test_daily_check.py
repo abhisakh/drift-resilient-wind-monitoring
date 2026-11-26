@@ -416,3 +416,36 @@ def test_a_reading_under_an_hour_over_the_limit_is_not_a_limit_day():
     f = _spike(_turbine(150), "2016-04-10", hours=0.5)
     d = {x["day"]: x for x in dc.simulate(f, "T", tolerance=2.0, limit_rule=True)["days"]}["2016-04-10"]
     assert not d.get("limit")
+
+
+
+# ------------------------------------------------- what an older model would say
+def test_an_older_models_prediction_comes_from_that_many_months_before():
+    f = _turbine(500)
+    sim = dc.simulate(f, "T", tolerance=2.0, keep_models=True)
+    old = dc.older_model_predictions(f, sim, [CH], ages=(3, 12))
+    # No model a year before the first months, so no prediction there.
+    assert not any(d.startswith("2016-03") for d in old[12][CH])
+    assert any(d.startswith("2017-03") for d in old[12][CH])
+    # On a turbine that does not drift, an older model predicts about the
+    # same healthy temperature as the month's own (within a kelvin: it saw a
+    # different season's outside temperatures).
+    own = {d["day"]: d["pred_k"] for d in sim["days"] if d.get("status") == "checked"}
+    common = [d for d in old[3][CH] if d in own]
+    assert len(common) > 100
+    assert np.median([abs(old[3][CH][d] - own[d]) for d in common]) < 1.0
+
+
+def test_an_older_model_misses_a_drift_the_monthly_one_follows():
+    """The reason for monthly retraining: the healthy level moves a few
+    kelvin over a year; an old model then reads the drift as heat."""
+    f = _turbine(500)
+    years = (f["ts"] - f["ts"].iloc[0]).dt.days.to_numpy() / 365.0
+    f[CH] = f[CH] + 4.0 * years
+    sim = dc.simulate(f, "T", tolerance=2.0, keep_models=True)
+    old = dc.older_model_predictions(f, sim, [CH], ages=(12,))
+    own = {d["day"]: (d["actual_k"], d["pred_k"]) for d in sim["days"] if d.get("status") == "checked"}
+    late = [d for d in old[12][CH] if d in own and d >= "2017-03-01"]
+    gap_old = np.median([own[d][0] - old[12][CH][d] for d in late])
+    gap_own = np.median([own[d][0] - own[d][1] for d in late])
+    assert gap_old > 3.0 and abs(gap_own) < 1.0

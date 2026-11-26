@@ -149,6 +149,8 @@ def main() -> int:
                 "last_year": sum(x["last_year_readings"] for x in winter)}
         print(f"  {t}: {out['turbines'][t]['hot_days']}  ({time.time() - t0:.0f}s)")
     healthy = [t for t in TURBINES if t != FAULTY]
+    hd = out["turbines"][FAULTY]["hot_days"]
+    out["hot_days_increase_pct"] = round(100 * (hd["last_year"] - hd["frozen"]) / hd["frozen"]) if hd["frozen"] else None
     out["healthy"] = {"days_judged": sum(out["turbines"][t]["days_judged"] for t in healthy),
                       "false_hot_days": {k: sum(out["turbines"][t]["hot_days"][k] for t in healthy)
                                          for k in ("frozen", "last_year")}}

@@ -63,8 +63,10 @@ def _r(v, nd=2):
     return None if v is None else round(float(v), nd)
 
 
-def series(sim: dict) -> dict:
-    """One turbine's days, column by column, for the dashboard."""
+def series(sim: dict, older: dict | None = None) -> dict:
+    """One turbine's days, column by column, for the dashboard. `older` adds
+    each sensor's prediction from an older model, as columns o3, o12, o24
+    (daily_check.older_model_predictions)."""
     days = sim["days"]
     out = {"day": [d["day"] for d in days],
            "status": [d.get("status") for d in days],
@@ -86,6 +88,8 @@ def series(sim: dict) -> dict:
         for L in leads:
             col[f"f{L}"] = [_r(((d.get("fc") or {}).get(str(L)) or {}).get(c))
                             for d in days]
+        for a, by_sensor in (older or {}).items():
+            col[f"o{a}"] = [_r(by_sensor.get(c, {}).get(d["day"])) for d in days]
         if any(v is not None for v in col["actual"]):
             out["sensors"][c] = col
     return out
@@ -103,10 +107,12 @@ def run(data_dir: Path, turbines: list[str], tolerances: list[float],
             sim = dc.simulate(frame, turbine, tol, warmup_hours=warmup_hours,
                               channels=list(dc.SENSORS) if full else None,
                               leads=dc.LEADS if full else (),
-                              last_year_when_frozen=True, limit_rule=True)
+                              last_year_when_frozen=True, limit_rule=True,
+                              keep_models=full)
             rows.append(dc.summarise(sim, limit))
             if full:
-                ser[turbine] = series(sim)
+                ser[turbine] = series(sim, dc.older_model_predictions(
+                    frame, sim, list(dc.SENSORS)))
                 all_months[turbine] = sim["months"]
             if turbine == CASE:
                 case_days[f"{tol:g}"] = [
@@ -163,6 +169,7 @@ def write_series(path: Path, ser: dict, changes: dict) -> None:
            "tolerance_k": PRIMARY, "primary": dc.CHANNEL,
            "sensor_names": dc.SENSOR_NAMES, "leads": list(dc.LEADS),
            "series_leads": list(SERIES_LEADS),
+           "older_model_ages": list(dc.OLDER_MODEL_AGES),
            "month_of_readings": dc.MONTH_OF_READINGS,
            "forecast_sigma": {str(k): v for k, v in dc.FORECAST_SIGMA.items()},
            "anomaly_spans": {k: [list(x) for x in v] for k, v in ANOMALY_SPANS.items()},

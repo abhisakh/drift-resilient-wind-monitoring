@@ -44,7 +44,7 @@ def main() -> int:
 
     series = json.loads((ROOT / "results" / "daily_series.json").read_text())
     d = series["turbines"][TURBINE]
-    rows = pd.DataFrame({k: d[k] for k in ("day", "status", "flag", "fault_period", "mean_k")})
+    rows = pd.DataFrame({k: d[k] for k in ("day", "status", "flag", "fault_period", "mean_k", "limit")})
     x = d["sensors"][dc.CHANNEL]
     rows["actual"], rows["pred"] = x["actual"], x["pred"]
     checked = rows[rows["status"] == "checked"]
@@ -61,6 +61,14 @@ def main() -> int:
     hot_any = set(fault_days.loc[fault_days["flag"] == "hot", "day"])
     lim_any = limit_days & set(fault_days["day"])
     by_average = set(span.loc[span["mean_k"] > series["tolerance_k"], "day"])
+    # Each rule on its own, and the model's rule (both together).
+    before_rows = rows[(rows["day"] >= BEFORE[0]) & (rows["day"] < BEFORE[1])]
+    before_avg = before_rows[(before_rows["status"] == "checked")
+                             & (before_rows["mean_k"] > series["tolerance_k"])]
+    alone = {"limit": len(lim_any), "average": len(by_average), "rule": len(hot_any),
+             "rule_increase_over_limit_pct": round(100 * (len(hot_any) - len(lim_any)) / len(lim_any))
+             if lim_any else None,
+             "before_limit": int(before_rows["limit"].sum()), "before_average": len(before_avg)}
     before = checked[(checked["day"] >= BEFORE[0]) & (checked["day"] < BEFORE[1])]
     mb = model_days & set(before["day"])
     # How much the model checked, so the counts can be weighed: the record,
@@ -88,6 +96,7 @@ def main() -> int:
             "model_only_daily_mean_c_median": round(float(only["actual"].median()), 1),
             "model_only_excess_k_median": round(float((only["actual"] - only["pred"]).median()), 1),
         },
+        "days_flagged": alone,
         "before_span": {"from": BEFORE[0], "to": BEFORE[1], "model_hot_days": len(mb),
                         "of_them_limit_days": len(mb & limit_days)},
     }

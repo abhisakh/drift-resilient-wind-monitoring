@@ -1375,3 +1375,20 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   (Engineering & Forensics), experiments behind the method rather than the
   result.
 
+#### Step 20: an older model on the Demo and Explore pages
+
+* A third tick box, "Show an older model (not retrained)", with a choice of
+  3 months, 1 year or 2 years old (default 2 years): that model's daily
+  prediction, fed the same day's power and weather, and the days it would
+  call hot (open amber squares). The daily check exports these
+  (daily_check.older_model_predictions; columns o3, o12, o24 in
+  results/daily_series.json); nothing in the daily check uses them.
+* What it shows under the daily 2 K rule: on the healthy siblings an older
+  model adds almost no hot days (0 to 3 over the whole record at any age).
+  On R80711 outside its abnormal period it adds 18 (3 months), 22 (1 year)
+  and 51 (2 years); March and April 2015 with the 2-year-old model show 11
+  and 10 hot days where the month's own model shows 1 and 0.
+* So the daily rule is far less sensitive to staleness than the per-reading
+  alarm rate of claim 2 (a reference frozen in 2014: 26 % of readings); the
+  difference between them is the rule, not the data.
+

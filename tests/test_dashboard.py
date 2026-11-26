@@ -99,7 +99,7 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     # only the model flagged. (The CARE score used to be checked here; it was
     # shown in the "does and does not claim" box, which is gone.)
     lv = json.loads((ROOT / "results" / "limit_vs_model.json").read_text())
-    assert "days flagged below the limit" in body, (
+    assert "of them below the limit" in body, (
         "the fixed-limit comparison is missing from the cloud render")
     assert str(lv["anomaly_span"]["model_only"]) in body
 
@@ -577,7 +577,7 @@ def test_the_demo_shows_a_healthy_and_a_faulty_turbine_on_the_same_month():
     # The demo opens on the real data alone; the prediction and the forecast
     # are one tick away, and the lead-time slider comes with the forecast.
     boxes = {b.key: b for b in at.checkbox if b.key and b.key.startswith("demo_show")}
-    assert set(boxes) == {"demo_show_pred", "demo_show_forecast"}
+    assert set(boxes) == {"demo_show_pred", "demo_show_forecast", "demo_show_old"}
     assert not any(b.value for b in boxes.values()), "the demo must open on the sensor only"
     # By key: the Explore page has a slider with the same label, and the test
     # renders every page at once.
@@ -1149,11 +1149,13 @@ def test_the_performance_page_shows_what_only_the_model_sees():
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
     assert "The fixed 80 °C limit and the model, day by day" in body
-    assert "days flagged below the limit" in body
+    assert "of them below the limit" in body
     # The limit is part of the rule: every limit day is flagged.
     sp = json.loads(lv.read_text())["anomaly_span"]
     assert sp["limit_days_flagged"] == sp["limit_days_all"]
-    assert f"{sp['limit_days_all']} of {sp['limit_days_all']}" in body
+    al = json.loads(lv.read_text())["days_flagged"]
+    assert "days flagged by the 80 °C limit alone" in body
+    assert f"+{al['rule_increase_over_limit_pct']} % over the limit" in body
 
 
 def test_the_demo_charts_draw_the_fixed_limit_as_a_dashed_line():
@@ -1270,3 +1272,27 @@ def test_the_frozen_model_month_opens_on_the_sensor_and_adds_each_model():
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
     assert "the frozen summer model could not judge" in body
+
+
+def test_the_demo_and_explore_offer_an_older_model():
+    """A third box adds a model that was not retrained (3 months, 1 year or
+    2 years old), to show on screen why the model is retrained monthly."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    for key in ("demo", "ex"):
+        box = next(b for b in at.checkbox if b.key == f"{key}_show_old")
+        assert not box.value
+        box.check().run()
+        assert not at.exception, f"the app raised: {at.exception}"
+        age = next(s for s in at.selectbox if s.key == f"{key}_old_age")
+        assert list(age.options) == ["3-month-old model", "1-year-old model", "2-year-old model"]
+
+
+def test_the_demo_and_explore_name_their_data():
+    """Both pages show ENGIE's French wind farm; each says so."""
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert body.count("ENGIE's La Haute Borne wind farm in France") >= 2

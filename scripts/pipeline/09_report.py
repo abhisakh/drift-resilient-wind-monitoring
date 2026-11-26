@@ -1746,12 +1746,13 @@ def section_conclusion() -> str:
         f"the bearing held 80 °C for an hour is always a hot day, and so is a day more than "
         f"{fmt(lv['tolerance_k'], 0)} K above the healthy prediction on average. In that "
         f"period:\n")
-    out.append("| | days |")
+    out.append(f"| {day(sp['from'])} to {day(sp['to'])} | days |")
     out.append("|---|---|")
-    out.append(f"| abnormal period, days checked | {sp['days_checked']} |")
-    out.append(f"| the 80 °C limit fired: flagged by the model | {sp['limit_days_flagged']} of {sp['limit_days_all']} |")
-    out.append(f"| **flagged by the model below the limit** | **{sp['model_only']}** |")
-    out.append(f"| ten weeks before: model hot days (of them, limit days) | {bf['model_hot_days']} ({bf['of_them_limit_days']}) |")
+    al = lv["days_flagged"]
+    out.append(f"| flagged by the 80 °C limit | {al['limit']} |")
+    out.append(f"| **flagged by the model** | **{al['rule']} (+{al['rule_increase_over_limit_pct']} %)** |")
+    out.append(f"| of them below the limit | {sp['model_only']} |")
+    out.append(f"| ten weeks before: model hot days / limit days | {bf['model_hot_days']} / {al['before_limit']} |")
     out.append(
         f"\nOn the days below the limit the bearing averaged {fmt(sp['model_only_daily_mean_c_median'], 1)} °C, "
         f"{fmt(sp['model_only_excess_k_median'], 1)} K hotter than a healthy bearing at that day's power "
@@ -1775,9 +1776,12 @@ def section_conclusion() -> str:
             f"missed {len(m['days'])} days the limit caught: it had "
             f"no healthy reference for the high power of windy winter days, when the bearing is "
             f"hottest. Each frozen month is now judged with the turbine's own healthy model for "
-            f"the same month a year earlier; that caught {len(m['caught_by_last_year'])} of the "
-            f"{len(m['days'])}, and the three healthy turbines judged the same way over the same "
-            f"months had {h['false_hot_days']['last_year']} false hot days in {h['days_judged']}.")
+            f"the same month a year earlier: R80711's hot days from September to January rose from "
+            f"{ff['turbines']['R80711']['hot_days']['frozen']} to "
+            f"{ff['turbines']['R80711']['hot_days']['last_year']} (+{ff['hot_days_increase_pct']} %), "
+            f"{len(m['caught_by_last_year'])} of the {len(m['days'])} missed limit days were caught, "
+            f"and the three healthy turbines judged the same way over the same months had "
+            f"{h['false_hot_days']['last_year']} false hot days in {h['days_judged']}.")
     out.append("")
     out.append("### 3. Every alarm can be explained\n")
     out.append(

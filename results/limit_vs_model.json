@@ -30,6 +30,14 @@
   "model_only_daily_mean_c_median": 72.6,
   "model_only_excess_k_median": 2.9
  },
+ "days_flagged": {
+  "limit": 42,
+  "average": 61,
+  "rule": 63,
+  "rule_increase_over_limit_pct": 50,
+  "before_limit": 9,
+  "before_average": 18
+ },
  "before_span": {
   "from": "2017-06-01",
   "to": "2017-08-15",

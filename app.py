@@ -127,21 +127,20 @@ def _limit_vs_model_view(lv: dict | None) -> None:
         f"the days that were too hot for their power and weather but stayed under "
         f"the limit. R80711's gearbox bearing ran abnormally hot from August 2017; "
         f"in that period:")
+    al = lv["days_flagged"]
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        kpi(f"{sp['limit_days_flagged']} of {sp['limit_days_all']}",
-            "days the 80 °C limit fired, flagged by the model",
-            "every one, by design")
+        kpi(str(al["limit"]), "days flagged by the 80 °C limit alone",
+            "the fixed setting on its own")
     with c2:
-        kpi(str(sp["model_only"]), "days flagged below the limit",
+        kpi(f"{al['rule']}", "days flagged by the model's rule",
+            f"+{al['rule_increase_over_limit_pct']} % over the limit; every limit day included")
+    with c3:
+        kpi(str(sp["model_only"]), "of them below the limit",
             f"about {sp['model_only_daily_mean_c_median']:.0f} °C, "
             f"{sp['model_only_excess_k_median']:.1f} K above the healthy prediction")
-    with c3:
-        kpi(f"{sp['limit_days_over_the_average_too']} of {sp['limit_days_all']}",
-            "limit days also over the 2 K daily average",
-            "the model would have flagged them without the limit")
     with c4:
-        kpi(f"{bf['model_hot_days']} vs {bf['of_them_limit_days']}",
+        kpi(f"{bf['model_hot_days']} vs {al['before_limit']}",
             "hot days in the ten weeks before",
             "model vs the 80 °C limit")
     st.markdown(
@@ -194,7 +193,8 @@ def _frozen_fallback_view(ff: dict | None) -> None:
     with c2:
         kpi(f"{t['hot_days']['frozen']} → {t['hot_days']['last_year']}",
             "R80711 hot days, Sep 2017 to Jan 2018",
-            f"of {t['days_judged']} days checked")
+            f"+{ff['hot_days_increase_pct']} %, of {t['days_judged']} days checked"
+            if ff.get("hot_days_increase_pct") is not None else f"of {t['days_judged']} days checked")
     with c3:
         h = ff["healthy"]
         kpi(f"{h['false_hot_days']['frozen']} → {h['false_hot_days']['last_year']}",
@@ -2414,15 +2414,33 @@ C_ACTUAL = "#E5E7EB"     # the sensor: the quiet neutral line, as elsewhere
 C_MODEL = "#00D4AA"      # the model fed the day's weather: teal, as elsewhere
 C_FORECAST = "#A78BFA"   # the same model fed the forecast issued days before
 C_HOT = "#E05263"
+C_OLD = "#F5B841"        # an older model, not retrained: amber
 
 
-def _y_range(frames, tolerance: float, lead: int) -> list[float]:
+def _older_label(age: int) -> str:
+    return {3: "3-month-old", 12: "1-year-old", 24: "2-year-old"}.get(
+        age, f"{age}-month-old")
+
+
+def _older_model_control(series: dict, key: str):
+    """A tick box and, when ticked, the age of the older model to show."""
+    ages = series.get("older_model_ages") or []
+    if not ages:
+        return None
+    on = st.checkbox("Show an older model (not retrained)", value=False, key=f"{key}_show_old")
+    if not on:
+        return None
+    return st.selectbox("How old", ages, index=len(ages) - 1,
+                        format_func=lambda a: f"{_older_label(a)} model", key=f"{key}_old_age")
+
+
+def _y_range(frames, tolerance: float, lead: int, old_age: int | None = None) -> list[float]:
     """One temperature range for several charts, so the same tolerance band
     is drawn the same height on each of them."""
     vals = []
     for df in frames:
         chk = df[df["status"] == "checked"]
-        for c in ("actual", "pred", f"f{lead}"):
+        for c in ("actual", "pred", f"f{lead}") + ((f"o{old_age}",) if old_age else ()):
             if c in chk:
                 vals += [v for v in chk[c].tolist() if v == v]
         if "pred" in chk:
@@ -2445,7 +2463,7 @@ def _window_alarms(series: dict, turbine: str, sensor: str, start: str,
 def _three_line_figure(df, tolerance: float, lead: int, title: str,
                        y_range=None, alarms=None, show_pred: bool = True,
                        show_forecast: bool = True, limit_c: float | None = None,
-                       x_range=None):
+                       x_range=None, old_age: int | None = None):
     """The forecast, the on-day prediction and the sensor, one point per day,
     with the tolerance as a band around the on-day prediction. The sensor is
     always drawn; the prediction (with its band) and the forecast can be
@@ -2469,6 +2487,22 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str,
             name=f"forecast, issued {lead} day{'s' if lead > 1 else ''} before",
             line=dict(width=2, dash="dot", color=C_FORECAST),
             marker=dict(size=6), connectgaps=False))
+    old = f"o{old_age}" if old_age else None
+    if old and old in chk and chk[old].notna().any():
+        # An older model, fed the same day's weather: what a model that was
+        # not retrained would have said, and the days it would call hot.
+        name = _older_label(old_age)
+        fig.add_trace(go.Scatter(
+            x=chk["day"], y=chk[old], mode="lines+markers",
+            name=f"predicted by the {name} model", connectgaps=False,
+            line=dict(width=2.4, dash="dashdot", color=C_OLD), marker=dict(size=6)))
+        oh = chk[(chk["actual"] - chk[old]) > tolerance]
+        if len(oh):
+            fig.add_trace(go.Scatter(
+                x=oh["day"], y=oh["actual"], mode="markers",
+                name=f"hot day under the {name} model",
+                marker=dict(size=17, symbol="square-open", color=C_OLD,
+                            line=dict(width=3, color=C_OLD))))
     if show_pred:
         fig.add_trace(go.Scatter(
             x=chk["day"], y=chk["pred"], mode="lines+markers",
@@ -2546,6 +2580,10 @@ def _demo_cards(card: dict, badge: dict) -> None:
 def page_demo(series: dict | None) -> None:
     """Page 1: one month, a healthy turbine beside the faulty one."""
     st.subheader("How it works: one month, two turbines")
+    st.markdown("<div class='note'>Data: ENGIE's La Haute Borne wind farm in France, "
+                "four Senvion MM82 turbines (2,050 kW), open SCADA readings every "
+                "10 minutes, 2013 to 2018, joined to Copernicus ERA5 weather.</div>",
+                unsafe_allow_html=True)
     if not series:
         st.info("results/daily_series.json is missing: run `make daily`.")
         return
@@ -2562,13 +2600,15 @@ def page_demo(series: dict | None) -> None:
     with st.container(key="demo_controls"):
         st.markdown("**Show on both charts:** tick a box to compare the sensor "
                     "with the model")
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
             show_pred = st.checkbox("Show the daily prediction (actual weather)",
                                     value=False, key="demo_show_pred")
         with c2:
             show_fc = st.checkbox("Show the forecast prediction (up to 7 days ahead)",
                                   value=False, key="demo_show_forecast")
+        with c3:
+            old_age = _older_model_control(series, "demo")
         lead = demo["lead"]
         if show_fc:
             lead = st.select_slider("Forecast issued how many days before",
@@ -2580,7 +2620,7 @@ def page_demo(series: dict | None) -> None:
                           demo["end"]) for r, _ in roles}
     # Both charts on one temperature scale: the same ±tolerance band, drawn
     # the same height, so the two turbines are compared like for like.
-    y_range = _y_range(frames.values(), tol, lead)
+    y_range = _y_range(frames.values(), tol, lead, old_age)
     _ensure_src()
     from windmill import daily_check as dck
     limit_c = dck.HOT_C          # the fixed-limit baseline, 80 C for an hour
@@ -2596,7 +2636,7 @@ def page_demo(series: dict | None) -> None:
             f"(tolerance ±{tol:g} K on both)", y_range=y_range,
             alarms=_window_alarms(series, t, series["primary"], demo["start"],
                                   demo["end"], tol),
-            show_pred=show_pred, show_forecast=show_fc, limit_c=limit_c,
+            show_pred=show_pred, show_forecast=show_fc, limit_c=limit_c, old_age=old_age,
             x_range=[pd.Timestamp(demo["start"]) - pd.Timedelta(hours=12), pd.Timestamp(demo["end"]) + pd.Timedelta(hours=12)]),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
@@ -2696,6 +2736,10 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
 def page_explore(series: dict | None) -> None:
     """Page 2: any month, any sensor, the four turbines side by side."""
     st.subheader("Explore: the four turbines, day by day")
+    st.markdown("<div class='note'>Data: ENGIE's La Haute Borne wind farm in France, "
+                "four Senvion MM82 turbines (2,050 kW), open SCADA readings every "
+                "10 minutes, 2013 to 2018, joined to Copernicus ERA5 weather.</div>",
+                unsafe_allow_html=True)
     if not series:
         st.info("results/daily_series.json is missing: run `make daily`.")
         return
@@ -2757,22 +2801,24 @@ def page_explore(series: dict | None) -> None:
                 f"{b['text']}</div></div>",
                 unsafe_allow_html=True)
 
-    c4, c5 = st.columns([1, 2])
+    c4, c5, c6 = st.columns([1, 2, 1])
     with c4:
         focus = st.selectbox("Plot turbine", chosen, key="ex_focus")
     with c5:
         leads = series["leads"] if sensor == series["primary"] else series["series_leads"]
         lead = st.select_slider("Forecast issued how many days before", options=leads,
                                 value=leads[0], key="ex_lead")
+    with c6:
+        old_age = _older_model_control(series, "ex")
     df = dict(rows)[focus]
     if (df["status"] == "checked").any():
         # The scale of all the chosen turbines this month, so switching the
         # plotted turbine never changes how big the tolerance looks.
-        y_range = _y_range([d for _, d in rows], tol, lead)
+        y_range = _y_range([d for _, d in rows], tol, lead, old_age)
         _chart(_three_line_figure(df, tol, lead,
                                   f"{focus}: {names[sensor]}, {month} "
                                   f"(tolerance ±{tol:g} K)", y_range=y_range,
-                                  alarms=alarms.get(focus),
+                                  alarms=alarms.get(focus), old_age=old_age,
                                   x_range=[pd.Timestamp(start) - pd.Timedelta(hours=12), pd.Timestamp(end) + pd.Timedelta(hours=12)]),
                width="stretch")
     else:

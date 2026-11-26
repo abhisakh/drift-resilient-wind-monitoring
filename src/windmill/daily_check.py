@@ -586,6 +586,51 @@ def gearbox_hot(d: dict, tolerance: float) -> int:
     return sum(1 for c in GEARBOX if c in ch and ch[c][0] - ch[c][1] > tolerance)
 
 
+#: Ages of the older models the dashboard can show beside the month's own,
+#: in months: the same ages as the evidence for monthly retraining.
+OLDER_MODEL_AGES = (3, 12, 24)
+
+
+def older_model_predictions(frame: pd.DataFrame, sim: dict, channels,
+                            ages=OLDER_MODEL_AGES,
+                            warmup_hours: float = WARMUP_HOURS) -> dict:
+    """What an older model would have predicted, day by day.
+
+    For each day and sensor, the daily mean prediction of the model the daily
+    check used `age` months before that day's month (from
+    `simulate(..., keep_models=True)`), fed that day's own power and weather,
+    over the running readings outside warm-up. Returns
+    {age: {sensor: {"YYYY-MM-DD": °C}}}; a day with fewer than MIN_DAY_ROWS
+    readings that model can predict is left out. Nothing here feeds the
+    daily check: it only shows what a stale model would have said.
+    """
+    models = sim["models"]
+    f, _ = mark_restarts(frame, warmup_hours=warmup_hours)
+    f = f[f["running"] & ~f["warmup"]]
+    out = {a: {c: {} for c in channels} for a in ages}
+    month = f["ts"].dt.strftime("%Y-%m")
+    for m, idx in f.groupby(month).indices.items():
+        g = f.iloc[idx]
+        day = g["day"].astype(str).str[:10].to_numpy()
+        load = g["P_norm"].to_numpy(dtype="float64")
+        amb = g["era5_temp_2m"].to_numpy(dtype="float64")
+        for a in ages:
+            model = models.get(_month_shift(m, -a))
+            if model is None:
+                continue
+            for c in channels:
+                if c not in model["refs"] or c not in g.columns:
+                    continue
+                p = predict(model["refs"][c], load, amb)
+                ok = np.isfinite(p) & np.isfinite(g[c].to_numpy(dtype="float64"))
+                if not ok.any():
+                    continue
+                d = pd.DataFrame({"day": day[ok], "p": p[ok]}).groupby("day")["p"].agg(["mean", "size"])
+                d = d[d["size"] >= MIN_DAY_ROWS]
+                out[a][c].update({k: float(v) for k, v in d["mean"].items()})
+    return out
+
+
 def limit_call_outs(frame: pd.DataFrame, turbine: str,
                     spans: dict | None = None,
                     channel: str = CHANNEL) -> list[dict]:

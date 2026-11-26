@@ -35,12 +35,12 @@ A fixed setting only fires once the signal crosses it. A problem that develops b
 
 The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,313 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018). The fixed limit is part of the model's rule: a day on which the bearing held 80 °C for an hour is always a hot day, and so is a day more than 2 K above the healthy prediction on average. In that period:
 
-| | days |
+| 15 August 2017 to 12 January 2018 | days |
 |---|---|
-| abnormal period, days checked | 114 |
-| the 80 °C limit fired: flagged by the model | 42 of 42 |
-| **flagged by the model below the limit** | **21** |
-| ten weeks before: model hot days (of them, limit days) | 18 (9) |
+| flagged by the 80 °C limit | 42 |
+| **flagged by the model** | **63 (+50 %)** |
+| of them below the limit | 21 |
+| ten weeks before: model hot days / limit days | 18 / 9 |
 
 On the days below the limit the bearing averaged 72.6 °C, 2.9 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year. The limit is part of the rule, so nothing it catches is lost; the model adds what the limit cannot see.
 
@@ -48,7 +48,7 @@ On the days below the limit the bearing averaged 72.6 °C, 2.9 K hotter than a h
 
 Turbines drift: each ENGIE turbine's temperatures move by several kelvin between years. A reference frozen in 2014 alarmed on **26.37 %** of readings; one refreshed on the last 30 days, on **0.57 %** (46.5× fewer). A stale model buries the real signal in false alarms. The monthly model never learns from flagged days, so a fault cannot become the new normal.
 
-The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter, and its 2 K daily average alone missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier; that caught 5 of the 6, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
+The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter, and its 2 K daily average alone missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier: R80711's hot days from September to January rose from 43 to 57 (+33 %), 5 of the 6 missed limit days were caught, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
 
 ### 3. Every alarm can be explained
 
@@ -115,7 +115,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-512 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+516 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 
