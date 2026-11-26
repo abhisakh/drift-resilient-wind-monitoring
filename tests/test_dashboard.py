@@ -1271,7 +1271,7 @@ def test_the_frozen_model_month_opens_on_the_sensor_and_adds_each_model():
     boxes["perf_show_last_year"].check().run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "near the band's edge" in body
+    assert "The grey dotted line is what the frozen model compared" in body
 
 
 def test_the_demo_and_explore_offer_an_older_model():

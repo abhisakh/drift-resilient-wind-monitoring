@@ -253,10 +253,6 @@ def _frozen_month_view(ff: dict) -> None:
     dm.index = pd.to_datetime(dm["day"])
     dm = dm.reindex(cal)
     fig = go.Figure()
-    for d in sorted(x for x in miss if x.startswith(month)):
-        fig.add_vrect(x0=pd.Timestamp(d) - pd.Timedelta(hours=12),
-                      x1=pd.Timestamp(d) + pd.Timedelta(hours=12),
-                      fillcolor="rgba(224,82,99,0.28)", line_width=0, layer="below")
     arms = []
     if show_frozen:
         arms.append(("frozen", "frozen summer model", "#A3ACB9", "rgba(163,172,185,0.18)",
@@ -287,18 +283,30 @@ def _frozen_month_view(ff: dict) -> None:
     fig.add_trace(go.Scatter(x=sensor.dropna().index, y=sensor.dropna(), mode="lines+markers",
                              name="sensor (daily mean)", line=dict(width=2.6, color=C_ACTUAL),
                              marker=dict(size=7)))
-    if any(x.startswith(month) for x in miss):
-        fig.add_trace(go.Scatter(x=[cal[0]], y=[None], mode="markers",
-                                 name="the 80 °C limit fired, the frozen model's average did not",
-                                 marker=dict(symbol="square", size=14,
-                                             color="rgba(224,82,99,0.5)")))
+    if show_frozen:
+        # What the frozen model compared with its prediction: the day's mean
+        # over the hours it could judge. Below the white line where it left
+        # out the windiest, hottest hours.
+        seen = dm["actual_c"].dropna()
+        fig.add_trace(go.Scatter(x=seen.index, y=seen, mode="lines+markers",
+                                 name="sensor, the hours the frozen model could judge",
+                                 line=dict(width=1.6, dash="dot", color="#A3ACB9"),
+                                 marker=dict(size=5)))
+    # The days the frozen model called normal and last year's model hot.
+    flip = dm[(dm["frozen_excess_k"] <= tol) & (dm["last_year_excess_k"] > tol)]
+    if show_frozen and show_ly and len(flip):
+        fig.add_trace(go.Scatter(
+            x=flip.index, y=sensor.reindex(flip.index).to_numpy(), mode="markers",
+            name="normal for the frozen model, hot for last year's",
+            marker=dict(symbol="circle-open", size=26, color="#FFD166",
+                        line=dict(width=3, color="#FFD166"))))
     fig.add_hline(y=dck.HOT_C, line=dict(color=_daily_view().ALARM_COLOURS["real"], width=2,
                                          dash="dash"),
                   annotation_text=f"fixed alarm limit {dck.HOT_C:g} °C",
                   annotation_position="top left")
     vals = [sensor] + [dm[f"{k}_pred_c"] + sgn * tol for k, *_ in arms for sgn in (-1, 1)]
     lo = float(np.nanmin([v.min() for v in vals]))
-    hi = float(np.nanmax([v.max() for v in vals] + [dck.HOT_C + 2]))
+    hi = float(np.nanmax([v.max() for v in vals] + [dck.HOT_C + 3]))
     fig.update_layout(title=f"R80711 gearbox bearing, {label[month]}",
                       height=560, hovermode="x unified",
                       margin=dict(l=10, r=10, t=30, b=150),
@@ -308,18 +316,13 @@ def _frozen_month_view(ff: dict) -> None:
     fig.update_xaxes(range=[cal[0] - pd.Timedelta(hours=12), cal[-1] + pd.Timedelta(hours=12)])
     _chart(fig, width="stretch")
 
-    note = (f"Red shading: the fixed limit fired and the frozen model's daily average did "
-            f"not. A day is hot when its average is more than {tol:g} K above the prediction. "
-            f"Days far above the band are flagged by either model. The misses are the days "
-            f"near the band's edge, where a degree decides: the summer model's prediction "
-            f"can sit a degree or more too high for December, and it cannot judge some of "
-            f"the windiest, hottest hours, which pulls the day's average down. Last year's "
-            f"December model puts the band where a healthy bearing sits in winter.")
-    left = sorted(x for x in miss if x.startswith(month) and x not in caught)
-    if left:
-        note += (" Under the average with either model: "
-                 + ", ".join(pd.Timestamp(x).strftime("%d %b") for x in left)
-                 + ", hot for only a few hours; the limit rule flags it.")
+    note = (f"A day is hot when the sensor's average is more than {tol:g} K above the "
+            f"prediction. Days far above the band are flagged by either model. The yellow "
+            f"circles are the days the frozen summer model called normal and last year's "
+            f"model called hot. The grey dotted line is what the frozen model compared: "
+            f"the day's average over the hours it could judge. Where it drops below the "
+            f"white line, the model left out the windiest, hottest hours, and the day "
+            f"landed back inside its band.")
     st.markdown(f"<div class='note'>{note}</div>", unsafe_allow_html=True)
 
 
