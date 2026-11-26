@@ -240,12 +240,13 @@ def _frozen_fallback_view(ff: dict | None) -> None:
 
 
 def _frozen_month_view(ff: dict) -> None:
-    """One month of R80711 after its fault, hour by hour: the sensor first,
+    """One month of R80711 after its fault, one point a day: the sensor first,
     then, one tick box each, the frozen summer model and last year's model
     for the same month, each with its tolerance band. The frozen model's
     gaps are the hours it has no healthy reference for."""
     import numpy as np
     import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     from windmill import daily_check as dck
 
@@ -260,7 +261,7 @@ def _frozen_month_view(ff: dict) -> None:
     caught = set(ff["limit_days_missed_by_frozen"]["caught_by_last_year"])
     trained = next(iter(ff["turbines"]["R80711"]["model_by_month"].values()))["trained"]
 
-    st.markdown("##### One month, hour by hour")
+    st.markdown("##### One month, day by day")
     with st.container(key="perf_controls"):
         month = st.select_slider("Month", options=months, value="2017-12" if "2017-12" in months
                                  else months[-1], format_func=label.get, key="perf_ff_month")
@@ -277,63 +278,80 @@ def _frozen_month_view(ff: dict) -> None:
                 value=False, key="perf_show_last_year")
 
     m = h[h["month"] == month]
-    dm = days[days["day"].str.startswith(month)]
-    sensor_by_day = m.groupby(m["hour"].dt.strftime("%Y-%m-%d"))["actual_c"].mean()
-    fig = go.Figure()
+    start = pd.Timestamp(month + "-01")
+    cal = pd.date_range(start, start + pd.offsets.MonthEnd(0), freq="D")
+    # One point per day, as on the Demo page. The sensor is the day's mean
+    # over its running hours; each prediction is the day's mean as the daily
+    # check judged it. Days not checked are gaps, never joined across.
+    sensor = m.groupby(m["hour"].dt.normalize())["actual_c"].mean().reindex(cal)
+    dm = days[days["day"].str.startswith(month)].copy()
+    dm.index = pd.to_datetime(dm["day"])
+    dm = dm.reindex(cal)
+    blind = m["frozen_pred_c"].isna().groupby(m["hour"].dt.normalize()).sum().reindex(cal)
+
+    rows = 2 if show_frozen else 1
+    fig = make_subplots(rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+                        row_heights=[0.78, 0.22] if rows == 2 else [1.0])
     for d in sorted(x for x in miss if x.startswith(month)):
-        fig.add_vrect(x0=pd.Timestamp(d), x1=pd.Timestamp(d) + pd.Timedelta(days=1),
-                      fillcolor="rgba(224,82,99,0.16)", line_width=0)
+        fig.add_vrect(x0=pd.Timestamp(d) - pd.Timedelta(hours=12),
+                      x1=pd.Timestamp(d) + pd.Timedelta(hours=12),
+                      fillcolor="rgba(224,82,99,0.18)", line_width=0, row="all", col=1)
     arms = []
     if show_frozen:
-        arms.append(("frozen", "frozen summer model", "#A3ACB9", "rgba(163,172,185,0.20)",
+        arms.append(("frozen", "frozen summer model", "#A3ACB9", "rgba(163,172,185,0.18)",
                      "#A3ACB9"))
     if show_ly:
         arms.append(("last_year", "last year's model, same month", C_MODEL,
-                     "rgba(0,212,170,0.14)", _daily_view().LIGHT_COLOURS["hot"]))
+                     "rgba(0,212,170,0.12)", _daily_view().LIGHT_COLOURS["hot"]))
     for key, name, colour, band, hot_colour in arms:
-        pred = m[f"{key}_pred_c"]
-        fig.add_trace(go.Scatter(x=m["hour"], y=pred + tol, mode="lines", line=dict(width=0),
-                                 hoverinfo="skip", showlegend=False, connectgaps=False))
-        fig.add_trace(go.Scatter(x=m["hour"], y=pred - tol, mode="lines", line=dict(width=0),
+        pred = dm[f"{key}_pred_c"].dropna()
+        fig.add_trace(go.Scatter(x=pred.index, y=pred + tol, mode="lines", line=dict(width=0),
+                                 hoverinfo="skip", showlegend=False), row=1, col=1)
+        fig.add_trace(go.Scatter(x=pred.index, y=pred - tol, mode="lines", line=dict(width=0),
                                  fill="tonexty", fillcolor=band, hoverinfo="skip",
-                                 name=f"{name}: ±{tol:g} K", connectgaps=False))
-        fig.add_trace(go.Scatter(x=m["hour"], y=pred, mode="lines", connectgaps=False,
+                                 name=f"{name}: ±{tol:g} K"), row=1, col=1)
+        fig.add_trace(go.Scatter(x=pred.index, y=pred, mode="lines+markers",
                                  name=f"{name}: healthy prediction",
-                                 line=dict(width=2.2, dash="dash", color=colour),
-                                 hovertemplate="%{y:.1f} °C<extra>" + name + "</extra>"))
+                                 line=dict(width=2.4, dash="dash", color=colour),
+                                 marker=dict(size=6)), row=1, col=1)
         hot = dm[dm[f"{key}_excess_k"] > tol]
         if len(hot):
             fig.add_trace(go.Scatter(
-                x=pd.to_datetime(hot["day"]) + pd.Timedelta(hours=12),
-                y=sensor_by_day.reindex(hot["day"]).to_numpy(), mode="markers",
-                name=f"hot day under the {name}: daily mean over {tol:g} K above",
-                marker=dict(size=14, symbol="square", color=hot_colour,
+                x=hot.index, y=sensor.reindex(hot.index).to_numpy(), mode="markers",
+                name=f"hot day under the {name}",
+                marker=dict(size=15, symbol="square", color=hot_colour,
                             line=dict(width=1.5, color="#0B1220")),
                 customdata=hot[[f"{key}_excess_k"]].to_numpy(),
-                hovertemplate="day %{x|%d %b}: %{customdata[0]:.1f} K above<extra></extra>"))
-    fig.add_trace(go.Scatter(x=m["hour"], y=m["actual_c"], mode="lines",
-                             name="sensor (hourly mean)", line=dict(width=1.8, color=C_ACTUAL),
-                             hovertemplate="%{y:.1f} °C<extra>sensor</extra>"))
+                hovertemplate="%{customdata[0]:.1f} K above<extra>" + name + "</extra>"),
+                row=1, col=1)
+    fig.add_trace(go.Scatter(x=sensor.dropna().index, y=sensor.dropna(), mode="lines+markers",
+                             name="sensor (daily mean)", line=dict(width=2.6, color=C_ACTUAL),
+                             marker=dict(size=7)), row=1, col=1)
     if any(x.startswith(month) for x in miss):
-        fig.add_trace(go.Scatter(x=[m["hour"].iloc[0]], y=[None], mode="markers",
-                                 name="day the 80 °C limit fired and the frozen model did not",
+        fig.add_trace(go.Scatter(x=[cal[0]], y=[None], mode="markers",
+                                 name="the 80 °C limit fired, the frozen model did not",
                                  marker=dict(symbol="square", size=14,
-                                             color="rgba(224,82,99,0.45)")))
+                                             color="rgba(224,82,99,0.5)")), row=1, col=1)
     fig.add_hline(y=dck.HOT_C, line=dict(color=_daily_view().ALARM_COLOURS["real"], width=2,
                                          dash="dash"),
                   annotation_text=f"fixed alarm limit {dck.HOT_C:g} °C",
-                  annotation_position="top left")
-    lo = float(np.nanmin([m["actual_c"].min(), m["frozen_pred_c"].min() - tol,
-                          m["last_year_pred_c"].min() - tol]))
-    hi = float(np.nanmax([m["actual_c"].max(), m["frozen_pred_c"].max() + tol,
-                          m["last_year_pred_c"].max() + tol, dck.HOT_C + 2]))
-    start = pd.Timestamp(month + "-01")
-    fig.update_layout(title=f"R80711 gearbox bearing, {label[month]}", height=600,
-                      hovermode="x unified", margin=dict(l=10, r=10, t=30, b=170),
+                  annotation_position="top left", row=1, col=1)
+    if show_frozen:
+        fig.add_trace(go.Bar(x=cal, y=blind, name="hours the frozen model could not judge",
+                             marker_color="#A3ACB9",
+                             hovertemplate="%{y} of the day's running hours<extra></extra>"),
+                      row=2, col=1)
+        fig.update_yaxes(title_text="hours", rangemode="tozero", row=2, col=1)
+    vals = [sensor] + [dm[f"{k}_pred_c"] + sgn * tol for k, *_ in arms for sgn in (-1, 1)]
+    lo = float(np.nanmin([v.min() for v in vals]))
+    hi = float(np.nanmax([v.max() for v in vals] + [dck.HOT_C + 2]))
+    fig.update_layout(title=f"R80711 gearbox bearing, {label[month]}",
+                      height=680 if rows == 2 else 560, hovermode="x unified",
+                      margin=dict(l=10, r=10, t=30, b=150),
                       legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                                   x=0, xanchor="left"))
-    fig.update_yaxes(title_text="°C", range=[lo - 1, hi + 1])
-    fig.update_xaxes(range=[start, start + pd.offsets.MonthBegin(1)])
+    fig.update_yaxes(title_text="°C", range=[lo - 2, hi + 1], row=1, col=1)
+    fig.update_xaxes(range=[cal[0] - pd.Timedelta(hours=12), cal[-1] + pd.Timedelta(hours=12)])
     _chart(fig, width="stretch")
 
     gap = m["frozen_pred_c"].isna()
@@ -342,9 +360,9 @@ def _frozen_month_view(ff: dict) -> None:
             "A day is hot when its average is more than "
             f"{tol:g} K above the prediction.")
     if n_gap:
-        note += (f" In {label[month]} the frozen summer model has no prediction for "
-                 f"{n_gap} of {len(m)} hours (the gaps in its line): high-power hours it never "
-                 f"saw in summer. The bearing averaged {m.loc[gap, 'actual_c'].mean():.1f} °C in "
+        note += (f" In {label[month]} the frozen summer model could not judge "
+                 f"{n_gap} of {len(m)} running hours (the grey bars): high-power hours it never "
+                 f"saw in summer, so those days were judged on their cooler hours only. The bearing averaged {m.loc[gap, 'actual_c'].mean():.1f} °C in "
                  f"those hours and {m.loc[~gap, 'actual_c'].mean():.1f} °C in the rest.")
     n_ly = int(m["last_year_pred_c"].isna().sum())
     note += (f" Last year's model has no prediction for {n_ly} hours." if n_ly

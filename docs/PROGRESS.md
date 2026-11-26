@@ -1332,7 +1332,8 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   the healthy turbines).
 * CARE Farms B and C keep the plain frozen model (the switch is off by
   default there), so their published numbers are unchanged.
-* Performance page: one month of R80711 hour by hour (a month slider, December
+* Performance page: one month of R80711 day by day, as on the Demo page, with
+  the hours the frozen model could not judge as bars below (a month slider, December
   2017 first), opening on the sensor and the 80 °C limit; one tick box adds the
   frozen summer model with its ±2 K band, the other last year's model for the
   same month. The frozen model's line has gaps where it has no healthy
