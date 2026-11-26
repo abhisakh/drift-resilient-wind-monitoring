@@ -100,7 +100,8 @@ def run(data_dir: Path, turbines: list[str], tolerances: list[float],
             full = abs(tol - PRIMARY) < 1e-9
             sim = dc.simulate(frame, turbine, tol, warmup_hours=warmup_hours,
                               channels=list(dc.SENSORS) if full else None,
-                              leads=dc.LEADS if full else ())
+                              leads=dc.LEADS if full else (),
+                              last_year_when_frozen=True)
             rows.append(dc.summarise(sim, limit))
             if full:
                 ser[turbine] = series(sim)

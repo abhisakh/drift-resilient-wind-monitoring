@@ -336,3 +336,48 @@ def test_recorded_maintenance_blanks_the_model_like_a_stand_in():
     assert models["2016-05"]["train_start"] >= "2016-03-05"
     hold = [d for d in sim["days"] if d.get("reason") == "maintenance"]
     assert hold and all(d["maintenance"] == "2016-03-05" for d in hold)
+
+
+# ------------------------------------- a frozen model, and last year's same month
+def test_month_shift_crosses_the_year():
+    assert dc._month_shift("2017-01", -12) == "2016-01"
+    assert dc._month_shift("2017-01", -1) == "2016-12"
+    assert dc._month_shift("2016-12", 1) == "2017-01"
+
+
+def _faulty_second_year(shift_from=None, shift_k=0.0):
+    f = _turbine(500)
+    if shift_from:
+        f.loc[f["ts"] >= pd.Timestamp(shift_from, tz="UTC"), CH] += shift_k
+    f.loc[f["ts"] >= pd.Timestamp("2017-03-15", tz="UTC"), CH] += 4.0
+    return f, {"T": [("2017-03-15", "2017-06-01")]}
+
+
+def test_off_the_frozen_model_judges_the_frozen_months():
+    f, spans = _faulty_second_year()
+    sim = dc.simulate(f, "T", tolerance=2.5, spans=spans, last_year_when_frozen=False)
+    frozen = [m for m in sim["months"] if m["model"] == "frozen"]
+    assert frozen and all(m["model_from"] is None for m in frozen)
+
+
+def test_a_frozen_month_is_judged_with_last_years_same_month():
+    f, spans = _faulty_second_year()
+    sim = dc.simulate(f, "T", tolerance=2.5, spans=spans, last_year_when_frozen=True)
+    months = {m["month"]: m for m in sim["months"]}
+    assert months["2017-04"]["model"] == "frozen"
+    assert months["2017-04"]["model_from"] == "2016-04"
+    assert months["2017-05"]["model_from"] == "2016-05"
+    may = [d for d in sim["days"] if d["day"].startswith("2017-05")
+           and d.get("status") == "checked"]
+    assert may and all(d["model_from"] == "2016-05" and d["flag"] == "hot" for d in may)
+    # A month that is not frozen keeps its own model.
+    assert months["2017-03"]["model_from"] is None
+
+
+def test_last_year_is_not_used_when_the_component_has_changed_since():
+    """A repair a year ago that shifted the bearing's healthy level: last
+    year's model no longer describes this component, so the frozen one stays."""
+    f, spans = _faulty_second_year(shift_from="2016-12-01", shift_k=1.5)
+    sim = dc.simulate(f, "T", tolerance=2.5, spans=spans, last_year_when_frozen=True)
+    frozen = [m for m in sim["months"] if m["model"] == "frozen"]
+    assert frozen and all(m["model_from"] is None for m in frozen)

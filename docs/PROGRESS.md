@@ -1306,3 +1306,30 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   and R80711's peak; the CARE scope section renamed; the CARE date shift and
   the match with EDP's records added to the data forensics.
 * All checkboxes in the dashboard are large and high-contrast.
+
+#### Step 17: a frozen model judged with last year's same month
+
+* Why the limit caught days the model missed on R80711: after the fault was
+  confirmed the model stayed frozen on its May to July 2017 training, and
+  judged September 2017 to January 2018 with it. In summer the turbine rarely
+  runs at high power (95% of the training readings were below 56% power), so
+  the model had no healthy reference for the windy winter hours, when the
+  bearing is hottest: from November it could judge 6,092 readings,
+  last year's models 7,209.
+* The rule (windmill.daily_check, `last_year_when_frozen`, on in the ENGIE
+  daily check): in a frozen month, judge the turbine with its own healthy
+  model for the same month a year earlier, if last year's model for the
+  frozen model's month still predicts the frozen model's healthy readings to
+  within 1 K (a repair that changed the component fails this).
+* Result (results/frozen_fallback.json, `make frozen-fallback`): limit-only
+  days 6 → 1; R80711 hot days
+  43 → 57 of 103; the three healthy turbines judged
+  the same way over the same months: 0 → 0 false hot days in
+  271 days.
+* Tried and not adopted: a seasonal correction from the healthy siblings
+  (caught 1 of the 6 days) and the past window with the most similar weather
+  (5 of 6, but its picks were 2 to 3 years old and added false hot days on
+  the healthy turbines).
+* CARE Farms B and C keep the plain frozen model (the switch is off by
+  default there), so their published numbers are unchanged.
+

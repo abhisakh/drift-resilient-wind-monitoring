@@ -1216,3 +1216,35 @@ def test_the_demo_shows_the_models_marks_only_with_its_prediction():
     names = {t.name for t in full.data}
     assert "hot day: over 2 K above the prediction" in names
     assert "model call-out (first hot day of a run), in the abnormal period" in names
+
+
+def test_the_demo_charts_span_exactly_the_titled_period():
+    """Both charts show the period in their title, so they line up day for
+    day whatever day each turbine was first judged."""
+    import pandas as pd
+
+    mod = _import_app()
+    df = pd.DataFrame({"day": ["2017-08-17", "2017-08-18"], "status": ["checked", "checked"],
+                       "actual": [70.0, 71.0], "pred": [70.0, 71.0], "f1": [70.0, 71.0],
+                       "fault_period": [False, False]})
+    lo, hi = pd.Timestamp("2017-08-15"), pd.Timestamp("2017-09-14")
+    fig = mod._three_line_figure(df, 2.0, 1, "t", x_range=[lo, hi])
+    assert pd.Timestamp(fig.layout.xaxis.range[0]) == lo
+    assert pd.Timestamp(fig.layout.xaxis.range[1]) == hi
+
+
+def test_the_performance_page_shows_the_frozen_model_and_its_fix():
+    """The days only the limit caught, why, and last year's same month as the
+    fix, read from results/frozen_fallback.json."""
+    import json
+
+    ff = json.loads((ROOT / "results" / "frozen_fallback.json").read_text())
+    miss = ff["limit_days_missed_by_frozen"]
+    left = len(miss["days"]) - len(miss["caught_by_last_year"])
+    at = _app_test()
+    at.run()
+    assert not at.exception, f"the app raised: {at.exception}"
+    body = "\n".join(m.value for m in at.markdown)
+    assert "Why the limit caught days the model missed, and the fix" in body
+    assert f"{len(miss['days'])} → {left}" in body
+    assert "last year" in body

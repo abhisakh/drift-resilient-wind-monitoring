@@ -434,20 +434,20 @@ Each month a model is trained on at least a month of healthy readings from befor
 | tolerance | healthy siblings, false call-outs a year | R80711, false call-outs a year | R80711, first call-out on the fault | fault days hot, of those checked | siblings, cold days a year |
 |---|---|---|---|---|---|
 | 1 K | 1.5 | 8.8 | 2017-10-03 23:50 | 9 of 84 | 35.5 |
-| 1.5 K | 0.1 | 6.4 | 2017-08-15 23:50 | 58 of 111 | 24.4 |
-| 2 K | 0.1 | 4.8 | 2017-08-15 23:50 | 48 of 115 | 16.6 |
+| 1.5 K | 0.1 | 6.4 | 2017-08-15 23:50 | 63 of 114 | 24.4 |
+| 2 K | 0.1 | 4.8 | 2017-08-15 23:50 | 61 of 114 | 16.6 |
 | 3 K | 0.1 | 0.7 | 2017-09-13 23:50 | 4 of 115 | 7.5 |
 | plain 80 °C limit, held 1 h | 0.0 / 0.0 / 0.0 | 2.9 | 2017-08-15 11:10 | | |
 
 On healthy days the day's mean difference has a standard deviation of 1.00 to 1.19 K on the siblings, so a tolerance of 1 K sits inside the model's own day-to-day noise. Too tight a tolerance also starves the training: every flagged day is left out, and when too few healthy days remain the model goes blank.
 
-**R80711 before its fault (2 K).** Hot call-outs outside the fault period, by year: 2013: 1, 2015: 4, 2016: 2, 2017: 15. Hot days by month from 2017: 2017-05: 2, 2017-06: 6, 2017-07: 9, 2017-08: 7, 2017-09: 7, 2017-10: 11, 2017-11: 8, 2017-12: 11, 2018-01: 7. The bearing began running hotter than its own healthy reference from May 2017, months before the first sustained hot spell on 8 September. With no fault labels this is a candidate early warning, not a proven one: those days count as false alarms here.
+**R80711 before its fault (2 K).** Hot call-outs outside the fault period, by year: 2013: 1, 2015: 4, 2016: 2, 2017: 15. Hot days by month from 2017: 2017-05: 2, 2017-06: 6, 2017-07: 9, 2017-08: 7, 2017-09: 9, 2017-10: 14, 2017-11: 13, 2017-12: 14, 2018-01: 7. The bearing began running hotter than its own healthy reference from May 2017, months before the first sustained hot spell on 8 September. With no fault labels this is a candidate early warning, not a proven one: those days count as false alarms here.
 
 **What it costs in coverage (2 K):**
 
 | turbine | running days | days blank (start, maintenance) | running days checked | maintenance restarts |
 |---|---|---|---|---|
-| R80711 | 1812 | 174 | 73 % | 2 |
+| R80711 | 1812 | 174 | 72 % | 2 |
 | R80721 | 1804 | 366 | 60 % | 4 |
 | R80736 | 1817 | 246 | 65 % | 2 |
 | R80790 | 1559 | 357 | 61 % | 6 |
@@ -1075,7 +1075,7 @@ simulated; it is the same code path the CARE scoring uses.
 .venv/bin/python -m pytest tests/ -q
 ```
 
-364 tests, including `tests/test_scoring_matches_reference.py`, which proves our
+508 tests, including `tests/test_scoring_matches_reference.py`, which proves our
 CARE score is identical to the benchmark authors' implementation — the
 criticality counter, the weighted score, every per-event metric and the final
 weighted score.

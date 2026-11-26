@@ -93,6 +93,14 @@ MIN_DAY_ROWS = 36
 #: The trimming of unhealthy training rows: the engine's own setting.
 TRIM_K = 4.0
 #: How far back the training may reach, and by how much at a time.
+#: In a month the model is frozen after a confirmed fault, judge the turbine
+#: with its own healthy model for the same month a year earlier (see
+#: `simulate` and `last_year_ok`). Off by default so other callers (CARE
+#: Farms B and C) keep the plain frozen model; the ENGIE daily check
+#: (scripts/pipeline/19_daily_check.py) turns it on.
+LAST_YEAR_WHEN_FROZEN = False
+#: How close last year's model must be on this year's healthy readings, K.
+LAST_YEAR_GATE_K = 1.0
 MAX_LOOKBACK_DAYS = live.MAX_TRAIN_LOOKBACK_DAYS
 STEP_DAYS = live.TRAIN_EXTEND_DAYS
 #: A month of healthy readings.
@@ -268,11 +276,50 @@ def _forecast_noise(seed_key: str, month: str, lead: int, n_days: int,
             rng.normal(0, s, n_days), rng.normal(0, 0.5 * s, n_hours))
 
 
+def _month_shift(month: str, k: int) -> str:
+    y, m = int(month[:4]), int(month[5:7]) - 1 + k
+    return f"{y + m // 12:04d}-{m % 12 + 1:02d}"
+
+
+def last_year_gate_k(f: pd.DataFrame, trained_by_month: dict, model_month: str | None,
+                     model_window, excluded: set, channel: str = CHANNEL) -> float | None:
+    """Median error of last year's model for the frozen model's own month on
+    the frozen model's healthy training readings, K (None: no such model)."""
+    prev = trained_by_month.get(_month_shift(model_month, -12)) if model_month else None
+    if prev is None or model_window is None or channel not in prev[0]["refs"]:
+        return None
+    lo, hi = _utc(model_window[0]), _utc(model_window[1])
+    w = f[(f["ts"] >= lo) & (f["ts"] < hi) & f["running"] & ~f["warmup"]
+          & ~f["day"].isin(excluded)]
+    if len(w) < MIN_DAY_ROWS * 7:
+        return None
+    r = w[channel].to_numpy(dtype="float64") - predict(
+        prev[0]["refs"][channel], w["P_norm"].to_numpy(dtype="float64"),
+        w["era5_temp_2m"].to_numpy(dtype="float64"))
+    r = r[np.isfinite(r)]
+    return float(np.median(r)) if len(r) else None
+
+
+def last_year_ok(f: pd.DataFrame, trained_by_month: dict, model_month: str | None,
+                 model_window, excluded: set, channel: str = CHANNEL) -> bool:
+    """May last year's models stand in for a frozen one?
+
+    Only if the component behaves as it did a year ago: last year's model for
+    the frozen model's own month must predict the frozen model's healthy
+    training readings to within LAST_YEAR_GATE_K (median error). A repair
+    since then that changed the component fails this, and the frozen model
+    is kept."""
+    g = last_year_gate_k(f, trained_by_month, model_month, model_window, excluded, channel)
+    return g is not None and abs(g) <= LAST_YEAR_GATE_K
+
+
 def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
              warmup_hours: float = WARMUP_HOURS, spans: dict | None = None,
              channel: str = CHANNEL,
              maintenance_days: float = MAINTENANCE_DAYS,
-             channels=None, leads=(), maintenance_extra=()) -> dict:
+             channels=None, leads=(), maintenance_extra=(),
+             last_year_when_frozen: bool | None = None,
+             last_year_months=()) -> dict:
     """Run the policy over a turbine's whole record, month by month, day by day.
 
     `channels` adds a healthy model and a daily check for each further sensor
@@ -282,7 +329,16 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     maintenance. `maintenance_extra` adds maintenance that is RECORDED (a
     failure logbook's repairs, where one exists): the model starts over after
     it exactly as after a stand-in.
+
+    `last_year_when_frozen` (default LAST_YEAR_WHEN_FROZEN): a model frozen
+    after a confirmed fault was trained in one season and is used into the
+    next, so in a frozen month the turbine is judged with its own healthy
+    model for the same month a year earlier, when there is one and it passes
+    `last_year_ok`. `last_year_months` does the same in the months named
+    whatever the state (the control: a healthy turbine judged that way).
     """
+    if last_year_when_frozen is None:
+        last_year_when_frozen = LAST_YEAR_WHEN_FROZEN
     f, maintenance = mark_restarts(frame, warmup_hours=warmup_hours,
                                    maintenance_days=maintenance_days)
     if len(maintenance_extra):
@@ -301,6 +357,8 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     model_window = None
     frozen_since = None
     state_by_month: dict = {}
+    trained_by_month: dict = {}
+    model_month = None
     days_out: list[dict] = []
     months_out: list[dict] = []
     for month in months:
@@ -324,6 +382,15 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
                 ever_trained = True
                 trained_since_maint = True
                 model_window = (info["train_start"], info["train_end"])
+                model_month = month
+                trained_by_month[month] = (model, model_window)
+        used, model_from = model, None
+        if model is not None and ((last_year_when_frozen and state == "frozen")
+                                  or month in last_year_months):
+            ly = _month_shift(month, -12)
+            if ly in trained_by_month and last_year_ok(
+                    f, trained_by_month, model_month, model_window, excluded, channel):
+                used, model_from = trained_by_month[ly][0], ly
         if model is None:
             reason = ("maintenance"
                       if seen_maint is not None and not trained_since_maint
@@ -333,12 +400,13 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
         months_out.append({"month": month, "model": state, "reason": reason,
                            "model_train_start": model_window[0] if model else None,
                            "model_train_end": model_window[1] if model else None,
+                           "model_from": model_from,
                            **(info or {})})
 
         mm = f[(f["ts"] >= m_start) & (f["ts"] < m_end)]
         inside = [t for t in maintenance if m_start <= t < m_end]
         cut = min(inside) if inside else None
-        state_by_month[month] = (model, cut)
+        state_by_month[month] = (used, cut)
         load = mm["P_norm"].to_numpy(dtype="float64")
         amb = mm["era5_temp_2m"].to_numpy(dtype="float64")
         after_cut = ((mm["ts"] >= cut).to_numpy() if cut is not None
@@ -348,8 +416,8 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
         pred: dict = {}
         for c in chans:
             actual[c] = mm[c].to_numpy(dtype="float64")
-            if model is not None and c in model["refs"] and len(mm):
-                pred[c] = predict(model["refs"][c], load, amb)
+            if used is not None and c in used["refs"] and len(mm):
+                pred[c] = predict(used["refs"][c], load, amb)
             else:
                 pred[c] = np.full(len(mm), np.nan)
         resid = actual[channel] - pred[channel]
@@ -423,6 +491,8 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
                            pred_k=round(float(np.mean(pred[channel][idx][ok])), 3))
                 if state == "frozen":
                     rec["frozen_since"] = frozen_since
+                if model_from:
+                    rec["model_from"] = model_from
                 if len(chans) > 1:
                     ch_out = {}
                     for c in chans:

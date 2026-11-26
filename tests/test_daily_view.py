@@ -103,13 +103,16 @@ def test_a_run_of_hot_days_is_one_alarm():
     assert len(a) == 1 and a["days"].iloc[0] == 3
 
 
-def test_the_committed_demo_month_has_six_real_alarms_on_r80711():
+def test_the_committed_demo_month_has_seven_real_alarms_on_r80711():
+    """Seven since September 2017 is judged with last year's September model
+    while R80711's model is frozen (daily_check.LAST_YEAR_WHEN_FROZEN); the
+    frozen summer model alone gave six."""
     s = dv.load(SERIES)
     if s is None:
         return
     full = dv.frame(s, "R80711", "Gb2t_avg")
     a = dv.alarms(full, s["tolerance_k"])
     win = a[(a["day"] >= "2017-08-15") & (a["day"] <= "2017-09-14")]
-    assert len(win) == 6 and win["real"].all()
+    assert len(win) == 7 and win["real"].all()
     healthy = dv.alarms(dv.frame(s, "R80721", "Gb2t_avg"), s["tolerance_k"])
     assert len(healthy) == 0

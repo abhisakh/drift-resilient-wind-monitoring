@@ -1710,6 +1710,7 @@ def section_conclusion() -> str:
     en = load("engie_triage.json")
     av = load("alarm_value.json")
     bc = load("care_farms_bc.json")
+    ff = load("frozen_fallback.json")
     if not (dc_ and lv and em and fa and en and av and bc):
         return ""
     two = dc_["fleet"]["2"]
@@ -1765,7 +1766,18 @@ def section_conclusion() -> str:
         f"reference frozen in 2014 alarmed on **{fmt(frozen, 2)} %** of readings; one refreshed on "
         f"the last 30 days, on **{fmt(rolling, 2)} %** ({fmt(frozen / rolling, 1)}× fewer). A stale "
         f"model buries the real signal in false alarms. The monthly model never learns from flagged "
-        f"days, so a fault cannot become the new normal.\n")
+        f"days, so a fault cannot become the new normal.")
+    if ff:
+        m, h = ff["limit_days_missed_by_frozen"], ff["healthy"]
+        out.append(
+            f"\nThe same holds for a model frozen after a confirmed fault. R80711's, trained in "
+            f"summer, judged the winter and missed {len(m['days'])} days the limit caught: it had "
+            f"no healthy reference for the high power of windy winter days, when the bearing is "
+            f"hottest. Each frozen month is now judged with the turbine's own healthy model for "
+            f"the same month a year earlier; that caught {len(m['caught_by_last_year'])} of the "
+            f"{len(m['days'])}, and the three healthy turbines judged the same way over the same "
+            f"months had {h['false_hot_days']['last_year']} false hot days in {h['days_judged']}.")
+    out.append("")
     out.append("### 3. Every alarm can be explained\n")
     out.append(
         f"Each alarm is split into typical temperature + load + weather + **excess heat**. On EDP's "

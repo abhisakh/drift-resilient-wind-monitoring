@@ -3,7 +3,7 @@
   "from": "2012-12-31",
   "to": "2018-01-12",
   "checked_days": {
-   "R80711": 1314,
+   "R80711": 1313,
    "R80721": 1081,
    "R80736": 1179,
    "R80790": 944
@@ -17,14 +17,14 @@
  "anomaly_span": {
   "from": "2017-08-15",
   "to": "2018-01-12",
-  "days_checked": 115,
-  "model_hot_days": 48,
-  "limit_days": 42,
-  "both": 36,
-  "model_only": 12,
-  "limit_only": 6,
-  "model_only_daily_mean_c_median": 73.8,
-  "model_only_excess_k_median": 3.0
+  "days_checked": 114,
+  "model_hot_days": 61,
+  "limit_days": 41,
+  "both": 40,
+  "model_only": 21,
+  "limit_only": 1,
+  "model_only_daily_mean_c_median": 72.6,
+  "model_only_excess_k_median": 2.9
  },
  "before_span": {
   "from": "2017-06-01",

@@ -33,21 +33,23 @@ A fixed setting only fires once the signal crosses it. A problem that develops b
 
 ### 1. A model sees slow degradation that a fixed limit misses
 
-The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,314 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. **R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018)**. In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
+The model ran over ENGIE's whole record, from 31 December 2012 to 12 January 2018, on all four turbines, and checked 1,313 days on R80711 and 3,204 on its three healthy siblings (8.8 turbine-years); the other days had too little running data or fell in the wait for a new healthy month after a long stop. R80711's gearbox bearing ran abnormally hot from 15 August 2017 to the end of the record (12 January 2018). In that period the fixed limit (80 °C held for an hour) and the model (a day more than 2 K above the healthy prediction) were compared day by day:
 
 | | days |
 |---|---|
-| abnormal period, days checked | 115 |
-| flagged by both | 36 |
-| **flagged by the model only** | **12** |
-| flagged by the limit only | 6 |
+| abnormal period, days checked | 114 |
+| flagged by both | 40 |
+| **flagged by the model only** | **21** |
+| flagged by the limit only | 1 |
 | ten weeks before: model hot days (of them, limit days) | 18 (9) |
 
-On the model-only days the bearing averaged 73.8 °C, 3.0 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year, about as quiet as the limit. So the model does not replace the limit; it adds what the limit cannot see.
+On the model-only days the bearing averaged 72.6 °C, 2.9 K hotter than a healthy bearing at that day's power and weather: too cool for the limit, too hot for the conditions. Over the 8.8 turbine-years checked on the three healthy siblings the model raised 0.14 false call-outs per turbine-year, about as quiet as the limit. So the model does not replace the limit; it adds what the limit cannot see.
 
 ### 2. The model must be retrained every month
 
 Turbines drift: each ENGIE turbine's temperatures move by several kelvin between years. A reference frozen in 2014 alarmed on **26.37 %** of readings; one refreshed on the last 30 days, on **0.57 %** (46.5× fewer). A stale model buries the real signal in false alarms. The monthly model never learns from flagged days, so a fault cannot become the new normal.
+
+The same holds for a model frozen after a confirmed fault. R80711's, trained in summer, judged the winter and missed 6 days the limit caught: it had no healthy reference for the high power of windy winter days, when the bearing is hottest. Each frozen month is now judged with the turbine's own healthy model for the same month a year earlier; that caught 5 of the 6, and the three healthy turbines judged the same way over the same months had 0 false hot days in 271.
 
 ### 3. Every alarm can be explained
 
@@ -70,7 +72,7 @@ A trusted alarm is one a crew acts on. On T06 the model confirmed real heat 54 d
 
 1. **Learn the healthy turbine.** For each temperature sensor, learn its normal reading at the turbine's power and the outside temperature, from at least a month of healthy data.
 2. **Freeze it for the month, check every day.** Predict today's healthy value from today's power and weather. A day more than 2 K hotter is a hot day; a run of hot days is one call-out.
-3. **Never learn a fault.** Flagged days are never used for training; after maintenance the model waits for a new healthy month; neighbouring turbines in the same wind give a second opinion.
+3. **Never learn a fault.** Flagged days are never used for training; after maintenance the model waits for a new healthy month; neighbouring turbines in the same wind give a second opinion. Once a fault is confirmed the model stays frozen, and each later month is judged with the turbine's own healthy model for the same month a year earlier, so a summer model never judges winter.
 4. **Explain the alarm.** Split the reading into typical temperature, load, weather and the excess heat nothing explains.
 
 The model is a learned lookup table (healthy temperature by power band and outside-temperature band): interpretable, retrained monthly, and about as accurate as LightGBM in this project's comparison.
@@ -114,7 +116,7 @@ tests/                unit tests, including the repository's own rules
 
 ## Tests
 
-364 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
+508 tests, including a check that the CARE score matches the benchmark authors' implementation, and a rule that every number in the generated sections of these documents is backed by a results file.
 
 ## Licence
 

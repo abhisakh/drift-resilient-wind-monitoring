@@ -145,6 +145,98 @@ def _limit_vs_model_view(lv: dict | None) -> None:
         "release has no fault label.</div>", unsafe_allow_html=True)
 
 
+def load_frozen_fallback() -> dict | None:
+    return _load("frozen_fallback.json")
+
+
+def _frozen_fallback_view(ff: dict | None) -> None:
+    """The days only the limit caught, why, and the fix: R80711 after its
+    fault, judged with the frozen summer model and with last year's model for
+    the same month. Read from results/frozen_fallback.json
+    (scripts/pipeline/25_frozen_fallback.py)."""
+    if not ff or not ff.get("days"):
+        return
+    import plotly.graph_objects as go
+
+    tol = ff["tolerance_k"]
+    t = ff["turbines"]["R80711"]
+    miss = ff["limit_days_missed_by_frozen"]
+    caught = set(miss["caught_by_last_year"])
+    still = [d for d in miss["days"] if d not in caught]
+    wr = ff["winter_readings_judged"]
+    trained = t["model_by_month"][next(iter(t["model_by_month"]))]["trained"]
+    st.markdown("#### Why the limit caught days the model missed, and the fix")
+    st.markdown(
+        f"After R80711's fault was confirmed its model stayed frozen, so it "
+        f"could not learn the fault. That model was trained on "
+        f"{trained[0][:7]} to {trained[1][:7]}: a summer model judging winter "
+        f"days. In summer the turbine rarely runs at high power, so the model "
+        f"has no healthy reference for the windy winter hours, when the "
+        f"bearing is hottest. Those readings went unjudged, and the rest were "
+        f"judged a season out of date. The fix: while the model is frozen, "
+        f"judge each month with the turbine's own healthy model for the same "
+        f"month a year earlier, if it still predicts this year's healthy "
+        f"readings to within {ff['gate_k']:g} K.")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        kpi(f"{len(miss['days'])} → {len(still)}",
+            "days the limit caught and the model missed",
+            "frozen summer model → last year's same month")
+    with c2:
+        kpi(f"{t['hot_days']['frozen']} → {t['hot_days']['last_year']}",
+            "R80711 hot days, Sep 2017 to Jan 2018",
+            f"of {t['days_judged']} days checked")
+    with c3:
+        h = ff["healthy"]
+        kpi(f"{h['false_hot_days']['frozen']} → {h['false_hot_days']['last_year']}",
+            "false hot days on the 3 healthy turbines",
+            f"{h['days_judged']} days, each judged with its own last-year models")
+    with c4:
+        kpi(f"{wr['frozen']:,} → {wr['last_year']:,}",
+            "winter readings the model could judge",
+            f"R80711 from {wr['from'][:7]}")
+    days = [d["day"] for d in ff["days"]]
+    fig = go.Figure()
+    for d in miss["days"]:
+        fig.add_vrect(x0=pd.Timestamp(d) - pd.Timedelta(hours=12),
+                      x1=pd.Timestamp(d) + pd.Timedelta(hours=12),
+                      fillcolor="rgba(224,82,99,0.22)", line_width=0)
+    fig.add_trace(go.Scatter(
+        x=days, y=[d["frozen_excess_k"] for d in ff["days"]], mode="lines+markers",
+        name="frozen summer model", line=dict(color="#7f8ea3", width=2.5),
+        marker=dict(size=6),
+        customdata=[[d["frozen_readings"]] for d in ff["days"]],
+        hovertemplate="%{x|%d %b %Y}: %{y:.1f} K above the frozen model "
+                      "(%{customdata[0]} readings judged)<extra></extra>"))
+    fig.add_trace(go.Scatter(
+        x=days, y=[d["last_year_excess_k"] for d in ff["days"]], mode="lines+markers",
+        name="last year's model for the same month", line=dict(color=C_MODEL, width=3),
+        marker=dict(size=6),
+        customdata=[[d["last_year_readings"]] for d in ff["days"]],
+        hovertemplate="%{x|%d %b %Y}: %{y:.1f} K above last year's model "
+                      "(%{customdata[0]} readings judged)<extra></extra>"))
+    fig.add_trace(go.Scatter(
+        x=[pd.Timestamp(d) for d in miss["days"]], y=[None] * len(miss["days"]),
+        mode="markers", name="the 80 °C limit fired, the frozen model did not",
+        marker=dict(symbol="square", size=14, color="rgba(224,82,99,0.5)")))
+    fig.add_hline(y=tol, line=dict(color=C_HOT, width=2, dash="dash"),
+                  annotation_text=f"tolerance +{tol:g} K")
+    fig.update_layout(
+        title="R80711 after its fault: daily excess heat under each model",
+        height=520, margin=dict(l=10, r=10, t=30, b=120),
+        legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
+                    x=0, xanchor="left"))
+    fig.update_yaxes(title_text="sensor − prediction, K")
+    _chart(fig, width="stretch")
+    note = (f"Both lines are the same daily check on the same days; only the "
+            f"model differs. A day above the dashed line is a hot day.")
+    if still:
+        note += (f" Still missed: {', '.join(pd.Timestamp(d).strftime('%d %b') for d in still)}, "
+                 f"when the bearing was hot for only a few hours and the daily "
+                 f"average stayed under the tolerance.")
+    st.markdown(f"<div class='note'>{note}</div>", unsafe_allow_html=True)
+
+
 def _daily_check_view(dcj: dict | None) -> None:
     """The daily check over the whole record, read from results/daily_check.json.
 
@@ -2259,7 +2351,8 @@ def _window_alarms(series: dict, turbine: str, sensor: str, start: str,
 
 def _three_line_figure(df, tolerance: float, lead: int, title: str,
                        y_range=None, alarms=None, show_pred: bool = True,
-                       show_forecast: bool = True, limit_c: float | None = None):
+                       show_forecast: bool = True, limit_c: float | None = None,
+                       x_range=None):
     """The forecast, the on-day prediction and the sensor, one point per day,
     with the tolerance as a band around the on-day prediction. The sensor is
     always drawn; the prediction (with its band) and the forecast can be
@@ -2335,6 +2428,10 @@ def _three_line_figure(df, tolerance: float, lead: int, title: str,
     fig.update_yaxes(title_text="°C")
     if y_range:
         fig.update_yaxes(range=y_range)
+    if x_range:
+        # The period in the title, exactly: charts side by side then share
+        # their days, whatever day each turbine was first judged.
+        fig.update_xaxes(range=x_range)
     return fig
 
 
@@ -2405,7 +2502,8 @@ def page_demo(series: dict | None) -> None:
             f"(tolerance ±{tol:g} K on both)", y_range=y_range,
             alarms=_window_alarms(series, t, series["primary"], demo["start"],
                                   demo["end"], tol),
-            show_pred=show_pred, show_forecast=show_fc, limit_c=limit_c),
+            show_pred=show_pred, show_forecast=show_fc, limit_c=limit_c,
+            x_range=[pd.Timestamp(demo["start"]) - pd.Timedelta(hours=12), pd.Timestamp(demo["end"]) + pd.Timedelta(hours=12)]),
             width="stretch")
         _demo_cards(card, dv.badge(series, t, demo["end"], _month_of_readings(series)))
     st.markdown(
@@ -2580,7 +2678,8 @@ def page_explore(series: dict | None) -> None:
         _chart(_three_line_figure(df, tol, lead,
                                   f"{focus}: {names[sensor]}, {month} "
                                   f"(tolerance ±{tol:g} K)", y_range=y_range,
-                                  alarms=alarms.get(focus)),
+                                  alarms=alarms.get(focus),
+                                  x_range=[pd.Timestamp(start) - pd.Timedelta(hours=12), pd.Timestamp(end) + pd.Timedelta(hours=12)]),
                width="stretch")
     else:
         st.info(f"{focus} has no checked day in {month}.")
@@ -2613,6 +2712,7 @@ def page_performance(dcj: dict | None, series: dict | None, live: bool) -> None:
     """Page 3: the record, every day of every turbine, and the monthly loop."""
     st.subheader("Performance over the whole record")
     _limit_vs_model_view(load_limit_vs_model())
+    _frozen_fallback_view(load_frozen_fallback())
     if dcj and dcj.get("fleet"):
         _daily_check_view(dcj)
         _forecast_accuracy_view(dcj)
