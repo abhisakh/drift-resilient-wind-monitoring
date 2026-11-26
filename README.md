@@ -71,7 +71,7 @@ A trusted alarm is one a crew acts on. On T06 the model confirmed real heat 54 d
 ## How it works
 
 1. **Learn the healthy turbine.** For each temperature sensor, learn its normal reading at the turbine's power and the outside temperature, from at least a month of healthy data.
-2. **Freeze it for the month, check every day.** Predict today's healthy value from today's power and weather. A day more than 2 K hotter is a hot day; a run of hot days is one call-out.
+2. **Freeze it for the month, check every day.** Predict today's healthy value from today's power and weather. A day more than 2 K hotter on average is a hot day, and so is any day the sensor held the fixed 80 °C limit for an hour: the limit is part of the rule, so the model flags every day the limit does. A run of hot days is one call-out.
 3. **Never learn a fault.** Flagged days are never used for training; after maintenance the model waits for a new healthy month; neighbouring turbines in the same wind give a second opinion. Once a fault is confirmed the model stays frozen, and each later month is judged with the turbine's own healthy model for the same month a year earlier, so a summer model never judges winter.
 4. **Explain the alarm.** Split the reading into typical temperature, load, weather and the excess heat nothing explains.
 

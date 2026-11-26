@@ -99,7 +99,7 @@ def test_app_renders_in_snapshot_mode_without_raw_data(tmp_path):
     # only the model flagged. (The CARE score used to be checked here; it was
     # shown in the "does and does not claim" box, which is gone.)
     lv = json.loads((ROOT / "results" / "limit_vs_model.json").read_text())
-    assert "flagged by the model only" in body, (
+    assert "days flagged below the limit" in body, (
         "the fixed-limit comparison is missing from the cloud render")
     assert str(lv["anomaly_span"]["model_only"]) in body
 
@@ -1148,8 +1148,12 @@ def test_the_performance_page_shows_what_only_the_model_sees():
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "The fixed 80 °C limit against the model, day by day" in body
-    assert "flagged by the model only" in body
+    assert "The fixed 80 °C limit and the model, day by day" in body
+    assert "days flagged below the limit" in body
+    # The limit is part of the rule: every limit day is flagged.
+    sp = json.loads(lv.read_text())["anomaly_span"]
+    assert sp["limit_days_flagged"] == sp["limit_days_all"]
+    assert f"{sp['limit_days_all']} of {sp['limit_days_all']}" in body
 
 
 def test_the_demo_charts_draw_the_fixed_limit_as_a_dashed_line():
@@ -1245,7 +1249,7 @@ def test_the_performance_page_shows_the_frozen_model_and_its_fix():
     at.run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "Why the limit caught days the model missed, and the fix" in body
+    assert "Why the daily average missed limit days, and the fix" in body
     assert f"{len(miss['days'])} → {left}" in body
     assert "last year" in body
 
@@ -1265,4 +1269,4 @@ def test_the_frozen_model_month_opens_on_the_sensor_and_adds_each_model():
     boxes["perf_show_last_year"].check().run()
     assert not at.exception, f"the app raised: {at.exception}"
     body = "\n".join(m.value for m in at.markdown)
-    assert "has no prediction for" in body
+    assert "the frozen summer model could not judge" in body

@@ -1742,15 +1742,15 @@ def section_conclusion() -> str:
         f"little running data or fell in the wait for a new healthy month after a long stop. "
         f"R80711's gearbox bearing "
         f"ran abnormally hot from {day(sp['from'])} to the end of the record "
-        f"({day(sp['to'])}). In that period the fixed limit (80 °C held for an hour) and "
-        f"the model (a day more than {fmt(lv['tolerance_k'], 0)} K above the healthy "
-        f"prediction) were compared day by day:\n")
+        f"({day(sp['to'])}). The fixed limit is part of the model's rule: a day on which "
+        f"the bearing held 80 °C for an hour is always a hot day, and so is a day more than "
+        f"{fmt(lv['tolerance_k'], 0)} K above the healthy prediction on average. In that "
+        f"period:\n")
     out.append("| | days |")
     out.append("|---|---|")
     out.append(f"| abnormal period, days checked | {sp['days_checked']} |")
-    out.append(f"| flagged by both | {sp['both']} |")
-    out.append(f"| **flagged by the model only** | **{sp['model_only']}** |")
-    out.append(f"| flagged by the limit only | {sp['limit_only']} |")
+    out.append(f"| the 80 °C limit fired: flagged by the model | {sp['limit_days_flagged']} of {sp['limit_days_all']} |")
+    out.append(f"| **flagged by the model below the limit** | **{sp['model_only']}** |")
     out.append(f"| ten weeks before: model hot days (of them, limit days) | {bf['model_hot_days']} ({bf['of_them_limit_days']}) |")
     out.append(
         f"\nOn the model-only days the bearing averaged {fmt(sp['model_only_daily_mean_c_median'], 1)} °C, "
@@ -1771,7 +1771,8 @@ def section_conclusion() -> str:
         m, h = ff["limit_days_missed_by_frozen"], ff["healthy"]
         out.append(
             f"\nThe same holds for a model frozen after a confirmed fault. R80711's, trained in "
-            f"summer, judged the winter and missed {len(m['days'])} days the limit caught: it had "
+            f"summer, judged the winter, and its {fmt(lv['tolerance_k'], 0)} K daily average alone "
+            f"missed {len(m['days'])} days the limit caught: it had "
             f"no healthy reference for the high power of windy winter days, when the bearing is "
             f"hottest. Each frozen month is now judged with the turbine's own healthy model for "
             f"the same month a year earlier; that caught {len(m['caught_by_last_year'])} of the "

@@ -71,6 +71,8 @@ def series(sim: dict) -> dict:
            "reason": [d.get("reason") for d in days],
            "state": [d.get("state") for d in days],
            "flag": [d.get("flag") for d in days],
+           "limit": [bool(d.get("limit")) for d in days],
+           "mean_k": [d.get("mean_k") for d in days],
            "maintenance": [d.get("maintenance") for d in days],
            "collected": [d.get("collected") for d in days],
            "fault_period": [d["fault_period"] for d in days],
@@ -101,7 +103,7 @@ def run(data_dir: Path, turbines: list[str], tolerances: list[float],
             sim = dc.simulate(frame, turbine, tol, warmup_hours=warmup_hours,
                               channels=list(dc.SENSORS) if full else None,
                               leads=dc.LEADS if full else (),
-                              last_year_when_frozen=True)
+                              last_year_when_frozen=True, limit_rule=True)
             rows.append(dc.summarise(sim, limit))
             if full:
                 ser[turbine] = series(sim)

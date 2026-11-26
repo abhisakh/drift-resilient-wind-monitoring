@@ -120,29 +120,40 @@ def _limit_vs_model_view(lv: dict | None) -> None:
     if not lv:
         return
     sp, bf = lv["anomaly_span"], lv["before_span"]
-    st.markdown("#### The fixed 80 °C limit against the model, day by day")
+    st.markdown("#### The fixed 80 °C limit and the model, day by day")
     st.markdown(
-        f"R80711's gearbox bearing ran abnormally hot from August 2017. Of the "
-        f"{sp['days_checked']} days the model checked in that period:")
+        f"The fixed limit is part of the model's rule: a day on which the bearing "
+        f"held {dck_hot_c():g} °C for an hour is always a hot day. The model adds "
+        f"the days that were too hot for their power and weather but stayed under "
+        f"the limit. R80711's gearbox bearing ran abnormally hot from August 2017; "
+        f"in that period:")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        kpi(str(sp["both"]), "flagged by both", "the limit and the model agree")
+        kpi(f"{sp['limit_days_flagged']} of {sp['limit_days_all']}",
+            "days the 80 °C limit fired, flagged by the model",
+            "every one, by design")
     with c2:
-        kpi(str(sp["model_only"]), "flagged by the model only",
+        kpi(str(sp["model_only"]), "days flagged below the limit",
             f"about {sp['model_only_daily_mean_c_median']:.0f} °C, "
             f"{sp['model_only_excess_k_median']:.1f} K above the healthy prediction")
     with c3:
-        kpi(str(sp["limit_only"]), "flagged by the limit only",
-            "the limit stays useful beside the model")
+        kpi(f"{sp['limit_days_over_the_average_too']} of {sp['limit_days_all']}",
+            "limit days also over the 2 K daily average",
+            "the model would have flagged them without the limit")
     with c4:
         kpi(f"{bf['model_hot_days']} vs {bf['of_them_limit_days']}",
             "hot days in the ten weeks before",
             "model vs the 80 °C limit")
     st.markdown(
-        "<div class='note'>On the model-only days the bearing was too cool for "
-        "the limit and too hot for that day's power and weather. The abnormal "
+        "<div class='note'>On the days below the limit the bearing was too cool "
+        "for the limit and too hot for that day's power and weather. The abnormal "
         "period is defined in this project from the sibling turbines; the ENGIE "
         "release has no fault label.</div>", unsafe_allow_html=True)
+
+
+def dck_hot_c() -> float:
+    from windmill import daily_check as dck
+    return dck.HOT_C
 
 
 def load_frozen_fallback() -> dict | None:
@@ -165,9 +176,10 @@ def _frozen_fallback_view(ff: dict | None) -> None:
     still = [d for d in miss["days"] if d not in caught]
     wr = ff["winter_readings_judged"]
     trained = t["model_by_month"][next(iter(t["model_by_month"]))]["trained"]
-    st.markdown("#### Why the limit caught days the model missed, and the fix")
+    st.markdown("#### Why the daily average missed limit days, and the fix")
     st.markdown(
-        f"After R80711's fault was confirmed its model stayed frozen, so it "
+        f"Without the limit in the rule, the 2 K daily average alone missed "
+        f"{len(miss['days'])} of R80711's limit days. After its fault was confirmed its model stayed frozen, so it "
         f"could not learn the fault. That model was trained on "
         f"{trained[0][:7]} to {trained[1][:7]}: a summer model judging winter "
         f"days. In summer the turbine rarely runs at high power, so the model "
@@ -180,7 +192,7 @@ def _frozen_fallback_view(ff: dict | None) -> None:
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         kpi(f"{len(miss['days'])} → {len(still)}",
-            "days the limit caught and the model missed",
+            "limit days the daily average missed",
             "frozen summer model → last year's same month")
     with c2:
         kpi(f"{t['hot_days']['frozen']} → {t['hot_days']['last_year']}",
@@ -2602,7 +2614,8 @@ def page_demo(series: dict | None) -> None:
         f"At the start of each month a model is trained on a month of **healthy** "
         f"data and then frozen. Each day it is fed only that day's power and "
         f"weather and predicts what a healthy bearing should read. If the sensor "
-        f"runs more than **{tol:g} K** hotter, a technician is called out that day. "
+        f"runs more than **{tol:g} K** hotter on average, or holds the fixed "
+        f"**80 °C** limit for an hour, a technician is called out that day. "
         f"Days ahead, the same model fed the **weather forecast** says what to expect.")
     with st.container(key="demo_controls"):
         st.markdown("**Show on both charts:** tick a box to compare the sensor "

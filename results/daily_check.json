@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-26T11:44:33.656311+00:00",
- "seconds": 249.9,
+ "generated": "2026-11-26T12:32:29.487934+00:00",
+ "seconds": 240.6,
  "complete_run": true,
  "protocol": {
   "channel": "Gb2t_avg",
@@ -56,33 +56,33 @@
    "warmup_hours": 12,
    "running_days": 1812,
    "healthy_running_days": 1663,
-   "checked_share": 0.6639,
-   "blank_running_days": 326,
+   "checked_share": 0.6507,
+   "blank_running_days": 355,
    "blank_running_days_by_reason": {
     "start": 58,
     "maintenance": 116,
-    "no healthy month": 152
+    "no healthy month": 181
    },
    "maintenance_restarts": [
     "2013-06-28 12:40",
     "2017-01-09 13:50"
    ],
    "months_trained": 48,
-   "months_frozen": 3,
-   "months_blank": 11,
+   "months_frozen": 2,
+   "months_blank": 12,
    "healthy_daily_mean_k": {
     "sd": 1.209,
     "p95_abs": 2.612,
     "p99": 2.438
    },
-   "false_call_outs": 40,
-   "false_call_outs_per_year": 8.785,
+   "false_call_outs": 41,
+   "false_call_outs_per_year": 9.005,
    "false_call_outs_by_year": {
     "2013": 2,
     "2014": 6,
     "2015": 6,
     "2016": 7,
-    "2017": 19
+    "2017": 20
    },
    "hot_days_by_month": {
     "2013-03": 1,
@@ -103,31 +103,29 @@
     "2017-05": 2,
     "2017-06": 11,
     "2017-07": 16,
-    "2017-10": 3,
-    "2017-11": 3,
-    "2017-12": 2,
-    "2018-01": 1
+    "2017-08": 3,
+    "2017-09": 6,
+    "2017-10": 5,
+    "2017-11": 8,
+    "2017-12": 15,
+    "2018-01": 7
    },
    "cold_days_per_year": 39.314,
-   "fault_call_outs": 7,
-   "first_fault_call_out": "2017-10-03 23:50",
-   "fault_days_checked": 84,
-   "fault_days_hot": 9,
+   "fault_call_outs": 17,
+   "first_fault_call_out": "2017-08-15 23:50",
+   "fault_days_checked": 60,
+   "fault_days_hot": 30,
    "fault_hot_by_month": {
-    "2017-10": {
-     "hot": 3,
-     "checked": 24
-    },
     "2017-11": {
-     "hot": 3,
+     "hot": 8,
      "checked": 25
     },
     "2017-12": {
-     "hot": 2,
+     "hot": 15,
      "checked": 25
     },
     "2018-01": {
-     "hot": 1,
+     "hot": 7,
      "checked": 10
     }
    },
@@ -180,17 +178,17 @@
     "2017-06": 8,
     "2017-07": 13,
     "2017-08": 10,
-    "2017-09": 9,
+    "2017-09": 10,
     "2017-10": 14,
     "2017-11": 13,
-    "2017-12": 14,
+    "2017-12": 15,
     "2018-01": 7
    },
    "cold_days_per_year": 22.842,
-   "fault_call_outs": 24,
+   "fault_call_outs": 23,
    "first_fault_call_out": "2017-08-15 23:50",
    "fault_days_checked": 114,
-   "fault_days_hot": 63,
+   "fault_days_hot": 64,
    "fault_hot_by_month": {
     "2017-08": {
      "hot": 6,
@@ -209,7 +207,7 @@
      "checked": 25
     },
     "2017-12": {
-     "hot": 14,
+     "hot": 15,
      "checked": 25
     },
     "2018-01": {
@@ -240,16 +238,16 @@
    "months_frozen": 5,
    "months_blank": 6,
    "healthy_daily_mean_k": {
-    "sd": 1.123,
+    "sd": 1.122,
     "p95_abs": 2.451,
     "p99": 2.491
    },
-   "false_call_outs": 22,
-   "false_call_outs_per_year": 4.832,
+   "false_call_outs": 21,
+   "false_call_outs_per_year": 4.612,
    "false_call_outs_by_year": {
     "2013": 1,
     "2015": 4,
-    "2016": 2,
+    "2016": 1,
     "2017": 15
    },
    "hot_days_by_month": {
@@ -257,23 +255,22 @@
     "2015-03": 1,
     "2015-07": 2,
     "2015-08": 1,
-    "2016-11": 1,
-    "2016-12": 1,
+    "2016-11": 2,
     "2017-05": 2,
     "2017-06": 6,
     "2017-07": 9,
     "2017-08": 7,
-    "2017-09": 9,
+    "2017-09": 10,
     "2017-10": 14,
     "2017-11": 13,
-    "2017-12": 14,
+    "2017-12": 15,
     "2018-01": 7
    },
    "cold_days_per_year": 13.837,
-   "fault_call_outs": 23,
+   "fault_call_outs": 22,
    "first_fault_call_out": "2017-08-15 23:50",
    "fault_days_checked": 114,
-   "fault_days_hot": 61,
+   "fault_days_hot": 62,
    "fault_hot_by_month": {
     "2017-08": {
      "hot": 4,
@@ -292,7 +289,7 @@
      "checked": 25
     },
     "2017-12": {
-     "hot": 14,
+     "hot": 15,
      "checked": 25
     },
     "2018-01": {
@@ -304,13 +301,13 @@
    "limit_first_fault_call_out": "2017-08-15 11:10",
    "gearbox_rule": {
     "rule": "at least 2 of the 4 gearbox sensors hotter than the tolerance on the same day",
-    "false_call_outs_per_year": 6.15,
+    "false_call_outs_per_year": 5.93,
     "first_fault_call_out": "2017-08-15 23:50",
     "fault_days_hot": 67
    },
    "forecast_accuracy": {
     "channel": "Gb2t_avg",
-    "same_day_mae_vs_sensor_k": 0.649,
+    "same_day_mae_vs_sensor_k": 0.648,
     "by_lead": {
      "1": {
       "days": 1196,
@@ -330,12 +327,12 @@
      "4": {
       "days": 1190,
       "mae_vs_same_day_k": 2.058,
-      "mae_vs_sensor_k": 2.234
+      "mae_vs_sensor_k": 2.233
      },
      "5": {
       "days": 1187,
       "mae_vs_same_day_k": 2.319,
-      "mae_vs_sensor_k": 2.492
+      "mae_vs_sensor_k": 2.493
      },
      "6": {
       "days": 1183,
@@ -366,54 +363,59 @@
     "2013-06-28 12:40",
     "2017-01-09 13:50"
    ],
-   "months_trained": 52,
-   "months_frozen": 4,
+   "months_trained": 51,
+   "months_frozen": 5,
    "months_blank": 6,
    "healthy_daily_mean_k": {
-    "sd": 1.091,
-    "p95_abs": 2.354,
+    "sd": 1.092,
+    "p95_abs": 2.311,
     "p99": 2.371
    },
-   "false_call_outs": 3,
-   "false_call_outs_per_year": 0.659,
+   "false_call_outs": 8,
+   "false_call_outs_per_year": 1.757,
    "false_call_outs_by_year": {
-    "2017": 3
+    "2016": 1,
+    "2017": 7
    },
    "hot_days_by_month": {
+    "2016-11": 1,
     "2017-06": 1,
-    "2017-07": 2,
-    "2017-09": 2,
-    "2017-11": 1,
-    "2017-12": 1
+    "2017-07": 7,
+    "2017-08": 3,
+    "2017-09": 6,
+    "2017-10": 8,
+    "2017-11": 8,
+    "2017-12": 15,
+    "2018-01": 6
    },
    "cold_days_per_year": 6.809,
-   "fault_call_outs": 3,
-   "first_fault_call_out": "2017-09-13 23:50",
+   "fault_call_outs": 18,
+   "first_fault_call_out": "2017-08-15 23:50",
    "fault_days_checked": 115,
-   "fault_days_hot": 4,
+   "fault_days_hot": 45,
    "fault_hot_by_month": {
     "2017-08": {
-     "hot": 0,
+     "hot": 2,
      "checked": 11
     },
     "2017-09": {
-     "hot": 2,
+     "hot": 6,
      "checked": 20
     },
     "2017-10": {
-     "hot": 0,
+     "hot": 8,
      "checked": 24
     },
     "2017-11": {
-     "hot": 1,
+     "hot": 8,
      "checked": 25
     },
     "2017-12": {
-     "hot": 1,
+     "hot": 15,
      "checked": 25
     },
     "2018-01": {
-     "hot": 0,
+     "hot": 6,
      "checked": 10
     }
    },
@@ -1087,33 +1089,33 @@
   "1": {
    "siblings_false_call_outs_per_year": 1.481,
    "siblings_cold_days_per_year": 35.538,
-   "case_false_call_outs_per_year": 8.785,
-   "case_first_fault_call_out": "2017-10-03 23:50",
-   "case_fault_days_hot": 9,
-   "case_fault_days_checked": 84
+   "case_false_call_outs_per_year": 9.005,
+   "case_first_fault_call_out": "2017-08-15 23:50",
+   "case_fault_days_hot": 30,
+   "case_fault_days_checked": 60
   },
   "1.5": {
    "siblings_false_call_outs_per_year": 0.141,
    "siblings_cold_days_per_year": 24.397,
    "case_false_call_outs_per_year": 6.369,
    "case_first_fault_call_out": "2017-08-15 23:50",
-   "case_fault_days_hot": 63,
+   "case_fault_days_hot": 64,
    "case_fault_days_checked": 114
   },
   "2": {
    "siblings_false_call_outs_per_year": 0.141,
    "siblings_cold_days_per_year": 16.571,
-   "case_false_call_outs_per_year": 4.832,
+   "case_false_call_outs_per_year": 4.612,
    "case_first_fault_call_out": "2017-08-15 23:50",
-   "case_fault_days_hot": 61,
+   "case_fault_days_hot": 62,
    "case_fault_days_checked": 114
   },
   "3": {
    "siblings_false_call_outs_per_year": 0.071,
    "siblings_cold_days_per_year": 7.545,
-   "case_false_call_outs_per_year": 0.659,
-   "case_first_fault_call_out": "2017-09-13 23:50",
-   "case_fault_days_hot": 4,
+   "case_false_call_outs_per_year": 1.757,
+   "case_first_fault_call_out": "2017-08-15 23:50",
+   "case_fault_days_hot": 45,
    "case_fault_days_checked": 115
   }
  },
@@ -1249,7 +1251,8 @@
     "mean_k": 3.204,
     "flag": "hot",
     "actual_k": 73.079,
-    "pred_k": 69.874
+    "pred_k": 69.874,
+    "limit": true
    },
    {
     "day": "2017-07-13",
@@ -1321,7 +1324,8 @@
     "mean_k": 3.104,
     "flag": "hot",
     "actual_k": 70.431,
-    "pred_k": 67.327
+    "pred_k": 67.327,
+    "limit": true
    },
    {
     "day": "2017-07-20",
@@ -1333,7 +1337,8 @@
     "mean_k": 5.264,
     "flag": "hot",
     "actual_k": 74.431,
-    "pred_k": 69.167
+    "pred_k": 69.167,
+    "limit": true
    },
    {
     "day": "2017-07-21",
@@ -1369,7 +1374,8 @@
     "mean_k": 2.938,
     "flag": "hot",
     "actual_k": 71.802,
-    "pred_k": 68.865
+    "pred_k": 68.865,
+    "limit": true
    },
    {
     "day": "2017-07-24",
@@ -1393,7 +1399,8 @@
     "mean_k": 2.465,
     "flag": "hot",
     "actual_k": 72.407,
-    "pred_k": 69.942
+    "pred_k": 69.942,
+    "limit": true
    },
    {
     "day": "2017-07-26",
@@ -1441,7 +1448,8 @@
     "mean_k": 2.826,
     "flag": "hot",
     "actual_k": 71.028,
-    "pred_k": 68.202
+    "pred_k": 68.202,
+    "limit": true
    },
    {
     "day": "2017-07-30",
@@ -1453,7 +1461,8 @@
     "mean_k": 5.159,
     "flag": "hot",
     "actual_k": 74.551,
-    "pred_k": 69.392
+    "pred_k": 69.392,
+    "limit": true
    },
    {
     "day": "2017-07-31",
@@ -1485,7 +1494,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-08-04",
@@ -1581,7 +1592,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-08-16",
@@ -1701,7 +1714,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-08-31",
@@ -1773,7 +1788,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-09",
@@ -1781,7 +1798,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-10",
@@ -1797,7 +1816,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-12",
@@ -1805,7 +1826,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-13",
@@ -1813,7 +1836,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-14",
@@ -1821,7 +1846,9 @@
     "n": 0,
     "running": true,
     "status": "blank",
-    "reason": "no healthy month"
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-15",
@@ -1954,330 +1981,244 @@
    {
     "day": "2017-10-01",
     "fault_period": true,
-    "n": 32,
+    "n": 0,
     "running": true,
-    "status": "thin",
-    "state": "trained"
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-02",
     "fault_period": true,
-    "n": 139,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 0.886,
-    "flag": null,
-    "actual_k": 77.867,
-    "pred_k": 76.981
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-03",
     "fault_period": true,
-    "n": 75,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 1.161,
-    "flag": "hot",
-    "actual_k": 68.409,
-    "pred_k": 67.247
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-04",
     "fault_period": true,
-    "n": 42,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.927,
-    "flag": null,
-    "actual_k": 76.623,
-    "pred_k": 77.549
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-05",
     "fault_period": true,
-    "n": 131,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 1.075,
-    "flag": "hot",
-    "actual_k": 76.506,
-    "pred_k": 75.431
+    "status": "blank",
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-10-06",
     "fault_period": true,
-    "n": 69,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.653,
-    "flag": null,
-    "actual_k": 66.569,
-    "pred_k": 67.221
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-09",
     "fault_period": true,
-    "n": 4,
+    "n": 0,
     "running": true,
-    "status": "thin",
-    "state": "trained"
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-10",
     "fault_period": true,
-    "n": 137,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.962,
-    "flag": null,
-    "actual_k": 67.951,
-    "pred_k": 68.913
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-11",
     "fault_period": true,
-    "n": 141,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.245,
-    "flag": "cold",
-    "actual_k": 69.925,
-    "pred_k": 71.17
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-12",
     "fault_period": true,
-    "n": 143,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.162,
-    "flag": null,
-    "actual_k": 69.598,
-    "pred_k": 69.76
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-13",
     "fault_period": true,
-    "n": 1,
+    "n": 0,
     "running": true,
-    "status": "thin",
-    "state": "trained"
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-14",
     "fault_period": true,
     "n": 0,
     "running": true,
-    "status": "thin",
-    "state": "trained"
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-15",
     "fault_period": true,
-    "n": 117,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.054,
-    "flag": null,
-    "actual_k": 71.529,
-    "pred_k": 71.583
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-16",
     "fault_period": true,
-    "n": 141,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 1.181,
-    "flag": "hot",
-    "actual_k": 75.734,
-    "pred_k": 74.554
+    "status": "blank",
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-10-17",
     "fault_period": true,
-    "n": 10,
+    "n": 0,
     "running": true,
-    "status": "thin",
-    "state": "trained"
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-18",
     "fault_period": true,
-    "n": 110,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 0.32,
-    "flag": null,
-    "actual_k": 69.931,
-    "pred_k": 69.611
+    "status": "blank",
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-10-19",
     "fault_period": true,
-    "n": 144,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 0.285,
-    "flag": null,
-    "actual_k": 73.84,
-    "pred_k": 73.555
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-20",
     "fault_period": true,
-    "n": 144,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 0.251,
-    "flag": null,
-    "actual_k": 76.84,
-    "pred_k": 76.589
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-21",
     "fault_period": true,
-    "n": 142,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": 0.514,
-    "flag": null,
-    "actual_k": 78.735,
-    "pred_k": 78.222
+    "status": "blank",
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-10-22",
     "fault_period": true,
-    "n": 144,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.767,
-    "flag": null,
-    "actual_k": 76.433,
-    "pred_k": 77.2
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-23",
     "fault_period": true,
-    "n": 139,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.128,
-    "flag": "cold",
-    "actual_k": 65.652,
-    "pred_k": 66.779
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-24",
     "fault_period": true,
-    "n": 140,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.341,
-    "flag": null,
-    "actual_k": 63.942,
-    "pred_k": 64.284
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-25",
     "fault_period": true,
-    "n": 56,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.622,
-    "flag": null,
-    "actual_k": 61.219,
-    "pred_k": 61.842
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-26",
     "fault_period": true,
-    "n": 37,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -2.136,
-    "flag": "cold",
-    "actual_k": 64.191,
-    "pred_k": 66.327
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-27",
     "fault_period": true,
-    "n": 144,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.168,
-    "flag": "cold",
-    "actual_k": 66.8,
-    "pred_k": 67.968
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-28",
     "fault_period": true,
-    "n": 128,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.725,
-    "flag": "cold",
-    "actual_k": 73.383,
-    "pred_k": 75.108
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-29",
     "fault_period": true,
-    "n": 136,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -0.93,
-    "flag": null,
-    "actual_k": 74.225,
-    "pred_k": 75.155
+    "status": "blank",
+    "reason": "no healthy month",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-10-30",
     "fault_period": true,
-    "n": 137,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.266,
-    "flag": "cold",
-    "actual_k": 66.894,
-    "pred_k": 68.161
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-10-31",
     "fault_period": true,
-    "n": 51,
+    "n": 0,
     "running": true,
-    "status": "checked",
-    "state": "trained",
-    "mean_k": -1.104,
-    "flag": "cold",
-    "actual_k": 64.857,
-    "pred_k": 65.961
+    "status": "blank",
+    "reason": "no healthy month"
    },
    {
     "day": "2017-11-01",
@@ -2285,7 +2226,7 @@
     "n": 0,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "trained"
    },
    {
     "day": "2017-11-02",
@@ -2293,12 +2234,12 @@
     "n": 77,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": 1.012,
+    "state": "trained",
+    "mean_k": 1.568,
     "flag": "hot",
     "actual_k": 72.823,
-    "pred_k": 71.811,
-    "frozen_since": "2017-10-03"
+    "pred_k": 71.255,
+    "limit": true
    },
    {
     "day": "2017-11-03",
@@ -2306,7 +2247,7 @@
     "n": 0,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "trained"
    },
    {
     "day": "2017-11-04",
@@ -2314,25 +2255,23 @@
     "n": 103,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": 0.226,
+    "state": "trained",
+    "mean_k": 0.763,
     "flag": null,
     "actual_k": 70.299,
-    "pred_k": 70.073,
-    "frozen_since": "2017-10-03"
+    "pred_k": 69.535
    },
    {
     "day": "2017-11-05",
     "fault_period": true,
-    "n": 138,
+    "n": 135,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.371,
-    "flag": "cold",
-    "actual_k": 71.129,
-    "pred_k": 72.5,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": -0.055,
+    "flag": null,
+    "actual_k": 70.983,
+    "pred_k": 71.038
    },
    {
     "day": "2017-11-06",
@@ -2340,12 +2279,11 @@
     "n": 143,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.857,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": -0.179,
+    "flag": null,
     "actual_k": 70.062,
-    "pred_k": 71.919,
-    "frozen_since": "2017-10-03"
+    "pred_k": 70.241
    },
    {
     "day": "2017-11-07",
@@ -2353,12 +2291,11 @@
     "n": 104,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.37,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": -0.031,
+    "flag": null,
     "actual_k": 66.984,
-    "pred_k": 68.353,
-    "frozen_since": "2017-10-03"
+    "pred_k": 67.015
    },
    {
     "day": "2017-11-08",
@@ -2366,12 +2303,11 @@
     "n": 79,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.419,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": -0.281,
+    "flag": null,
     "actual_k": 62.612,
-    "pred_k": 64.031,
-    "frozen_since": "2017-10-03"
+    "pred_k": 62.892
    },
    {
     "day": "2017-11-09",
@@ -2379,12 +2315,11 @@
     "n": 38,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -7.285,
+    "state": "trained",
+    "mean_k": -6.113,
     "flag": "cold",
     "actual_k": 60.569,
-    "pred_k": 67.854,
-    "frozen_since": "2017-10-03"
+    "pred_k": 66.682
    },
    {
     "day": "2017-11-10",
@@ -2392,38 +2327,37 @@
     "n": 144,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.003,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": 0.123,
+    "flag": null,
     "actual_k": 73.254,
-    "pred_k": 74.257,
-    "frozen_since": "2017-10-03"
+    "pred_k": 73.132
    },
    {
     "day": "2017-11-11",
     "fault_period": true,
-    "n": 140,
+    "n": 130,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.964,
-    "flag": null,
-    "actual_k": 74.352,
-    "pred_k": 75.316,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": 0.757,
+    "flag": "hot",
+    "actual_k": 74.024,
+    "pred_k": 73.267,
+    "limit": true
    },
    {
     "day": "2017-11-12",
     "fault_period": true,
-    "n": 122,
+    "n": 109,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.071,
-    "flag": "cold",
-    "actual_k": 75.778,
-    "pred_k": 76.849,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": 1.488,
+    "flag": "hot",
+    "actual_k": 75.348,
+    "pred_k": 73.86,
+    "limit": true
    },
    {
     "day": "2017-11-13",
@@ -2431,7 +2365,7 @@
     "n": 24,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "trained"
    },
    {
     "day": "2017-11-14",
@@ -2439,12 +2373,11 @@
     "n": 42,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.636,
+    "state": "trained",
+    "mean_k": 0.468,
     "flag": null,
     "actual_k": 64.233,
-    "pred_k": 64.869,
-    "frozen_since": "2017-10-03"
+    "pred_k": 63.764
    },
    {
     "day": "2017-11-15",
@@ -2452,12 +2385,11 @@
     "n": 60,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -2.942,
+    "state": "trained",
+    "mean_k": -1.25,
     "flag": "cold",
     "actual_k": 69.715,
-    "pred_k": 72.657,
-    "frozen_since": "2017-10-03"
+    "pred_k": 70.966
    },
    {
     "day": "2017-11-16",
@@ -2465,7 +2397,7 @@
     "n": 29,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "trained"
    },
    {
     "day": "2017-11-17",
@@ -2473,7 +2405,7 @@
     "n": 7,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "trained"
    },
    {
     "day": "2017-11-18",
@@ -2481,12 +2413,11 @@
     "n": 37,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -2.973,
+    "state": "trained",
+    "mean_k": -1.072,
     "flag": "cold",
     "actual_k": 74.944,
-    "pred_k": 77.917,
-    "frozen_since": "2017-10-03"
+    "pred_k": 76.016
    },
    {
     "day": "2017-11-19",
@@ -2494,77 +2425,74 @@
     "n": 111,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.66,
+    "state": "trained",
+    "mean_k": 0.384,
     "flag": null,
     "actual_k": 66.816,
-    "pred_k": 67.476,
-    "frozen_since": "2017-10-03"
+    "pred_k": 66.432
    },
    {
     "day": "2017-11-20",
     "fault_period": true,
-    "n": 115,
+    "n": 114,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -3.285,
+    "state": "trained",
+    "mean_k": -2.079,
     "flag": "cold",
-    "actual_k": 71.099,
-    "pred_k": 74.384,
-    "frozen_since": "2017-10-03"
+    "actual_k": 71.039,
+    "pred_k": 73.118
    },
    {
     "day": "2017-11-21",
     "fault_period": true,
-    "n": 132,
+    "n": 130,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.369,
+    "state": "trained",
+    "mean_k": 0.747,
     "flag": null,
-    "actual_k": 73.57,
-    "pred_k": 73.94,
-    "frozen_since": "2017-10-03"
+    "actual_k": 73.53,
+    "pred_k": 72.784
    },
    {
     "day": "2017-11-22",
     "fault_period": true,
-    "n": 133,
+    "n": 128,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.704,
-    "flag": null,
-    "actual_k": 76.585,
-    "pred_k": 77.289,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": 1.15,
+    "flag": "hot",
+    "actual_k": 76.452,
+    "pred_k": 75.301,
+    "limit": true
    },
    {
     "day": "2017-11-23",
     "fault_period": true,
-    "n": 135,
+    "n": 111,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": 1.787,
+    "state": "trained",
+    "mean_k": 3.479,
     "flag": "hot",
-    "actual_k": 81.898,
-    "pred_k": 80.111,
-    "frozen_since": "2017-10-03"
+    "actual_k": 81.608,
+    "pred_k": 78.129,
+    "limit": true
    },
    {
     "day": "2017-11-24",
     "fault_period": true,
-    "n": 144,
+    "n": 143,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": 1.889,
+    "state": "trained",
+    "mean_k": 2.563,
     "flag": "hot",
-    "actual_k": 78.892,
-    "pred_k": 77.003,
-    "frozen_since": "2017-10-03"
+    "actual_k": 78.87,
+    "pred_k": 76.308,
+    "limit": true
    },
    {
     "day": "2017-11-25",
@@ -2572,12 +2500,11 @@
     "n": 144,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -2.058,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": -0.662,
+    "flag": null,
     "actual_k": 69.525,
-    "pred_k": 71.583,
-    "frozen_since": "2017-10-03"
+    "pred_k": 70.187
    },
    {
     "day": "2017-11-26",
@@ -2585,38 +2512,37 @@
     "n": 143,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.112,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": 0.297,
+    "flag": null,
     "actual_k": 66.572,
-    "pred_k": 67.684,
-    "frozen_since": "2017-10-03"
+    "pred_k": 66.275
    },
    {
     "day": "2017-11-27",
     "fault_period": true,
-    "n": 128,
+    "n": 93,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -2.547,
-    "flag": "cold",
-    "actual_k": 75.493,
-    "pred_k": 78.039,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": -0.382,
+    "flag": "hot",
+    "actual_k": 73.505,
+    "pred_k": 73.886,
+    "limit": true
    },
    {
     "day": "2017-11-28",
     "fault_period": true,
-    "n": 115,
+    "n": 96,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.6,
-    "flag": null,
-    "actual_k": 69.785,
-    "pred_k": 70.385,
-    "frozen_since": "2017-10-03"
+    "state": "trained",
+    "mean_k": 1.202,
+    "flag": "hot",
+    "actual_k": 67.389,
+    "pred_k": 66.187,
+    "limit": true
    },
    {
     "day": "2017-11-29",
@@ -2624,12 +2550,11 @@
     "n": 129,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.433,
-    "flag": "cold",
+    "state": "trained",
+    "mean_k": 0.134,
+    "flag": null,
     "actual_k": 64.686,
-    "pred_k": 66.119,
-    "frozen_since": "2017-10-03"
+    "pred_k": 64.551
    },
    {
     "day": "2017-11-30",
@@ -2637,12 +2562,11 @@
     "n": 135,
     "running": true,
     "status": "checked",
-    "state": "frozen",
-    "mean_k": -0.778,
+    "state": "trained",
+    "mean_k": 0.451,
     "flag": null,
     "actual_k": 64.971,
-    "pred_k": 65.749,
-    "frozen_since": "2017-10-03"
+    "pred_k": 64.52
    },
    {
     "day": "2017-12-01",
@@ -2651,11 +2575,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.003,
-    "flag": "cold",
+    "mean_k": -0.872,
+    "flag": null,
     "actual_k": 63.66,
-    "pred_k": 64.663,
-    "frozen_since": "2017-10-03"
+    "pred_k": 64.532,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-02",
@@ -2664,11 +2588,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.619,
+    "mean_k": -1.667,
     "flag": "cold",
     "actual_k": 67.541,
-    "pred_k": 70.159,
-    "frozen_since": "2017-10-03"
+    "pred_k": 69.208,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-03",
@@ -2705,28 +2629,30 @@
    {
     "day": "2017-12-07",
     "fault_period": true,
-    "n": 87,
+    "n": 72,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.993,
-    "flag": "cold",
-    "actual_k": 78.88,
-    "pred_k": 80.873,
-    "frozen_since": "2017-10-03"
+    "mean_k": 0.954,
+    "flag": "hot",
+    "actual_k": 78.527,
+    "pred_k": 77.573,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-08",
     "fault_period": true,
-    "n": 143,
+    "n": 142,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.339,
-    "flag": null,
-    "actual_k": 76.152,
-    "pred_k": 76.491,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.342,
+    "flag": "hot",
+    "actual_k": 76.138,
+    "pred_k": 74.796,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-09",
@@ -2735,76 +2661,81 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.878,
+    "mean_k": -1.949,
     "flag": "cold",
     "actual_k": 69.494,
-    "pred_k": 72.372,
-    "frozen_since": "2017-10-03"
+    "pred_k": 71.443,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-10",
     "fault_period": true,
-    "n": 96,
+    "n": 75,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.61,
-    "flag": null,
-    "actual_k": 77.981,
-    "pred_k": 78.59,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.473,
+    "flag": "hot",
+    "actual_k": 77.02,
+    "pred_k": 75.547,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-11",
     "fault_period": true,
-    "n": 104,
+    "n": 68,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.611,
-    "flag": null,
-    "actual_k": 80.267,
-    "pred_k": 79.656,
-    "frozen_since": "2017-10-03"
+    "mean_k": 3.112,
+    "flag": "hot",
+    "actual_k": 78.919,
+    "pred_k": 75.807,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-12",
     "fault_period": true,
-    "n": 135,
+    "n": 133,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.157,
-    "flag": "cold",
-    "actual_k": 72.626,
-    "pred_k": 73.783,
-    "frozen_since": "2017-10-03"
+    "mean_k": 0.867,
+    "flag": "hot",
+    "actual_k": 72.485,
+    "pred_k": 71.618,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-13",
     "fault_period": true,
-    "n": 114,
+    "n": 77,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.202,
-    "flag": "cold",
-    "actual_k": 80.018,
-    "pred_k": 81.22,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.866,
+    "flag": "hot",
+    "actual_k": 79.22,
+    "pred_k": 77.354,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-14",
     "fault_period": true,
-    "n": 116,
+    "n": 99,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.044,
-    "flag": "cold",
-    "actual_k": 80.456,
-    "pred_k": 81.5,
-    "frozen_since": "2017-10-03"
+    "mean_k": 2.676,
+    "flag": "hot",
+    "actual_k": 80.337,
+    "pred_k": 77.661,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-15",
@@ -2813,11 +2744,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.028,
-    "flag": null,
+    "mean_k": 2.172,
+    "flag": "hot",
     "actual_k": 75.562,
-    "pred_k": 75.591,
-    "frozen_since": "2017-10-03"
+    "pred_k": 73.39,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-16",
@@ -2826,11 +2758,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.278,
-    "flag": "cold",
+    "mean_k": 0.275,
+    "flag": null,
     "actual_k": 67.725,
-    "pred_k": 69.003,
-    "frozen_since": "2017-10-03"
+    "pred_k": 67.45,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-17",
@@ -2847,11 +2779,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.936,
+    "mean_k": 0.695,
     "flag": null,
     "actual_k": 67.171,
-    "pred_k": 68.107,
-    "frozen_since": "2017-10-03"
+    "pred_k": 66.476,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-19",
@@ -2860,11 +2792,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.883,
-    "flag": "cold",
+    "mean_k": -0.311,
+    "flag": null,
     "actual_k": 61.899,
-    "pred_k": 63.782,
-    "frozen_since": "2017-10-03"
+    "pred_k": 62.21,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-20",
@@ -2873,11 +2805,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.58,
+    "mean_k": 0.993,
     "flag": null,
     "actual_k": 63.349,
-    "pred_k": 63.929,
-    "frozen_since": "2017-10-03"
+    "pred_k": 62.356,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-21",
@@ -2886,11 +2818,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.581,
+    "mean_k": -1.065,
     "flag": "cold",
     "actual_k": 61.608,
-    "pred_k": 63.189,
-    "frozen_since": "2017-10-03"
+    "pred_k": 62.673,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-22",
@@ -2899,11 +2831,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.648,
+    "mean_k": -0.084,
     "flag": null,
     "actual_k": 64.051,
-    "pred_k": 64.699,
-    "frozen_since": "2017-10-03"
+    "pred_k": 64.135,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-23",
@@ -2920,154 +2852,165 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.667,
+    "mean_k": 0.024,
     "flag": null,
     "actual_k": 64.061,
-    "pred_k": 64.727,
-    "frozen_since": "2017-10-03"
+    "pred_k": 64.037,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-25",
-    "fault_period": true,
-    "n": 137,
-    "running": true,
-    "status": "checked",
-    "state": "frozen",
-    "mean_k": -1.46,
-    "flag": "cold",
-    "actual_k": 67.985,
-    "pred_k": 69.445,
-    "frozen_since": "2017-10-03"
-   },
-   {
-    "day": "2017-12-26",
-    "fault_period": true,
-    "n": 121,
-    "running": true,
-    "status": "checked",
-    "state": "frozen",
-    "mean_k": 0.266,
-    "flag": null,
-    "actual_k": 79.7,
-    "pred_k": 79.434,
-    "frozen_since": "2017-10-03"
-   },
-   {
-    "day": "2017-12-27",
     "fault_period": true,
     "n": 132,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.061,
-    "flag": null,
-    "actual_k": 78.73,
-    "pred_k": 78.791,
-    "frozen_since": "2017-10-03"
+    "mean_k": 0.642,
+    "flag": "hot",
+    "actual_k": 67.62,
+    "pred_k": 66.978,
+    "frozen_since": "2017-08-15",
+    "limit": true
+   },
+   {
+    "day": "2017-12-26",
+    "fault_period": true,
+    "n": 107,
+    "running": true,
+    "status": "checked",
+    "state": "frozen",
+    "mean_k": 2.681,
+    "flag": "hot",
+    "actual_k": 79.413,
+    "pred_k": 76.732,
+    "frozen_since": "2017-08-15",
+    "limit": true
+   },
+   {
+    "day": "2017-12-27",
+    "fault_period": true,
+    "n": 117,
+    "running": true,
+    "status": "checked",
+    "state": "frozen",
+    "mean_k": 2.355,
+    "flag": "hot",
+    "actual_k": 78.37,
+    "pred_k": 76.016,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-28",
     "fault_period": true,
-    "n": 141,
+    "n": 132,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.248,
-    "flag": null,
-    "actual_k": 71.158,
-    "pred_k": 71.406,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.046,
+    "flag": "hot",
+    "actual_k": 70.484,
+    "pred_k": 69.438,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-29",
     "fault_period": true,
-    "n": 128,
+    "n": 111,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.534,
-    "flag": "cold",
-    "actual_k": 74.29,
-    "pred_k": 75.824,
-    "frozen_since": "2017-10-03"
+    "mean_k": 0.368,
+    "flag": "hot",
+    "actual_k": 73.468,
+    "pred_k": 73.1,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-30",
     "fault_period": true,
-    "n": 123,
+    "n": 77,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.189,
+    "mean_k": 3.697,
     "flag": "hot",
-    "actual_k": 82.288,
-    "pred_k": 81.1,
-    "frozen_since": "2017-10-03"
+    "actual_k": 81.124,
+    "pred_k": 77.427,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-31",
     "fault_period": true,
-    "n": 141,
+    "n": 108,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.838,
+    "mean_k": 4.071,
     "flag": "hot",
-    "actual_k": 82.619,
-    "pred_k": 80.781,
-    "frozen_since": "2017-10-03"
+    "actual_k": 82.245,
+    "pred_k": 78.174,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-01",
     "fault_period": true,
-    "n": 91,
+    "n": 58,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.093,
-    "flag": null,
-    "actual_k": 82.199,
-    "pred_k": 82.106,
-    "frozen_since": "2017-10-03"
+    "mean_k": 3.087,
+    "flag": "hot",
+    "actual_k": 81.455,
+    "pred_k": 78.368,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-02",
     "fault_period": true,
-    "n": 137,
+    "n": 134,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.31,
-    "flag": "cold",
-    "actual_k": 77.147,
-    "pred_k": 78.457,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.237,
+    "flag": "hot",
+    "actual_k": 77.041,
+    "pred_k": 75.804,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-03",
+    "fault_period": true,
+    "n": 51,
+    "running": true,
+    "status": "checked",
+    "state": "frozen",
+    "mean_k": 3.247,
+    "flag": "hot",
+    "actual_k": 81.577,
+    "pred_k": 78.33,
+    "frozen_since": "2017-08-15",
+    "limit": true
+   },
+   {
+    "day": "2018-01-04",
     "fault_period": true,
     "n": 75,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.802,
-    "flag": null,
-    "actual_k": 82.066,
-    "pred_k": 81.264,
-    "frozen_since": "2017-10-03"
-   },
-   {
-    "day": "2018-01-04",
-    "fault_period": true,
-    "n": 103,
-    "running": true,
-    "status": "checked",
-    "state": "frozen",
-    "mean_k": 1.2,
+    "mean_k": 3.165,
     "flag": "hot",
-    "actual_k": 80.323,
-    "pred_k": 79.122,
-    "frozen_since": "2017-10-03"
+    "actual_k": 78.695,
+    "pred_k": 75.529,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-05",
@@ -3076,11 +3019,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.395,
-    "flag": null,
+    "mean_k": 1.277,
+    "flag": "hot",
     "actual_k": 73.843,
-    "pred_k": 73.448,
-    "frozen_since": "2017-10-03"
+    "pred_k": 72.566,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-06",
@@ -3093,28 +3036,30 @@
    {
     "day": "2018-01-07",
     "fault_period": true,
-    "n": 108,
+    "n": 97,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.537,
-    "flag": "cold",
-    "actual_k": 78.277,
-    "pred_k": 79.814,
-    "frozen_since": "2017-10-03"
+    "mean_k": 1.035,
+    "flag": "hot",
+    "actual_k": 77.864,
+    "pred_k": 76.829,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-08",
     "fault_period": true,
-    "n": 144,
+    "n": 143,
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.75,
-    "flag": null,
-    "actual_k": 79.241,
-    "pred_k": 78.491,
-    "frozen_since": "2017-10-03"
+    "mean_k": 2.482,
+    "flag": "hot",
+    "actual_k": 79.239,
+    "pred_k": 76.756,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-09",
@@ -3123,11 +3068,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.136,
-    "flag": "cold",
+    "mean_k": 0.162,
+    "flag": null,
     "actual_k": 68.047,
-    "pred_k": 69.183,
-    "frozen_since": "2017-10-03"
+    "pred_k": 67.884,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-10",
@@ -3136,11 +3081,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.257,
-    "flag": "cold",
+    "mean_k": -0.043,
+    "flag": null,
     "actual_k": 66.067,
-    "pred_k": 67.324,
-    "frozen_since": "2017-10-03"
+    "pred_k": 66.109,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-11",
@@ -3157,11 +3102,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -3.522,
+    "mean_k": -2.612,
     "flag": "cold",
     "actual_k": 59.428,
-    "pred_k": 62.95,
-    "frozen_since": "2017-10-03"
+    "pred_k": 62.04,
+    "frozen_since": "2017-08-15"
    }
   ],
   "1.5": [
@@ -3295,7 +3240,8 @@
     "mean_k": 2.94,
     "flag": "hot",
     "actual_k": 73.724,
-    "pred_k": 70.784
+    "pred_k": 70.784,
+    "limit": true
    },
    {
     "day": "2017-07-13",
@@ -3367,7 +3313,8 @@
     "mean_k": 2.756,
     "flag": "hot",
     "actual_k": 70.651,
-    "pred_k": 67.895
+    "pred_k": 67.895,
+    "limit": true
    },
    {
     "day": "2017-07-20",
@@ -3379,7 +3326,8 @@
     "mean_k": 4.689,
     "flag": "hot",
     "actual_k": 74.673,
-    "pred_k": 69.984
+    "pred_k": 69.984,
+    "limit": true
    },
    {
     "day": "2017-07-21",
@@ -3415,7 +3363,8 @@
     "mean_k": 2.78,
     "flag": "hot",
     "actual_k": 72.228,
-    "pred_k": 69.448
+    "pred_k": 69.448,
+    "limit": true
    },
    {
     "day": "2017-07-24",
@@ -3439,7 +3388,8 @@
     "mean_k": 2.171,
     "flag": "hot",
     "actual_k": 72.548,
-    "pred_k": 70.377
+    "pred_k": 70.377,
+    "limit": true
    },
    {
     "day": "2017-07-26",
@@ -3487,7 +3437,8 @@
     "mean_k": 2.577,
     "flag": "hot",
     "actual_k": 71.186,
-    "pred_k": 68.609
+    "pred_k": 68.609,
+    "limit": true
    },
    {
     "day": "2017-07-30",
@@ -3499,7 +3450,8 @@
     "mean_k": 4.583,
     "flag": "hot",
     "actual_k": 74.571,
-    "pred_k": 69.988
+    "pred_k": 69.988,
+    "limit": true
    },
    {
     "day": "2017-07-31",
@@ -3543,7 +3495,8 @@
     "mean_k": 4.197,
     "flag": "hot",
     "actual_k": 75.214,
-    "pred_k": 71.017
+    "pred_k": 71.017,
+    "limit": true
    },
    {
     "day": "2017-08-04",
@@ -3675,7 +3628,8 @@
     "mean_k": 4.149,
     "flag": "hot",
     "actual_k": 73.86,
-    "pred_k": 69.711
+    "pred_k": 69.711,
+    "limit": true
    },
    {
     "day": "2017-08-16",
@@ -3831,7 +3785,8 @@
     "mean_k": 3.405,
     "flag": "hot",
     "actual_k": 72.833,
-    "pred_k": 69.428
+    "pred_k": 69.428,
+    "limit": true
    },
    {
     "day": "2017-08-31",
@@ -3943,7 +3898,8 @@
     "actual_k": 79.591,
     "pred_k": 72.66,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-09",
@@ -3957,7 +3913,8 @@
     "actual_k": 73.169,
     "pred_k": 68.833,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-10",
@@ -3979,7 +3936,8 @@
     "actual_k": 78.707,
     "pred_k": 71.925,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-12",
@@ -3993,7 +3951,8 @@
     "actual_k": 76.69,
     "pred_k": 71.418,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-13",
@@ -4001,7 +3960,9 @@
     "n": 17,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "frozen",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-14",
@@ -4015,7 +3976,8 @@
     "actual_k": 80.252,
     "pred_k": 72.819,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-15",
@@ -4261,7 +4223,8 @@
     "actual_k": 74.34,
     "pred_k": 69.13,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-06",
@@ -4369,7 +4332,8 @@
     "actual_k": 75.734,
     "pred_k": 70.745,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-17",
@@ -4391,7 +4355,8 @@
     "actual_k": 69.179,
     "pred_k": 66.717,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-19",
@@ -4433,7 +4398,8 @@
     "actual_k": 78.652,
     "pred_k": 72.77,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-22",
@@ -4545,7 +4511,8 @@
     "actual_k": 71.472,
     "pred_k": 68.486,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-30",
@@ -4595,7 +4562,8 @@
     "actual_k": 72.823,
     "pred_k": 68.705,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-03",
@@ -4715,7 +4683,8 @@
     "actual_k": 74.425,
     "pred_k": 70.569,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-12",
@@ -4729,7 +4698,8 @@
     "actual_k": 76.539,
     "pred_k": 71.944,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-13",
@@ -4851,7 +4821,8 @@
     "actual_k": 76.613,
     "pred_k": 71.67,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-23",
@@ -4865,7 +4836,8 @@
     "actual_k": 81.982,
     "pred_k": 73.705,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-24",
@@ -4879,7 +4851,8 @@
     "actual_k": 78.892,
     "pred_k": 72.047,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-25",
@@ -4921,7 +4894,8 @@
     "actual_k": 76.101,
     "pred_k": 72.544,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-28",
@@ -4935,7 +4909,8 @@
     "actual_k": 70.487,
     "pred_k": 68.108,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-29",
@@ -5037,7 +5012,8 @@
     "actual_k": 79.452,
     "pred_k": 73.851,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-08",
@@ -5051,7 +5027,8 @@
     "actual_k": 76.168,
     "pred_k": 71.101,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-09",
@@ -5079,7 +5056,8 @@
     "actual_k": 78.854,
     "pred_k": 72.841,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-11",
@@ -5093,7 +5071,8 @@
     "actual_k": 80.819,
     "pred_k": 73.722,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-12",
@@ -5107,7 +5086,8 @@
     "actual_k": 72.764,
     "pred_k": 69.461,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-13",
@@ -5121,7 +5101,8 @@
     "actual_k": 80.444,
     "pred_k": 74.083,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-14",
@@ -5135,7 +5116,8 @@
     "actual_k": 80.68,
     "pred_k": 73.983,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-15",
@@ -5149,7 +5131,8 @@
     "actual_k": 75.562,
     "pred_k": 70.587,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-16",
@@ -5273,11 +5256,12 @@
     "status": "checked",
     "state": "frozen",
     "mean_k": 1.351,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 67.985,
     "pred_k": 66.634,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-26",
@@ -5291,7 +5275,8 @@
     "actual_k": 80.237,
     "pred_k": 73.214,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-27",
@@ -5305,7 +5290,8 @@
     "actual_k": 78.877,
     "pred_k": 72.565,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-28",
@@ -5319,7 +5305,8 @@
     "actual_k": 71.368,
     "pred_k": 67.79,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-29",
@@ -5333,7 +5320,8 @@
     "actual_k": 74.811,
     "pred_k": 70.759,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-30",
@@ -5347,7 +5335,8 @@
     "actual_k": 82.372,
     "pred_k": 74.055,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-31",
@@ -5361,7 +5350,8 @@
     "actual_k": 82.61,
     "pred_k": 73.801,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2018-01-01",
@@ -5375,7 +5365,8 @@
     "actual_k": 82.739,
     "pred_k": 74.645,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-02",
@@ -5389,7 +5380,8 @@
     "actual_k": 77.222,
     "pred_k": 72.057,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-03",
@@ -5403,7 +5395,8 @@
     "actual_k": 82.441,
     "pred_k": 74.522,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-04",
@@ -5417,7 +5410,8 @@
     "actual_k": 80.676,
     "pred_k": 73.01,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-05",
@@ -5453,7 +5447,8 @@
     "actual_k": 79.237,
     "pred_k": 73.353,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-08",
@@ -5467,7 +5462,8 @@
     "actual_k": 79.241,
     "pred_k": 72.397,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-09",
@@ -5651,7 +5647,8 @@
     "mean_k": 3.0,
     "flag": "hot",
     "actual_k": 74.142,
-    "pred_k": 71.143
+    "pred_k": 71.143,
+    "limit": true
    },
    {
     "day": "2017-07-13",
@@ -5723,7 +5720,8 @@
     "mean_k": 2.627,
     "flag": "hot",
     "actual_k": 70.794,
-    "pred_k": 68.167
+    "pred_k": 68.167,
+    "limit": true
    },
    {
     "day": "2017-07-20",
@@ -5735,7 +5733,8 @@
     "mean_k": 4.603,
     "flag": "hot",
     "actual_k": 74.799,
-    "pred_k": 70.196
+    "pred_k": 70.196,
+    "limit": true
    },
    {
     "day": "2017-07-21",
@@ -5771,7 +5770,8 @@
     "mean_k": 2.738,
     "flag": "hot",
     "actual_k": 72.369,
-    "pred_k": 69.631
+    "pred_k": 69.631,
+    "limit": true
    },
    {
     "day": "2017-07-24",
@@ -5795,7 +5795,8 @@
     "mean_k": 2.085,
     "flag": "hot",
     "actual_k": 72.639,
-    "pred_k": 70.554
+    "pred_k": 70.554,
+    "limit": true
    },
    {
     "day": "2017-07-26",
@@ -5843,7 +5844,8 @@
     "mean_k": 2.517,
     "flag": "hot",
     "actual_k": 71.186,
-    "pred_k": 68.668
+    "pred_k": 68.668,
+    "limit": true
    },
    {
     "day": "2017-07-30",
@@ -5855,7 +5857,8 @@
     "mean_k": 4.569,
     "flag": "hot",
     "actual_k": 74.678,
-    "pred_k": 70.109
+    "pred_k": 70.109,
+    "limit": true
    },
    {
     "day": "2017-07-31",
@@ -5899,7 +5902,8 @@
     "mean_k": 3.771,
     "flag": "hot",
     "actual_k": 75.292,
-    "pred_k": 71.522
+    "pred_k": 71.522,
+    "limit": true
    },
    {
     "day": "2017-08-04",
@@ -6031,7 +6035,8 @@
     "mean_k": 3.838,
     "flag": "hot",
     "actual_k": 74.066,
-    "pred_k": 70.228
+    "pred_k": 70.228,
+    "limit": true
    },
    {
     "day": "2017-08-16",
@@ -6187,7 +6192,8 @@
     "mean_k": 3.151,
     "flag": "hot",
     "actual_k": 72.833,
-    "pred_k": 69.681
+    "pred_k": 69.681,
+    "limit": true
    },
    {
     "day": "2017-08-31",
@@ -6299,7 +6305,8 @@
     "actual_k": 79.481,
     "pred_k": 72.831,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-09",
@@ -6313,7 +6320,8 @@
     "actual_k": 73.327,
     "pred_k": 68.99,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-10",
@@ -6335,7 +6343,8 @@
     "actual_k": 78.577,
     "pred_k": 71.963,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-12",
@@ -6349,7 +6358,8 @@
     "actual_k": 76.638,
     "pred_k": 71.487,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-13",
@@ -6357,7 +6367,9 @@
     "n": 18,
     "running": true,
     "status": "thin",
-    "state": "frozen"
+    "state": "frozen",
+    "limit": true,
+    "flag": "hot"
    },
    {
     "day": "2017-09-14",
@@ -6371,7 +6383,8 @@
     "actual_k": 80.225,
     "pred_k": 73.09,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-09"
+    "model_from": "2016-09",
+    "limit": true
    },
    {
     "day": "2017-09-15",
@@ -6617,7 +6630,8 @@
     "actual_k": 74.761,
     "pred_k": 69.555,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-06",
@@ -6725,7 +6739,8 @@
     "actual_k": 75.734,
     "pred_k": 70.859,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-17",
@@ -6747,7 +6762,8 @@
     "actual_k": 69.725,
     "pred_k": 67.176,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-19",
@@ -6789,7 +6805,8 @@
     "actual_k": 78.676,
     "pred_k": 72.976,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-22",
@@ -6901,7 +6918,8 @@
     "actual_k": 72.215,
     "pred_k": 69.122,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-10"
+    "model_from": "2016-10",
+    "limit": true
    },
    {
     "day": "2017-10-30",
@@ -6951,7 +6969,8 @@
     "actual_k": 72.823,
     "pred_k": 68.7,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-03",
@@ -7071,7 +7090,8 @@
     "actual_k": 74.425,
     "pred_k": 70.601,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-12",
@@ -7085,7 +7105,8 @@
     "actual_k": 76.539,
     "pred_k": 72.009,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-13",
@@ -7207,7 +7228,8 @@
     "actual_k": 76.613,
     "pred_k": 71.714,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-23",
@@ -7221,7 +7243,8 @@
     "actual_k": 81.982,
     "pred_k": 73.825,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-24",
@@ -7235,7 +7258,8 @@
     "actual_k": 78.892,
     "pred_k": 72.046,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-25",
@@ -7277,7 +7301,8 @@
     "actual_k": 76.101,
     "pred_k": 72.673,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-28",
@@ -7291,7 +7316,8 @@
     "actual_k": 70.487,
     "pred_k": 68.185,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-11"
+    "model_from": "2016-11",
+    "limit": true
    },
    {
     "day": "2017-11-29",
@@ -7328,10 +7354,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.212,
+    "mean_k": 0.229,
     "flag": null,
     "actual_k": 63.66,
-    "pred_k": 63.448,
+    "pred_k": 63.431,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7342,10 +7368,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.919,
+    "mean_k": 0.856,
     "flag": null,
     "actual_k": 67.541,
-    "pred_k": 66.621,
+    "pred_k": 66.684,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7388,12 +7414,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 5.545,
+    "mean_k": 5.601,
     "flag": "hot",
     "actual_k": 79.452,
-    "pred_k": 73.907,
+    "pred_k": 73.851,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-08",
@@ -7402,12 +7429,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 5.094,
+    "mean_k": 5.068,
     "flag": "hot",
     "actual_k": 76.168,
-    "pred_k": 71.074,
+    "pred_k": 71.101,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-09",
@@ -7416,10 +7444,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.438,
+    "mean_k": 1.424,
     "flag": null,
     "actual_k": 69.494,
-    "pred_k": 68.056,
+    "pred_k": 68.07,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7430,12 +7458,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 5.809,
+    "mean_k": 6.013,
     "flag": "hot",
     "actual_k": 78.854,
-    "pred_k": 73.045,
+    "pred_k": 72.841,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-11",
@@ -7444,12 +7473,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.909,
+    "mean_k": 7.097,
     "flag": "hot",
     "actual_k": 80.819,
-    "pred_k": 73.909,
+    "pred_k": 73.722,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-12",
@@ -7458,12 +7488,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 3.286,
+    "mean_k": 3.304,
     "flag": "hot",
     "actual_k": 72.764,
-    "pred_k": 69.479,
+    "pred_k": 69.461,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-13",
@@ -7472,12 +7503,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.185,
+    "mean_k": 6.361,
     "flag": "hot",
     "actual_k": 80.444,
-    "pred_k": 74.259,
+    "pred_k": 74.083,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-14",
@@ -7486,12 +7518,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.59,
+    "mean_k": 6.696,
     "flag": "hot",
     "actual_k": 80.68,
-    "pred_k": 74.09,
+    "pred_k": 73.983,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-15",
@@ -7500,12 +7533,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 4.99,
+    "mean_k": 4.976,
     "flag": "hot",
     "actual_k": 75.562,
-    "pred_k": 70.572,
+    "pred_k": 70.587,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-16",
@@ -7514,10 +7548,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.26,
+    "mean_k": 1.263,
     "flag": null,
     "actual_k": 67.725,
-    "pred_k": 66.465,
+    "pred_k": 66.462,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7536,10 +7570,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.199,
+    "mean_k": 1.183,
     "flag": null,
     "actual_k": 67.171,
-    "pred_k": 65.972,
+    "pred_k": 65.987,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7550,10 +7584,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.36,
+    "mean_k": -1.361,
     "flag": null,
     "actual_k": 61.899,
-    "pred_k": 63.259,
+    "pred_k": 63.26,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7578,10 +7612,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.923,
+    "mean_k": -0.948,
     "flag": null,
     "actual_k": 61.608,
-    "pred_k": 62.531,
+    "pred_k": 62.556,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7592,10 +7626,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.174,
+    "mean_k": 0.156,
     "flag": null,
     "actual_k": 64.051,
-    "pred_k": 63.876,
+    "pred_k": 63.894,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7614,10 +7648,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.101,
+    "mean_k": 0.032,
     "flag": null,
     "actual_k": 64.061,
-    "pred_k": 63.96,
+    "pred_k": 64.029,
     "frozen_since": "2017-08-15",
     "model_from": "2016-12"
    },
@@ -7628,12 +7662,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.375,
-    "flag": null,
+    "mean_k": 1.351,
+    "flag": "hot",
     "actual_k": 67.985,
-    "pred_k": 66.61,
+    "pred_k": 66.634,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-26",
@@ -7642,12 +7677,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.97,
+    "mean_k": 7.023,
     "flag": "hot",
     "actual_k": 80.237,
-    "pred_k": 73.266,
+    "pred_k": 73.214,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-27",
@@ -7656,12 +7692,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.327,
+    "mean_k": 6.312,
     "flag": "hot",
     "actual_k": 78.877,
-    "pred_k": 72.55,
+    "pred_k": 72.565,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-28",
@@ -7670,12 +7707,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 3.548,
+    "mean_k": 3.578,
     "flag": "hot",
     "actual_k": 71.368,
-    "pred_k": 67.82,
+    "pred_k": 67.79,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-29",
@@ -7684,12 +7722,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 4.061,
+    "mean_k": 4.052,
     "flag": "hot",
     "actual_k": 74.811,
-    "pred_k": 70.75,
+    "pred_k": 70.759,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-30",
@@ -7698,12 +7737,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 8.185,
+    "mean_k": 8.317,
     "flag": "hot",
     "actual_k": 82.372,
-    "pred_k": 74.187,
+    "pred_k": 74.055,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2017-12-31",
@@ -7712,12 +7752,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 8.672,
+    "mean_k": 8.81,
     "flag": "hot",
     "actual_k": 82.61,
-    "pred_k": 73.939,
+    "pred_k": 73.801,
     "frozen_since": "2017-08-15",
-    "model_from": "2016-12"
+    "model_from": "2016-12",
+    "limit": true
    },
    {
     "day": "2018-01-01",
@@ -7726,12 +7767,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 8.002,
+    "mean_k": 8.111,
     "flag": "hot",
     "actual_k": 82.739,
-    "pred_k": 74.737,
+    "pred_k": 74.628,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-02",
@@ -7745,7 +7787,8 @@
     "actual_k": 77.222,
     "pred_k": 72.029,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-03",
@@ -7754,12 +7797,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 7.715,
+    "mean_k": 7.93,
     "flag": "hot",
     "actual_k": 82.441,
-    "pred_k": 74.726,
+    "pred_k": 74.511,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-04",
@@ -7768,12 +7812,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.972,
+    "mean_k": 7.666,
     "flag": "hot",
     "actual_k": 80.676,
-    "pred_k": 73.703,
+    "pred_k": 73.01,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-05",
@@ -7782,10 +7827,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 4.443,
+    "mean_k": 4.426,
     "flag": "hot",
     "actual_k": 73.843,
-    "pred_k": 69.4,
+    "pred_k": 69.417,
     "frozen_since": "2017-08-15",
     "model_from": "2017-01"
    },
@@ -7804,12 +7849,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 5.8,
+    "mean_k": 5.899,
     "flag": "hot",
     "actual_k": 79.237,
-    "pred_k": 73.437,
+    "pred_k": 73.338,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-08",
@@ -7818,12 +7864,13 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 6.89,
+    "mean_k": 6.874,
     "flag": "hot",
     "actual_k": 79.241,
-    "pred_k": 72.35,
+    "pred_k": 72.367,
     "frozen_since": "2017-08-15",
-    "model_from": "2017-01"
+    "model_from": "2017-01",
+    "limit": true
    },
    {
     "day": "2018-01-09",
@@ -7832,10 +7879,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.48,
+    "mean_k": 1.427,
     "flag": null,
     "actual_k": 68.047,
-    "pred_k": 66.567,
+    "pred_k": 66.619,
     "frozen_since": "2017-08-15",
     "model_from": "2017-01"
    },
@@ -7846,10 +7893,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.632,
+    "mean_k": 0.546,
     "flag": null,
     "actual_k": 66.067,
-    "pred_k": 65.434,
+    "pred_k": 65.521,
     "frozen_since": "2017-08-15",
     "model_from": "2017-01"
    },
@@ -7868,10 +7915,10 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.567,
+    "mean_k": -2.718,
     "flag": "cold",
     "actual_k": 59.428,
-    "pred_k": 61.995,
+    "pred_k": 62.146,
     "frozen_since": "2017-08-15",
     "model_from": "2017-01"
    }
@@ -8005,9 +8052,10 @@
     "status": "checked",
     "state": "trained",
     "mean_k": 2.695,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 73.904,
-    "pred_k": 71.21
+    "pred_k": 71.21,
+    "limit": true
    },
    {
     "day": "2017-07-13",
@@ -8077,9 +8125,10 @@
     "status": "checked",
     "state": "trained",
     "mean_k": 2.033,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 70.727,
-    "pred_k": 68.694
+    "pred_k": 68.694,
+    "limit": true
    },
    {
     "day": "2017-07-20",
@@ -8091,7 +8140,8 @@
     "mean_k": 4.084,
     "flag": "hot",
     "actual_k": 74.709,
-    "pred_k": 70.626
+    "pred_k": 70.626,
+    "limit": true
    },
    {
     "day": "2017-07-21",
@@ -8125,9 +8175,10 @@
     "status": "checked",
     "state": "trained",
     "mean_k": 2.48,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 72.311,
-    "pred_k": 69.831
+    "pred_k": 69.831,
+    "limit": true
    },
    {
     "day": "2017-07-24",
@@ -8149,9 +8200,10 @@
     "status": "checked",
     "state": "trained",
     "mean_k": 1.778,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 72.606,
-    "pred_k": 70.828
+    "pred_k": 70.828,
+    "limit": true
    },
    {
     "day": "2017-07-26",
@@ -8197,9 +8249,10 @@
     "status": "checked",
     "state": "trained",
     "mean_k": 1.894,
-    "flag": null,
+    "flag": "hot",
     "actual_k": 71.186,
-    "pred_k": 69.292
+    "pred_k": 69.292,
+    "limit": true
    },
    {
     "day": "2017-07-30",
@@ -8211,7 +8264,8 @@
     "mean_k": 4.016,
     "flag": "hot",
     "actual_k": 74.678,
-    "pred_k": 70.662
+    "pred_k": 70.662,
+    "limit": true
    },
    {
     "day": "2017-07-31",
@@ -8228,10 +8282,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.646,
+    "mean_k": -0.495,
     "flag": null,
     "actual_k": 63.952,
-    "pred_k": 64.598
+    "pred_k": 64.447
    },
    {
     "day": "2017-08-02",
@@ -8240,22 +8294,23 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.277,
+    "mean_k": -0.273,
     "flag": null,
     "actual_k": 63.394,
-    "pred_k": 63.671
+    "pred_k": 63.667
    },
    {
     "day": "2017-08-03",
     "fault_period": false,
-    "n": 143,
+    "n": 144,
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 2.567,
-    "flag": null,
-    "actual_k": 75.255,
-    "pred_k": 72.688
+    "mean_k": 2.942,
+    "flag": "hot",
+    "actual_k": 75.292,
+    "pred_k": 72.35,
+    "limit": true
    },
    {
     "day": "2017-08-04",
@@ -8264,10 +8319,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 1.798,
+    "mean_k": 1.97,
     "flag": null,
     "actual_k": 70.782,
-    "pred_k": 68.984
+    "pred_k": 68.812
    },
    {
     "day": "2017-08-05",
@@ -8276,10 +8331,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 1.161,
+    "mean_k": 1.419,
     "flag": null,
     "actual_k": 71.683,
-    "pred_k": 70.521
+    "pred_k": 70.264
    },
    {
     "day": "2017-08-06",
@@ -8288,10 +8343,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -1.422,
+    "mean_k": -1.388,
     "flag": null,
     "actual_k": 64.529,
-    "pred_k": 65.951
+    "pred_k": 65.917
    },
    {
     "day": "2017-08-07",
@@ -8300,22 +8355,22 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.519,
+    "mean_k": -0.552,
     "flag": null,
     "actual_k": 62.938,
-    "pred_k": 63.457
+    "pred_k": 63.49
    },
    {
     "day": "2017-08-08",
     "fault_period": false,
-    "n": 138,
+    "n": 139,
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 0.947,
+    "mean_k": 1.211,
     "flag": null,
-    "actual_k": 71.452,
-    "pred_k": 70.505
+    "actual_k": 71.492,
+    "pred_k": 70.282
    },
    {
     "day": "2017-08-09",
@@ -8340,10 +8395,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.546,
+    "mean_k": -0.503,
     "flag": null,
     "actual_k": 67.53,
-    "pred_k": 68.076
+    "pred_k": 68.033
    },
    {
     "day": "2017-08-12",
@@ -8352,10 +8407,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 0.115,
+    "mean_k": 0.254,
     "flag": null,
     "actual_k": 69.079,
-    "pred_k": 68.964
+    "pred_k": 68.825
    },
    {
     "day": "2017-08-13",
@@ -8372,22 +8427,23 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -1.764,
+    "mean_k": -1.666,
     "flag": null,
     "actual_k": 62.356,
-    "pred_k": 64.121
+    "pred_k": 64.022
    },
    {
     "day": "2017-08-15",
     "fault_period": true,
-    "n": 116,
+    "n": 118,
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 2.675,
-    "flag": null,
-    "actual_k": 73.96,
-    "pred_k": 71.285
+    "mean_k": 3.074,
+    "flag": "hot",
+    "actual_k": 74.066,
+    "pred_k": 70.992,
+    "limit": true
    },
    {
     "day": "2017-08-16",
@@ -8404,22 +8460,22 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 0.251,
+    "mean_k": 0.459,
     "flag": null,
     "actual_k": 69.641,
-    "pred_k": 69.391
+    "pred_k": 69.182
    },
    {
     "day": "2017-08-18",
     "fault_period": true,
-    "n": 135,
+    "n": 136,
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 2.507,
+    "mean_k": 2.813,
     "flag": null,
-    "actual_k": 74.028,
-    "pred_k": 71.522
+    "actual_k": 74.065,
+    "pred_k": 71.252
    },
    {
     "day": "2017-08-19",
@@ -8428,10 +8484,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.662,
+    "mean_k": -0.574,
     "flag": null,
     "actual_k": 66.048,
-    "pred_k": 66.71
+    "pred_k": 66.622
    },
    {
     "day": "2017-08-20",
@@ -8440,10 +8496,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.562,
+    "mean_k": -0.555,
     "flag": null,
     "actual_k": 62.482,
-    "pred_k": 63.043
+    "pred_k": 63.037
    },
    {
     "day": "2017-08-21",
@@ -8468,10 +8524,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 1.187,
+    "mean_k": 1.195,
     "flag": null,
     "actual_k": 69.507,
-    "pred_k": 68.32
+    "pred_k": 68.312
    },
    {
     "day": "2017-08-24",
@@ -8488,10 +8544,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.261,
+    "mean_k": -0.274,
     "flag": null,
     "actual_k": 62.058,
-    "pred_k": 62.319
+    "pred_k": 62.332
    },
    {
     "day": "2017-08-26",
@@ -8500,10 +8556,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.436,
+    "mean_k": -0.514,
     "flag": null,
     "actual_k": 63.121,
-    "pred_k": 63.557
+    "pred_k": 63.634
    },
    {
     "day": "2017-08-27",
@@ -8512,10 +8568,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": -0.235,
+    "mean_k": -0.148,
     "flag": null,
     "actual_k": 62.469,
-    "pred_k": 62.704
+    "pred_k": 62.617
    },
    {
     "day": "2017-08-28",
@@ -8540,10 +8596,11 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 2.149,
-    "flag": null,
+    "mean_k": 2.438,
+    "flag": "hot",
     "actual_k": 72.833,
-    "pred_k": 70.684
+    "pred_k": 70.395,
+    "limit": true
    },
    {
     "day": "2017-08-31",
@@ -8552,10 +8609,10 @@
     "running": true,
     "status": "checked",
     "state": "trained",
-    "mean_k": 2.1,
+    "mean_k": 2.353,
     "flag": null,
     "actual_k": 71.403,
-    "pred_k": 69.304
+    "pred_k": 69.05
    },
    {
     "day": "2017-09-01",
@@ -8563,7 +8620,7 @@
     "n": 12,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-02",
@@ -8571,11 +8628,12 @@
     "n": 88,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.271,
+    "state": "frozen",
+    "mean_k": -0.187,
     "flag": null,
     "actual_k": 63.654,
-    "pred_k": 63.925
+    "pred_k": 63.841,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-03",
@@ -8583,7 +8641,7 @@
     "n": 0,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-04",
@@ -8591,11 +8649,12 @@
     "n": 42,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.929,
+    "state": "frozen",
+    "mean_k": -0.507,
     "flag": null,
     "actual_k": 65.0,
-    "pred_k": 65.929
+    "pred_k": 65.508,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-05",
@@ -8603,11 +8662,12 @@
     "n": 144,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 0.567,
+    "state": "frozen",
+    "mean_k": 1.42,
     "flag": null,
     "actual_k": 70.865,
-    "pred_k": 70.298
+    "pred_k": 69.444,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-06",
@@ -8615,11 +8675,12 @@
     "n": 135,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 1.165,
+    "state": "frozen",
+    "mean_k": 1.923,
     "flag": null,
     "actual_k": 72.247,
-    "pred_k": 71.082
+    "pred_k": 70.324,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-07",
@@ -8627,11 +8688,12 @@
     "n": 107,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.752,
+    "state": "frozen",
+    "mean_k": -0.402,
     "flag": null,
     "actual_k": 65.427,
-    "pred_k": 66.178
+    "pred_k": 65.829,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-08",
@@ -8639,11 +8701,13 @@
     "n": 139,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 2.441,
-    "flag": null,
+    "state": "frozen",
+    "mean_k": 4.523,
+    "flag": "hot",
     "actual_k": 79.767,
-    "pred_k": 77.326
+    "pred_k": 75.244,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-09",
@@ -8651,11 +8715,13 @@
     "n": 128,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 1.76,
-    "flag": null,
+    "state": "frozen",
+    "mean_k": 3.011,
+    "flag": "hot",
     "actual_k": 73.594,
-    "pred_k": 71.835
+    "pred_k": 70.584,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-10",
@@ -8663,7 +8729,7 @@
     "n": 13,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-11",
@@ -8671,11 +8737,13 @@
     "n": 138,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 2.539,
-    "flag": null,
+    "state": "frozen",
+    "mean_k": 4.488,
+    "flag": "hot",
     "actual_k": 78.731,
-    "pred_k": 76.192
+    "pred_k": 74.243,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-12",
@@ -8683,11 +8751,13 @@
     "n": 126,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 1.678,
-    "flag": null,
+    "state": "frozen",
+    "mean_k": 3.403,
+    "flag": "hot",
     "actual_k": 76.911,
-    "pred_k": 75.233
+    "pred_k": 73.508,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-13",
@@ -8695,11 +8765,13 @@
     "n": 43,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 7.01,
+    "state": "frozen",
+    "mean_k": 10.127,
     "flag": "hot",
     "actual_k": 83.436,
-    "pred_k": 76.426
+    "pred_k": 73.309,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-14",
@@ -8707,11 +8779,13 @@
     "n": 110,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 3.3,
+    "state": "frozen",
+    "mean_k": 5.706,
     "flag": "hot",
     "actual_k": 80.416,
-    "pred_k": 77.115
+    "pred_k": 74.709,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-09-15",
@@ -8719,11 +8793,12 @@
     "n": 91,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 0.752,
+    "state": "frozen",
+    "mean_k": 1.563,
     "flag": null,
     "actual_k": 68.134,
-    "pred_k": 67.382
+    "pred_k": 66.571,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-16",
@@ -8731,7 +8806,7 @@
     "n": 35,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-17",
@@ -8739,11 +8814,12 @@
     "n": 48,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -1.599,
+    "state": "frozen",
+    "mean_k": -1.355,
     "flag": null,
     "actual_k": 62.53,
-    "pred_k": 64.129
+    "pred_k": 63.884,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-18",
@@ -8751,11 +8827,12 @@
     "n": 74,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.98,
+    "state": "frozen",
+    "mean_k": -0.438,
     "flag": null,
     "actual_k": 64.47,
-    "pred_k": 65.45
+    "pred_k": 64.908,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-19",
@@ -8763,11 +8840,12 @@
     "n": 126,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.761,
+    "state": "frozen",
+    "mean_k": -0.22,
     "flag": null,
     "actual_k": 65.415,
-    "pred_k": 66.176
+    "pred_k": 65.636,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-20",
@@ -8775,7 +8853,7 @@
     "n": 27,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-21",
@@ -8783,7 +8861,7 @@
     "n": 4,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-22",
@@ -8791,7 +8869,7 @@
     "n": 10,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-23",
@@ -8799,7 +8877,7 @@
     "n": 9,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-24",
@@ -8807,11 +8885,12 @@
     "n": 92,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": -0.749,
+    "state": "frozen",
+    "mean_k": -0.437,
     "flag": null,
     "actual_k": 63.509,
-    "pred_k": 64.258
+    "pred_k": 63.946,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-25",
@@ -8819,11 +8898,12 @@
     "n": 37,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 0.675,
+    "state": "frozen",
+    "mean_k": 1.256,
     "flag": null,
     "actual_k": 62.346,
-    "pred_k": 61.671
+    "pred_k": 61.09,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-26",
@@ -8831,7 +8911,7 @@
     "n": 8,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-27",
@@ -8839,7 +8919,7 @@
     "n": 20,
     "running": true,
     "status": "thin",
-    "state": "trained"
+    "state": "frozen"
    },
    {
     "day": "2017-09-28",
@@ -8847,11 +8927,12 @@
     "n": 92,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 0.191,
+    "state": "frozen",
+    "mean_k": 0.356,
     "flag": null,
     "actual_k": 63.722,
-    "pred_k": 63.531
+    "pred_k": 63.366,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-29",
@@ -8859,11 +8940,12 @@
     "n": 119,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 0.358,
+    "state": "frozen",
+    "mean_k": 0.667,
     "flag": null,
     "actual_k": 65.102,
-    "pred_k": 64.744
+    "pred_k": 64.435,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-09-30",
@@ -8871,11 +8953,12 @@
     "n": 100,
     "running": true,
     "status": "checked",
-    "state": "trained",
-    "mean_k": 1.247,
+    "state": "frozen",
+    "mean_k": 1.687,
     "flag": null,
     "actual_k": 68.092,
-    "pred_k": 66.845
+    "pred_k": 66.405,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-01",
@@ -8892,11 +8975,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.086,
-    "flag": null,
+    "mean_k": 3.699,
+    "flag": "hot",
     "actual_k": 77.848,
-    "pred_k": 75.762,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.149,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-03",
@@ -8905,11 +8988,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.614,
+    "mean_k": 2.121,
     "flag": null,
     "actual_k": 68.409,
-    "pred_k": 66.794,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.288,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-04",
@@ -8918,11 +9001,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.259,
+    "mean_k": 2.357,
     "flag": null,
     "actual_k": 76.623,
-    "pred_k": 76.363,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.265,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-05",
@@ -8931,11 +9014,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.506,
-    "flag": null,
+    "mean_k": 4.416,
+    "flag": "hot",
     "actual_k": 75.553,
-    "pred_k": 73.047,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.137,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-10-06",
@@ -8944,11 +9028,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.551,
+    "mean_k": 0.006,
     "flag": null,
     "actual_k": 66.569,
-    "pred_k": 67.119,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.563,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-09",
@@ -8965,11 +9049,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.595,
+    "mean_k": 0.115,
     "flag": null,
     "actual_k": 67.951,
-    "pred_k": 68.546,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.836,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-11",
@@ -8978,11 +9062,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.54,
+    "mean_k": 0.697,
     "flag": null,
     "actual_k": 69.925,
-    "pred_k": 70.465,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.229,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-12",
@@ -8991,11 +9075,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.315,
+    "mean_k": 1.097,
     "flag": null,
     "actual_k": 69.598,
-    "pred_k": 69.282,
-    "frozen_since": "2017-09-13"
+    "pred_k": 68.501,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-13",
@@ -9020,11 +9104,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.568,
+    "mean_k": 1.686,
     "flag": null,
     "actual_k": 71.529,
-    "pred_k": 70.961,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.843,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-16",
@@ -9033,11 +9117,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.948,
-    "flag": null,
+    "mean_k": 3.398,
+    "flag": "hot",
     "actual_k": 75.734,
-    "pred_k": 73.786,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.336,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-10-17",
@@ -9054,11 +9139,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.888,
-    "flag": null,
+    "mean_k": 1.827,
+    "flag": "hot",
     "actual_k": 69.931,
-    "pred_k": 69.043,
-    "frozen_since": "2017-09-13"
+    "pred_k": 68.104,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-10-19",
@@ -9067,11 +9153,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.003,
+    "mean_k": 2.269,
     "flag": null,
     "actual_k": 73.84,
-    "pred_k": 72.837,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.571,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-20",
@@ -9080,11 +9166,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.341,
-    "flag": null,
+    "mean_k": 3.176,
+    "flag": "hot",
     "actual_k": 76.84,
-    "pred_k": 75.499,
-    "frozen_since": "2017-09-13"
+    "pred_k": 73.664,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-21",
@@ -9093,11 +9179,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.09,
-    "flag": null,
+    "mean_k": 4.137,
+    "flag": "hot",
     "actual_k": 78.712,
-    "pred_k": 76.622,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.576,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-10-22",
@@ -9106,11 +9193,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.524,
-    "flag": null,
+    "mean_k": 3.057,
+    "flag": "hot",
     "actual_k": 76.117,
-    "pred_k": 75.593,
-    "frozen_since": "2017-09-13"
+    "pred_k": 73.06,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-23",
@@ -9119,11 +9206,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.327,
+    "mean_k": -0.463,
     "flag": null,
     "actual_k": 65.652,
-    "pred_k": 66.979,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.115,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-24",
@@ -9132,11 +9219,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.287,
+    "mean_k": -0.138,
     "flag": null,
     "actual_k": 63.942,
-    "pred_k": 64.229,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.081,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-25",
@@ -9145,11 +9232,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.529,
+    "mean_k": -0.525,
     "flag": null,
     "actual_k": 61.219,
-    "pred_k": 61.749,
-    "frozen_since": "2017-09-13"
+    "pred_k": 61.745,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-26",
@@ -9158,11 +9245,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.951,
+    "mean_k": -1.493,
     "flag": null,
     "actual_k": 64.191,
-    "pred_k": 66.142,
-    "frozen_since": "2017-09-13"
+    "pred_k": 65.684,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-27",
@@ -9171,11 +9258,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.04,
+    "mean_k": -0.287,
     "flag": null,
     "actual_k": 66.8,
-    "pred_k": 67.84,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.087,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-28",
@@ -9184,11 +9271,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.799,
+    "mean_k": 1.115,
     "flag": null,
     "actual_k": 72.779,
-    "pred_k": 73.578,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.664,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-29",
@@ -9197,11 +9284,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.304,
-    "flag": null,
+    "mean_k": 2.077,
+    "flag": "hot",
     "actual_k": 72.576,
-    "pred_k": 72.272,
-    "frozen_since": "2017-09-13"
+    "pred_k": 70.499,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-10-30",
@@ -9210,11 +9298,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.217,
+    "mean_k": -0.442,
     "flag": null,
     "actual_k": 66.894,
-    "pred_k": 68.111,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.336,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-10-31",
@@ -9223,11 +9311,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.215,
+    "mean_k": -0.824,
     "flag": null,
     "actual_k": 64.857,
-    "pred_k": 66.072,
-    "frozen_since": "2017-09-13"
+    "pred_k": 65.681,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-01",
@@ -9244,11 +9332,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.704,
-    "flag": null,
+    "mean_k": 3.078,
+    "flag": "hot",
     "actual_k": 72.823,
-    "pred_k": 71.119,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.745,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-03",
@@ -9265,11 +9354,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.711,
+    "mean_k": 1.417,
     "flag": null,
     "actual_k": 70.299,
-    "pred_k": 69.588,
-    "frozen_since": "2017-09-13"
+    "pred_k": 68.882,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-05",
@@ -9278,11 +9367,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.792,
+    "mean_k": 0.372,
     "flag": null,
     "actual_k": 70.983,
-    "pred_k": 71.775,
-    "frozen_since": "2017-09-13"
+    "pred_k": 70.611,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-06",
@@ -9291,11 +9380,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.473,
+    "mean_k": -0.319,
     "flag": null,
     "actual_k": 70.062,
-    "pred_k": 71.535,
-    "frozen_since": "2017-09-13"
+    "pred_k": 70.381,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-07",
@@ -9304,11 +9393,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.023,
+    "mean_k": -0.199,
     "flag": null,
     "actual_k": 66.984,
-    "pred_k": 68.006,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.183,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-08",
@@ -9317,11 +9406,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.577,
+    "mean_k": -1.388,
     "flag": null,
     "actual_k": 62.612,
-    "pred_k": 64.189,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.0,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-09",
@@ -9330,11 +9419,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -7.179,
+    "mean_k": -6.548,
     "flag": "cold",
     "actual_k": 60.569,
-    "pred_k": 67.748,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.117,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-10",
@@ -9343,11 +9432,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.275,
+    "mean_k": 1.085,
     "flag": null,
     "actual_k": 73.254,
-    "pred_k": 73.53,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.169,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-11",
@@ -9356,11 +9445,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.205,
-    "flag": null,
+    "mean_k": 2.372,
+    "flag": "hot",
     "actual_k": 73.752,
-    "pred_k": 73.547,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.381,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-12",
@@ -9369,11 +9459,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.552,
-    "flag": null,
+    "mean_k": 2.898,
+    "flag": "hot",
     "actual_k": 75.003,
-    "pred_k": 74.452,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.105,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-13",
@@ -9390,11 +9481,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.709,
+    "mean_k": -0.41,
     "flag": null,
     "actual_k": 64.233,
-    "pred_k": 64.941,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.643,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-15",
@@ -9403,11 +9494,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.351,
+    "mean_k": -1.077,
     "flag": null,
     "actual_k": 69.715,
-    "pred_k": 72.066,
-    "frozen_since": "2017-09-13"
+    "pred_k": 70.792,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-16",
@@ -9432,11 +9523,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.828,
+    "mean_k": 0.139,
     "flag": null,
     "actual_k": 74.944,
-    "pred_k": 76.772,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.805,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-19",
@@ -9445,11 +9536,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.559,
+    "mean_k": 0.063,
     "flag": null,
     "actual_k": 66.816,
-    "pred_k": 67.375,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.753,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-20",
@@ -9458,11 +9549,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.625,
+    "mean_k": -0.994,
     "flag": null,
     "actual_k": 71.039,
-    "pred_k": 73.664,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.033,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-21",
@@ -9471,11 +9562,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.421,
+    "mean_k": 1.901,
     "flag": null,
     "actual_k": 73.429,
-    "pred_k": 73.008,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.528,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-22",
@@ -9484,11 +9575,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.956,
-    "flag": null,
+    "mean_k": 3.085,
+    "flag": "hot",
     "actual_k": 76.054,
-    "pred_k": 75.098,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.969,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-23",
@@ -9497,11 +9589,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 3.92,
+    "mean_k": 6.463,
     "flag": "hot",
     "actual_k": 81.447,
-    "pred_k": 77.528,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.985,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-24",
@@ -9510,11 +9603,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.896,
-    "flag": null,
+    "mean_k": 5.076,
+    "flag": "hot",
     "actual_k": 78.848,
-    "pred_k": 75.952,
-    "frozen_since": "2017-09-13"
+    "pred_k": 73.772,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-25",
@@ -9523,11 +9617,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.591,
+    "mean_k": -0.434,
     "flag": null,
     "actual_k": 69.487,
-    "pred_k": 71.078,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.921,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-26",
@@ -9536,11 +9630,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.127,
+    "mean_k": -0.556,
     "flag": null,
     "actual_k": 66.572,
-    "pred_k": 67.699,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.128,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-27",
@@ -9549,11 +9643,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.788,
-    "flag": null,
+    "mean_k": -0.025,
+    "flag": "hot",
     "actual_k": 72.699,
-    "pred_k": 74.487,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.724,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-28",
@@ -9562,11 +9657,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.391,
-    "flag": null,
+    "mean_k": 0.312,
+    "flag": "hot",
     "actual_k": 67.235,
-    "pred_k": 67.626,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.924,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-11-29",
@@ -9575,11 +9671,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.403,
+    "mean_k": -0.959,
     "flag": null,
     "actual_k": 64.686,
-    "pred_k": 66.089,
-    "frozen_since": "2017-09-13"
+    "pred_k": 65.645,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-11-30",
@@ -9588,11 +9684,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.836,
+    "mean_k": -0.47,
     "flag": null,
     "actual_k": 64.971,
-    "pred_k": 65.807,
-    "frozen_since": "2017-09-13"
+    "pred_k": 65.442,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-01",
@@ -9601,11 +9697,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.184,
+    "mean_k": -0.94,
     "flag": null,
     "actual_k": 63.66,
-    "pred_k": 64.844,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.6,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-02",
@@ -9614,11 +9710,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.339,
+    "mean_k": -1.485,
     "flag": null,
     "actual_k": 67.541,
-    "pred_k": 69.88,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.025,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-03",
@@ -9659,11 +9755,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.139,
-    "flag": null,
+    "mean_k": 2.914,
+    "flag": "hot",
     "actual_k": 78.367,
-    "pred_k": 78.228,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.452,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-08",
@@ -9672,11 +9769,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.559,
-    "flag": null,
+    "mean_k": 2.337,
+    "flag": "hot",
     "actual_k": 76.118,
-    "pred_k": 75.56,
-    "frozen_since": "2017-09-13"
+    "pred_k": 73.781,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-09",
@@ -9685,11 +9783,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.39,
+    "mean_k": -1.273,
     "flag": null,
     "actual_k": 69.494,
-    "pred_k": 71.884,
-    "frozen_since": "2017-09-13"
+    "pred_k": 70.767,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-10",
@@ -9698,11 +9796,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.197,
-    "flag": null,
+    "mean_k": 3.017,
+    "flag": "hot",
     "actual_k": 76.375,
-    "pred_k": 75.178,
-    "frozen_since": "2017-09-13"
+    "pred_k": 73.358,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-11",
@@ -9711,11 +9810,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.438,
-    "flag": null,
+    "mean_k": 5.373,
+    "flag": "hot",
     "actual_k": 78.314,
-    "pred_k": 75.876,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.941,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-12",
@@ -9724,11 +9824,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.569,
-    "flag": null,
+    "mean_k": 0.886,
+    "flag": "hot",
     "actual_k": 72.411,
-    "pred_k": 72.98,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.525,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-13",
@@ -9737,11 +9838,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.658,
-    "flag": null,
+    "mean_k": 3.414,
+    "flag": "hot",
     "actual_k": 78.917,
-    "pred_k": 78.259,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.502,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-14",
@@ -9750,11 +9852,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.544,
-    "flag": null,
+    "mean_k": 4.944,
+    "flag": "hot",
     "actual_k": 80.266,
-    "pred_k": 78.722,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.322,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-15",
@@ -9763,11 +9866,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.807,
-    "flag": null,
+    "mean_k": 2.582,
+    "flag": "hot",
     "actual_k": 75.49,
-    "pred_k": 74.683,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.908,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-16",
@@ -9776,11 +9880,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.172,
+    "mean_k": -0.453,
     "flag": null,
     "actual_k": 67.725,
-    "pred_k": 68.898,
-    "frozen_since": "2017-09-13"
+    "pred_k": 68.178,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-17",
@@ -9797,11 +9901,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.755,
+    "mean_k": -0.023,
     "flag": null,
     "actual_k": 67.171,
-    "pred_k": 67.925,
-    "frozen_since": "2017-09-13"
+    "pred_k": 67.194,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-19",
@@ -9810,11 +9914,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -2.0,
+    "mean_k": -1.804,
     "flag": null,
     "actual_k": 61.899,
-    "pred_k": 63.899,
-    "frozen_since": "2017-09-13"
+    "pred_k": 63.702,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-20",
@@ -9823,11 +9927,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.729,
+    "mean_k": -0.54,
     "flag": null,
     "actual_k": 63.349,
-    "pred_k": 64.077,
-    "frozen_since": "2017-09-13"
+    "pred_k": 63.889,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-21",
@@ -9836,11 +9940,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.513,
+    "mean_k": -1.37,
     "flag": null,
     "actual_k": 61.608,
-    "pred_k": 63.122,
-    "frozen_since": "2017-09-13"
+    "pred_k": 62.978,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-22",
@@ -9849,11 +9953,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.646,
+    "mean_k": -0.395,
     "flag": null,
     "actual_k": 64.051,
-    "pred_k": 64.696,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.445,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-23",
@@ -9870,11 +9974,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.767,
+    "mean_k": -0.502,
     "flag": null,
     "actual_k": 64.061,
-    "pred_k": 64.828,
-    "frozen_since": "2017-09-13"
+    "pred_k": 64.563,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2017-12-25",
@@ -9883,11 +9987,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.673,
-    "flag": null,
+    "mean_k": 0.266,
+    "flag": "hot",
     "actual_k": 66.939,
-    "pred_k": 67.612,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.673,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-26",
@@ -9896,11 +10001,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.927,
-    "flag": null,
+    "mean_k": 4.404,
+    "flag": "hot",
     "actual_k": 79.173,
-    "pred_k": 77.246,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.769,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-27",
@@ -9909,11 +10015,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.579,
-    "flag": null,
+    "mean_k": 3.825,
+    "flag": "hot",
     "actual_k": 78.233,
-    "pred_k": 76.654,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.408,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-28",
@@ -9922,11 +10029,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.274,
-    "flag": null,
+    "mean_k": 1.29,
+    "flag": "hot",
     "actual_k": 70.323,
-    "pred_k": 70.049,
-    "frozen_since": "2017-09-13"
+    "pred_k": 69.034,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-29",
@@ -9935,11 +10043,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.45,
-    "flag": null,
+    "mean_k": 1.116,
+    "flag": "hot",
     "actual_k": 73.0,
-    "pred_k": 73.451,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.884,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-30",
@@ -9948,11 +10057,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.832,
-    "flag": null,
+    "mean_k": 5.494,
+    "flag": "hot",
     "actual_k": 80.34,
-    "pred_k": 77.508,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.846,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2017-12-31",
@@ -9961,11 +10071,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 4.213,
+    "mean_k": 7.269,
     "flag": "hot",
     "actual_k": 81.939,
-    "pred_k": 77.726,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.669,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-01",
@@ -9974,11 +10085,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.312,
-    "flag": null,
+    "mean_k": 5.947,
+    "flag": "hot",
     "actual_k": 81.367,
-    "pred_k": 79.054,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.42,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-02",
@@ -9987,11 +10099,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.226,
-    "flag": null,
+    "mean_k": 2.709,
+    "flag": "hot",
     "actual_k": 76.823,
-    "pred_k": 76.597,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.115,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-03",
@@ -10000,11 +10113,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.771,
-    "flag": null,
+    "mean_k": 6.013,
+    "flag": "hot",
     "actual_k": 81.555,
-    "pred_k": 78.784,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.542,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-04",
@@ -10013,11 +10127,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 2.095,
-    "flag": null,
+    "mean_k": 4.411,
+    "flag": "hot",
     "actual_k": 77.293,
-    "pred_k": 75.198,
-    "frozen_since": "2017-09-13"
+    "pred_k": 72.882,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-05",
@@ -10026,11 +10141,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.915,
+    "mean_k": 2.491,
     "flag": null,
     "actual_k": 73.843,
-    "pred_k": 72.928,
-    "frozen_since": "2017-09-13"
+    "pred_k": 71.352,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-06",
@@ -10047,11 +10162,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 0.151,
-    "flag": null,
+    "mean_k": 2.797,
+    "flag": "hot",
     "actual_k": 77.336,
-    "pred_k": 77.185,
-    "frozen_since": "2017-09-13"
+    "pred_k": 74.539,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-08",
@@ -10060,11 +10176,12 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": 1.841,
-    "flag": null,
+    "mean_k": 4.007,
+    "flag": "hot",
     "actual_k": 79.239,
-    "pred_k": 77.398,
-    "frozen_since": "2017-09-13"
+    "pred_k": 75.232,
+    "frozen_since": "2017-08-15",
+    "limit": true
    },
    {
     "day": "2018-01-09",
@@ -10073,11 +10190,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -0.983,
+    "mean_k": -0.107,
     "flag": null,
     "actual_k": 68.047,
-    "pred_k": 69.03,
-    "frozen_since": "2017-09-13"
+    "pred_k": 68.154,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-10",
@@ -10086,11 +10203,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -1.267,
+    "mean_k": -0.74,
     "flag": null,
     "actual_k": 66.067,
-    "pred_k": 67.334,
-    "frozen_since": "2017-09-13"
+    "pred_k": 66.807,
+    "frozen_since": "2017-08-15"
    },
    {
     "day": "2018-01-11",
@@ -10107,11 +10224,11 @@
     "running": true,
     "status": "checked",
     "state": "frozen",
-    "mean_k": -3.613,
+    "mean_k": -3.48,
     "flag": "cold",
     "actual_k": 59.428,
-    "pred_k": 63.041,
-    "frozen_since": "2017-09-13"
+    "pred_k": 62.908,
+    "frozen_since": "2017-08-15"
    }
   ]
  },
@@ -10771,38 +10888,38 @@
    },
    {
     "month": "2017-10",
-    "model": "trained",
-    "reason": null,
-    "model_train_start": "2017-07-28",
-    "model_train_end": "2017-10-01",
-    "model_from": null,
-    "train_start": "2017-07-28",
-    "train_end": "2017-10-01",
-    "train_rows": 4632,
-    "clean_rows": 4489
+    "model": "blank",
+    "reason": "no healthy month",
+    "model_train_start": null,
+    "model_train_end": null,
+    "model_from": null
    },
    {
     "month": "2017-11",
-    "model": "frozen",
+    "model": "trained",
     "reason": null,
-    "model_train_start": "2017-07-28",
-    "model_train_end": "2017-10-01",
-    "model_from": null
+    "model_train_start": "2017-08-06",
+    "model_train_end": "2017-11-01",
+    "model_from": null,
+    "train_start": "2017-08-06",
+    "train_end": "2017-11-01",
+    "train_rows": 5101,
+    "clean_rows": 5003
    },
    {
     "month": "2017-12",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-28",
-    "model_train_end": "2017-10-01",
+    "model_train_start": "2017-08-06",
+    "model_train_end": "2017-11-01",
     "model_from": null
    },
    {
     "month": "2018-01",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-28",
-    "model_train_end": "2017-10-01",
+    "model_train_start": "2017-08-06",
+    "model_train_end": "2017-11-01",
     "model_from": null
    }
   ],
@@ -12074,8 +12191,8 @@
     "model_from": null,
     "train_start": "2016-10-11",
     "train_end": "2016-12-01",
-    "train_rows": 4888,
-    "clean_rows": 4718
+    "train_rows": 4744,
+    "clean_rows": 4588
    },
    {
     "month": "2017-01",
@@ -12086,8 +12203,8 @@
     "model_from": null,
     "train_start": "2016-11-03",
     "train_end": "2017-01-01",
-    "train_rows": 4920,
-    "clean_rows": 4640
+    "train_rows": 4817,
+    "clean_rows": 4538
    },
    {
     "month": "2017-02",
@@ -12776,8 +12893,8 @@
     "model_from": null,
     "train_start": "2016-10-11",
     "train_end": "2016-12-01",
-    "train_rows": 5073,
-    "clean_rows": 4862
+    "train_rows": 4929,
+    "clean_rows": 4756
    },
    {
     "month": "2017-01",
@@ -12788,8 +12905,8 @@
     "model_from": null,
     "train_start": "2016-11-03",
     "train_end": "2017-01-01",
-    "train_rows": 5146,
-    "clean_rows": 4717
+    "train_rows": 5002,
+    "clean_rows": 4719
    },
    {
     "month": "2017-02",
@@ -12863,56 +12980,52 @@
     "month": "2017-08",
     "model": "trained",
     "reason": null,
-    "model_train_start": "2017-06-03",
+    "model_train_start": "2017-05-27",
     "model_train_end": "2017-08-01",
     "model_from": null,
-    "train_start": "2017-06-03",
+    "train_start": "2017-05-27",
     "train_end": "2017-08-01",
-    "train_rows": 4880,
-    "clean_rows": 4708
+    "train_rows": 4769,
+    "clean_rows": 4698
    },
    {
     "month": "2017-09",
-    "model": "trained",
+    "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-04",
-    "model_train_end": "2017-09-01",
-    "model_from": null,
-    "train_start": "2017-07-04",
-    "train_end": "2017-09-01",
-    "train_rows": 4444,
-    "clean_rows": 4383
+    "model_train_start": "2017-05-27",
+    "model_train_end": "2017-08-01",
+    "model_from": null
    },
    {
     "month": "2017-10",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-04",
-    "model_train_end": "2017-09-01",
+    "model_train_start": "2017-05-27",
+    "model_train_end": "2017-08-01",
     "model_from": null
    },
    {
     "month": "2017-11",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-04",
-    "model_train_end": "2017-09-01",
+    "model_train_start": "2017-05-27",
+    "model_train_end": "2017-08-01",
     "model_from": null
    },
    {
     "month": "2017-12",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-04",
-    "model_train_end": "2017-09-01",
+    "model_train_start": "2017-05-27",
+    "model_train_end": "2017-08-01",
     "model_from": null
    },
    {
     "month": "2018-01",
     "model": "frozen",
     "reason": null,
-    "model_train_start": "2017-07-04",
-    "model_train_end": "2017-09-01",
+    "model_train_start": "2017-05-27",
+    "model_train_end": "2017-08-01",
     "model_from": null
    }
   ]

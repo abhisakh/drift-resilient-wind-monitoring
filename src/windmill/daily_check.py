@@ -319,7 +319,8 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
              maintenance_days: float = MAINTENANCE_DAYS,
              channels=None, leads=(), maintenance_extra=(),
              last_year_when_frozen: bool | None = None,
-             last_year_months=(), keep_models: bool = False) -> dict:
+             last_year_months=(), keep_models: bool = False,
+             limit_rule: bool = False) -> dict:
     """Run the policy over a turbine's whole record, month by month, day by day.
 
     `channels` adds a healthy model and a daily check for each further sensor
@@ -337,6 +338,11 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     `last_year_ok`. `last_year_months` does the same in the months named
     whatever the state (the control: a healthy turbine judged that way).
     `keep_models` adds "models": the model each month was judged with.
+
+    `limit_rule`: a day on which `channel` held HOT_C for LIMIT_HOLD readings
+    is a hot day whatever the model says, and whether or not the model could
+    judge it (a thin or blank day included). The model then flags every day
+    the fixed limit flags, by design, and adds the days below the limit.
     """
     if last_year_when_frozen is None:
         last_year_when_frozen = LAST_YEAR_WHEN_FROZEN
@@ -345,6 +351,11 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
     if len(maintenance_extra):
         maintenance = sorted(set(maintenance) | {_utc(t) for t in maintenance_extra})
     chans = [channel] + [c for c in (channels or []) if c != channel and c in f.columns]
+    limit_days: set = set()
+    if limit_rule:
+        over = (f[channel] > HOT_C).astype(int)
+        held = over.groupby((over != over.shift()).cumsum()).cumsum() * over
+        limit_days = set(f.loc[held >= LIMIT_HOLD, "day"])
     usable_all = (f["running"] & ~f["warmup"]).to_numpy()
     cum_usable = np.cumsum(usable_all)
     ts_values = f["ts"].values                 # naive UTC, for searching
@@ -470,6 +481,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
             rec = {"day": str(day)[:10], "fault_period": fault, "n": n,
                    "running": bool(running[idx].any())}
             day_after_cut = cut is not None and day >= cut.floor("D")
+            limit_hit = day in limit_days
             if model is None or day_after_cut:
                 rec["status"] = "blank"
                 rec["reason"] = "maintenance" if day_after_cut else reason
@@ -486,7 +498,7 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
                 rec["state"] = state
             else:
                 mean = float(np.mean(resid[idx][ok]))
-                flag = ("hot" if mean > tolerance
+                flag = ("hot" if mean > tolerance or limit_hit
                         else "cold" if mean < -tolerance else None)
                 rec.update(status="checked", state=state, mean_k=round(mean, 3),
                            flag=flag,
@@ -523,6 +535,16 @@ def simulate(frame: pd.DataFrame, turbine: str, tolerance: float,
                     flagged_fault = True
                     if frozen_since is None:
                         frozen_since = str(day)[:10]
+            if limit_hit:
+                # The fixed limit fired: a hot day by design, judged or not.
+                rec["limit"] = True
+                if rec.get("flag") != "hot":
+                    rec["flag"] = "hot"
+                    excluded.add(day)
+                    if fault:
+                        flagged_fault = True
+                        if frozen_since is None:
+                            frozen_since = str(day)[:10]
             days_out.append(rec)
         if cut is not None:
             model, confirmed, seen_maint, frozen_since = None, False, max(inside), None

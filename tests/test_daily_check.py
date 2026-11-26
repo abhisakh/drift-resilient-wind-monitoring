@@ -381,3 +381,38 @@ def test_last_year_is_not_used_when_the_component_has_changed_since():
     sim = dc.simulate(f, "T", tolerance=2.5, spans=spans, last_year_when_frozen=True)
     frozen = [m for m in sim["months"] if m["model"] == "frozen"]
     assert frozen and all(m["model_from"] is None for m in frozen)
+
+
+# ----------------------------------------------- the fixed limit inside the rule
+def _spike(f, day, hours=1.5, to=85.0):
+    t0 = pd.Timestamp(day + " 12:00", tz="UTC")
+    sel = (f["ts"] >= t0) & (f["ts"] < t0 + pd.Timedelta(hours=hours))
+    f = f.copy()
+    f.loc[sel, CH] = to
+    return f
+
+
+def test_a_day_that_held_the_limit_is_hot_by_design():
+    """A short spike over 80 C barely moves the daily mean, so the average
+    alone misses it; with the limit in the rule the day is hot."""
+    f = _spike(_turbine(150), "2016-04-10")
+    off = {d["day"]: d for d in dc.simulate(f, "T", tolerance=2.0)["days"]}
+    on = {d["day"]: d for d in dc.simulate(f, "T", tolerance=2.0, limit_rule=True)["days"]}
+    assert off["2016-04-10"]["flag"] is None
+    assert on["2016-04-10"]["flag"] == "hot" and on["2016-04-10"]["limit"]
+
+
+def test_a_limit_day_is_hot_even_when_too_thin_to_average():
+    f = _spike(_turbine(150), "2016-04-10")
+    day = (f["ts"] >= pd.Timestamp("2016-04-10", tz="UTC")) & (f["ts"] < pd.Timestamp("2016-04-11", tz="UTC"))
+    keep = ~day | ((f["ts"] >= pd.Timestamp("2016-04-10 11:00", tz="UTC"))
+                   & (f["ts"] < pd.Timestamp("2016-04-10 14:00", tz="UTC")))
+    f = f[keep].reset_index(drop=True)
+    d = {x["day"]: x for x in dc.simulate(f, "T", tolerance=2.0, limit_rule=True)["days"]}["2016-04-10"]
+    assert d["status"] != "checked" and d["flag"] == "hot" and d["limit"]
+
+
+def test_a_reading_under_an_hour_over_the_limit_is_not_a_limit_day():
+    f = _spike(_turbine(150), "2016-04-10", hours=0.5)
+    d = {x["day"]: x for x in dc.simulate(f, "T", tolerance=2.0, limit_rule=True)["days"]}["2016-04-10"]
+    assert not d.get("limit")

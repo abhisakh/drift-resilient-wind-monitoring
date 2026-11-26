@@ -108,6 +108,7 @@ def main() -> int:
            "judged": [FROM, "2018-01-31"], "turbines": {}}
     for t in TURBINES:
         f = frame(t)
+        # The limit rule is off in both runs: this compares the models alone.
         off = dc.simulate(f, t, TOL, last_year_when_frozen=False, keep_models=t == FAULTY)
         on = dc.simulate(f, t, TOL, last_year_when_frozen=True,
                          last_year_months=() if t == FAULTY else JUDGED,

@@ -1342,3 +1342,21 @@ limit" is gone: on ENGIE's healthy turbines both are near zero.
   every hour. `simulate(..., keep_models=True)` returns the model each month
   was judged with, so the hourly lines come from exactly those models.
 
+#### Step 18: the fixed limit inside the model's rule
+
+* By design, a day on which the sensor held 80 °C for an hour is a hot day,
+  whatever the 2 K daily average says and whether or not the day had enough
+  running data to average (windmill.daily_check.simulate, `limit_rule`, on in
+  the ENGIE daily check). The average misses short peaks: 2 to 8 hours over
+  80 °C on a day of cooler hours stay under 2 K on average.
+* So every day the limit flags, the model flags; "flagged by the limit only"
+  is zero by construction. The model's own contribution is the days below
+  the limit. The healthy siblings never held 80 °C, so the rule adds no false
+  call-outs there.
+* Tested and not adopted: a peak check (more than 5 K above the prediction
+  for an hour). It caught the same days without extra false call-outs on the
+  healthy turbines, but does not guarantee it: with a prediction near 78 °C,
+  80 °C would be only 2 K above.
+* results/limit_vs_model.json adds limit_days_all, limit_days_flagged,
+  limit_days_over_the_average_too and limit_days_not_averaged.
+

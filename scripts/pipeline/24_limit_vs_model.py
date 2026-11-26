@@ -44,7 +44,7 @@ def main() -> int:
 
     series = json.loads((ROOT / "results" / "daily_series.json").read_text())
     d = series["turbines"][TURBINE]
-    rows = pd.DataFrame({k: d[k] for k in ("day", "status", "flag", "fault_period")})
+    rows = pd.DataFrame({k: d[k] for k in ("day", "status", "flag", "fault_period", "mean_k")})
     x = d["sensors"][dc.CHANNEL]
     rows["actual"], rows["pred"] = x["actual"], x["pred"]
     checked = rows[rows["status"] == "checked"]
@@ -54,6 +54,13 @@ def main() -> int:
     in_span = set(span["day"])
     m, lim = model_days & in_span, limit_days & in_span
     only = span[span["day"].isin(m - lim)]
+    # The limit is part of the daily rule (daily_check.simulate, limit_rule):
+    # every limit day is a hot day. How many would the 2 K average alone have
+    # caught, and how many fell on days too thin to average at all?
+    fault_days = rows[rows["fault_period"]]
+    hot_any = set(fault_days.loc[fault_days["flag"] == "hot", "day"])
+    lim_any = limit_days & set(fault_days["day"])
+    by_average = set(span.loc[span["mean_k"] > series["tolerance_k"], "day"])
     before = checked[(checked["day"] >= BEFORE[0]) & (checked["day"] < BEFORE[1])]
     mb = model_days & set(before["day"])
     # How much the model checked, so the counts can be weighed: the record,
@@ -75,6 +82,9 @@ def main() -> int:
             "from": span_from, "to": min(span_to, record_to),
             "days_checked": int(len(span)), "model_hot_days": len(m), "limit_days": len(lim),
             "both": len(m & lim), "model_only": len(m - lim), "limit_only": len(lim - m),
+            "limit_days_all": len(lim_any), "limit_days_flagged": len(lim_any & hot_any),
+            "limit_days_over_the_average_too": len(lim & by_average),
+            "limit_days_not_averaged": len(lim_any - in_span),
             "model_only_daily_mean_c_median": round(float(only["actual"].median()), 1),
             "model_only_excess_k_median": round(float((only["actual"] - only["pred"]).median()), 1),
         },
