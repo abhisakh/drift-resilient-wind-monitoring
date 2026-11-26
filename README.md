@@ -8,25 +8,24 @@ Built on public data: ENGIE La Haute Borne SCADA (France), EDP's wind farm with 
 
 ## The problem
 
-Wind turbines raise temperature alarms on fixed limits, such as 80 °C for a gearbox bearing. That has two weaknesses:
+A wind turbine protects itself with alarms. Its control system watches many signals and raises an alarm when one crosses a fixed setting. In EDP's own event log (four turbines, 2016–2017) these include:
 
-- **It is late.** A bearing can run several kelvin hotter than it should for weeks while staying under the limit.
-- **It cannot explain itself.** "Over 80 °C" does not say whether the heat comes from full power on a hot day or from a part wearing out.
-
-A learned model can fix both, but only if it stays current: a model trained once and left to age mistakes normal drift for faults.
-
-## Which sensors raise turbine alarms
-
-A turbine's control system watches many signals and raises an alarm when one crosses a fixed setting. In EDP's own event log (four turbines, 2016–2017) they include:
-
-- **Component temperatures:** the high-voltage transformer, the generator windings, bearings and slip ring, the gearbox oil and bearings, and the hydraulic oil.
-- **Pitch and hydraulics:** accumulator faults on the blade pitch axes, hydraulic pressure.
+- **Component temperatures**, each with a fixed setting:
+    - generator: 145 °C
+    - transformer windings: 125 °C
+    - generator bearings: alarms logged at 154 °C and above
+    - generator slip ring: 64–70 °C
+    - high-voltage transformer: one fixed setting in every entry
+    - gearbox: the control system switches the gear-oil cooler and heater on the gearbox temperature. For ENGIE's gearbox bearing, this project uses 80 °C held for an hour as the fixed-limit baseline, because ENGIE publishes no alarm settings.
+- **Pitch:** accumulator faults on the blade pitch axes.
 - **Yaw:** the nacelle turning faster than allowed.
 - **Safety and grid:** an open emergency circuit, power cut-in and cut-out.
 
-CARE's offshore fault records add converter, cooling-water, communication and pitch-electronics faults.
+CARE's offshore fault records add converter, cooling-water, hydraulic, communication and pitch-electronics faults.
 
-**This project focuses on component temperatures**, above all the **gearbox bearing temperature** on ENGIE's turbines, where a slowly developing problem shows as heat. On EDP's farm the same method is applied to the transformer, generator and gearbox temperature alarms.
+A fixed setting only fires once the signal crosses it. A problem that develops below the setting goes undetected, so the part keeps degrading until it fails, and a small repair becomes a long, unplanned shutdown with the turbine producing no power for the grid. And when the alarm does fire, "over the setting" does not say whether the cause is the load, the weather or a part wearing out.
+
+**This project focuses on component temperatures**, above all the **gearbox bearing temperature** on ENGIE's turbines, where a slowly developing problem shows as heat long before it crosses a limit such as 80 °C. On EDP's farm the same method is applied to the transformer, generator and gearbox temperature alarms. A learned model can see that heat early, but only if it stays current: a model trained once and left to age mistakes normal drift for faults.
 
 <!-- CONCLUSION:START -->
 
