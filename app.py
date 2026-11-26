@@ -813,6 +813,9 @@ CHART_FONT_PX = 26
 #: a size smaller than the chart. Panel titles and threshold labels are the
 #: same size: they sit on one line above a panel and have to fit its width.
 CHART_LEGEND_FONT_PX = 22
+#: The alarm count right of each row of the Explore strip: one line, so it
+#: fits the row height.
+STRIP_COUNT_FONT_PX = 18
 CHART_ANNOTATION_FONT_PX = 22
 
 #: Gridlines and axis lines: present enough to read values against, quiet
@@ -2411,18 +2414,21 @@ def _strip_figure(rows, tolerance: float, dv, alarms=None):
             return None
         r = int(a["real"].sum())
         f = int(len(a) - r)
-        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}<br>{r} real, {f} false"
+        return f"{len(a)} alarm{'s' if len(a) != 1 else ''}: {r} real, {f} false"
 
     for t, _ in rows:
         text = count(t)
         if text:
+            # One line, a smaller font, centred on its row: two lines at the
+            # chart font are taller than the gap between rows.
             fig.add_annotation(xref="paper", x=1.0, xanchor="left", xshift=12,
-                               y=ypos[t], yref="y", text=text, showarrow=False,
-                               align="left")
+                               y=ypos[t], yref="y", yanchor="middle", text=text,
+                               showarrow=False, align="left",
+                               font=dict(size=STRIP_COUNT_FONT_PX))
     fig.update_layout(
         title="Every day of every turbine, and every alarm",
         height=200 + 95 * n,
-        margin=dict(l=10, r=260 if alarms else 10, t=30, b=130),
+        margin=dict(l=10, r=300 if alarms else 10, t=30, b=130),
         legend=dict(orientation="h", yref="container", y=0, yanchor="bottom",
                     x=0, xanchor="left"))
     fig.update_yaxes(tickmode="array", tickvals=[ypos[t] for t, _ in rows],
@@ -2471,10 +2477,11 @@ def page_explore(series: dict | None) -> None:
         "<div class='note'>The squares say what the sensor did: orange is a day "
         "hotter than predicted. The circles under a row are the alarms: the first "
         "hot day of a run, when a technician is called out. Only the circle says "
-        "whether it was real: <b>filled red</b>, a fault was there (the day lies in "
-        "the documented fault period); <b>open white</b>, nothing was found. The "
-        "data have no inspection records, so the documented fault period stands in "
-        "for what the inspection would find.</div>", unsafe_allow_html=True)
+        "whether it was real: <b>filled red</b>, the day lies in the turbine's "
+        "abnormal period; <b>open white</b>, it does not. The data have no "
+        "inspection records, so the abnormal period (set in this project from the "
+        "sibling turbines) stands in for what an inspection would find.</div>",
+        unsafe_allow_html=True)
 
     cols = st.columns(len(chosen))
     for col, t in zip(cols, chosen):
